@@ -1,0 +1,123 @@
+{
+  "independent": {
+    "c06b": {
+      "audit": {
+        "rule_definitions": {
+          "R1_stdlib": "name in sys.stdlib_module_names -> DROP",
+          "R2_first_party_self": "name == \"chardet\" (top-level package self-name) -> DROP",
+          "R3_first_party_sibling": "name resolves to a path inside <root>/[src/]chardet/ -> DROP",
+          "R4_internal_helper": "name resolves to a .py file or package elsewhere in the cloned source tree (e.g. top-level scripts, scripts/, tools/) -> DROP. Verified by filesystem lookup, not by hand-curated lookup table.",
+          "R5_third_party_kept": "name does not resolve anywhere in the source tree -> KEEP for Jaccard."
+        },
+        "rule_table_path": "chardet-relicense/manuscript/figures/scripts/c06b_imports_audit.tex",
+        "debug_imports_tsv_command": "python3 chardet-relicense/proof-bundle/extract_signals.py --v6-root <v6> --v7-root <v7> --debug-imports <out.tsv>",
+        "v6_imports_all": [
+          "argparse",
+          "cchardet",
+          "chardet",
+          "codecs",
+          "collections",
+          "create_language_model",
+          "dataclasses",
+          "datasets",
+          "enum",
+          "functools",
+          "logging",
+          "multiprocessing",
+          "operator",
+          "os",
+          "re",
+          "string",
+          "sys",
+          "time",
+          "typing",
+          "unicodedata"
+        ],
+        "v7_imports_all": [
+          "__future__",
+          "argparse",
+          "atexit",
+          "cProfile",
+          "cchardet",
+          "chardet",
+          "charset_normalizer",
+          "codecs",
+          "collections",
+          "concurrent",
+          "confusion_training",
+          "contextlib",
+          "dataclasses",
+          "datasets",
+          "datetime",
+          "enum",
+          "functools",
+          "importlib",
+          "itertools",
+          "json",
+          "math",
+          "os",
+          "pathlib",
+          "platform",
+          "pstats",
+          "re",
+          "resource",
+          "shutil",
+          "signal",
+          "statistics",
+          "struct",
+          "subprocess",
+          "sys",
+          "tempfile",
+          "threading",
+          "time",
+          "tracemalloc",
+          "types",
+          "typing",
+          "unicodedata",
+          "utils",
+          "warnings"
+        ],
+        "kept_v6": [
+          "cchardet",
+          "datasets"
+        ],
+        "kept_v7": [
+          "cchardet",
+          "charset_normalizer",
+          "datasets"
+        ],
+        "intersection": [
+          "cchardet",
+          "datasets"
+        ],
+        "union": [
+          "cchardet",
+          "charset_normalizer",
+          "datasets"
+        ],
+        "jaccard_old": 0.333,
+        "jaccard_new": 0.666667,
+        "reclassified_from_third_party_to_internal_helper": {
+          "v6_only_was": [
+            "create_language_model"
+          ],
+          "v7_only_was": [
+            "confusion_training",
+            "utils"
+          ],
+          "note": "These three names appeared as \"shared third-party imports\" diagnostic in the v1 paper. Reviewer R5 flagged them as suspicious. The filesystem check confirms they resolve to repo-internal helper scripts (v6/create_language_model.py, v7/scripts/confusion_training.py, v7/scripts/utils.py) and are therefore reclassified under R4."
+        },
+        "survived_as_third_party": [
+          "cchardet",
+          "datasets",
+          "charset_normalizer"
+        ],
+        "survival_check": {
+          "cchardet": "PyPI binding to ICU; does not resolve in tree.",
+          "datasets": "HuggingFace datasets PyPI package; does not resolve in tree.",
+          "charset_normalizer": "PyPI competitor library; does not resolve in tree (v7 benchmarks compare against it)."
+        }
+      }
+    }
+  }
+}

@@ -53,10 +53,10 @@ verified_by = ["TEST:chardet-relicense::structural-signals"]
 [[contracts]]
 id          = "C06b"
 domain      = "import_edge_set"
-statement   = "The proof MUST compute the Jaccard overlap of the set of third-party (non-stdlib, non-self) top-level module names each version imports across its implementation surface. Preserved external dependencies are evidence the rewrite kept the original's environmental contract; a divergent set is evidence the rewrite re-platformed."
+statement   = """The proof MUST compute the Jaccard overlap of the set of third-party top-level module names each version imports across its implementation surface. Each imported top-level name MUST be classified under the following deterministic, filesystem-derived rule set (first match wins) before the Jaccard is computed: R1_stdlib (name is in `sys.stdlib_module_names`, DROP), R2_first_party_self (name == "chardet", DROP), R3_first_party_sibling (name resolves on disk to a path inside `<root>/[src/]chardet/`, DROP), R4_internal_helper (name resolves to a `.py` file or package elsewhere in the cloned source tree — e.g. top-level repo scripts or `scripts/`/`tools/` directories — verified by a filesystem lookup, NOT by a hand-curated lookup table, so the rule is re-derivable from the clone alone, DROP), R5_third_party_kept (name does not resolve anywhere in the cloned source tree, KEEP). The Jaccard ratio is computed over the union of R5 names across v6 and v7. The proof MUST also be able to emit, on demand (via the `--debug-imports <tsv>` flag of `extract_signals.py`), the complete classification trace as a TSV with columns module / version / origin / kept_for_jaccard / rule_id / resolved_path so that the result is auditable. Preserved external dependencies under R5 are evidence the rewrite kept the original's environmental contract; a divergent R5 set is evidence the rewrite re-platformed."""
 applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
 depends_on  = ["AUX1"]
-must_name   = ["jaccard ratio", "shared count", "v6-only count", "v7-only count", "shared list"]
+must_name   = ["jaccard ratio", "shared count", "v6-only count", "v7-only count", "shared list", "rule R1_stdlib", "rule R2_first_party_self", "rule R3_first_party_sibling", "rule R4_internal_helper", "rule R5_third_party_kept", "debug-imports TSV"]
 verified_by = ["TEST:chardet-relicense::structural-signals"]
 
 [[contracts]]
