@@ -1,0 +1,53 @@
+# Review readiness — the single gate the Hello-World proof must pass
+# before it is allowed to claim "the spec governs identical observable
+# behaviour across five languages". The gate is keyed to one artifact
+# class (the run-harness witness) and blocks on missing-implementation
+# or contract-failure outcomes.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "readiness-gate"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Review readiness: Hello, world! proof"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "hello-world/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[artifact_classes]]
+id          = "A01"
+name        = "contract_witness_pack"
+description = "The artifacts the reviewer needs to confirm CONTRACT C01 was enforced on every implementation: TRACEABILITY, CONTRACT_DECLARATION, the five source files, the run harness, and the captured run output."
+
+[[gates]]
+id                 = "G01"
+artifact_class     = "A01"
+name               = "Contract-witness gate"
+purpose            = "Block review until run_all.sh has been executed and every per-language outcome is either PASS or SKIP (a toolchain genuinely missing on the runner)."
+required_documents = [
+  "hello-world/proof-bundle/traceability.toml",
+  "hello-world/proof-bundle/contract_declaration.toml",
+  "hello-world/proof-bundle/implementation_dag.toml",
+  "hello-world/proof-bundle/evidence_matrix.toml",
+  "hello-world/proof-bundle/run_all.sh",
+]
+required_links     = [
+  "TRACEABILITY.IMP to CONTRACT_DECLARATION.C01",
+  "CONTRACT_DECLARATION.applies_to to TRACEABILITY.code.path",
+  "EVIDENCE_MATRIX.EV05 to TRACEABILITY.tests.command",
+]
+pass_conditions    = [
+  "run_all.sh exits 0",
+  "no per-language outcome is FAIL",
+  "every PASS witness matches CONTRACT C01 byte-for-byte",
+]
+block_conditions   = [
+  "any per-language outcome is FAIL",
+  "run_all.sh missing or non-executable",
+  "TRACEABILITY code path missing on disk",
+]
+next_step = "fix the failing implementation OR (if a real toolchain gap) document the SKIP rationale and re-run on a runner that has the toolchain"

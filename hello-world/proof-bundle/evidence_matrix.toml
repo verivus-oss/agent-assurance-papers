@@ -1,0 +1,200 @@
+# Evidence matrix — claims about the Hello-World proof, the evidence
+# that backs each claim, and the matrix linking the two. The
+# load-bearing claim is E02 ("the contract is enforced uniformly
+# across all C01 implementations"); E01 is structural readiness, E03
+# is the negative-test confirmation that a divergent implementation
+# would actually be caught, and E04 demonstrates AST-level
+# detectability of a deliberately convoluted rewrite. E05 demonstrates
+# AWK-specific source-profile detectability for an indirect rewrite.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "evidence-matrix"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Evidence matrix: Hello, world! proof"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "hello-world/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[claims]]
+id    = "E01"
+claim = "structurally_complete_pack"
+scope_covered    = [
+  "implementation-dag declares the build/prepare + verify units and they form a fan-in DAG",
+  "traceability declares the runtime contract chain and the source-analysis rewrite chains",
+  "contract-declaration declares C01 with explicit byte semantics plus C05 and C06 source-analysis detectability semantics",
+  "review-readiness gate names the run-harness witness as the gating artifact",
+]
+known_exclusions = [
+  "does not prove production readiness for arbitrary text I/O",
+  "does not validate behaviour under platform-specific stdio buffering",
+]
+status = "ready"
+
+[[claims]]
+id    = "E02"
+claim = "contract_enforced_across_all_languages"
+scope_covered    = [
+  "run_all.sh executes the per-language artifacts and asserts CONTRACT C01 on each",
+  "PASS witnesses show stdout == 'Hello, world!\\n', stderr empty, exit code 0",
+  "SKIP downgrades are toolchain-availability gaps and are explicitly distinct from FAIL",
+]
+known_exclusions = [
+  "SKIP does not prove the per-language implementation conforms; it only states the toolchain was not available to test it on this run",
+  "the harness does not exercise the contract under hostile encoding environments (LANG=C, Windows code page 932, etc.); those are pre-conditions documented in C02",
+]
+status = "ready"
+
+[[claims]]
+id    = "E03"
+claim = "divergent_implementation_would_fail"
+scope_covered    = [
+  "the harness rejects exit codes != 0",
+  "the harness rejects any stderr output",
+  "the harness rejects any stdout != exactly 'Hello, world!'",
+]
+known_exclusions = [
+  "does not enumerate every possible divergence mode (BOM prefix, ANSI escapes, locale-dependent output) — those are declared as C02..C04 and inherit from C01 by structural depends_on",
+]
+status = "ready"
+
+[[claims]]
+id    = "E04"
+claim = "semantic_ast_rewrite_detectable"
+scope_covered    = [
+  "the convoluted Go rewrite contains no contiguous `Hello, world!` literal",
+  "the convoluted Go rewrite still satisfies CONTRACT C01 when executed",
+  "sqry resolves the declared Go function symbols from the parsed AST",
+  "sqry resolves the caller edge from `main` to `renderLine` and the `fmt` import edge",
+]
+known_exclusions = [
+  "does not claim arbitrary obfuscation can always be reduced to the original author intent",
+  "does not yet fingerprint full behavioral equivalence across ASTs; it demonstrates symbol-level and simple-edge parser visibility for the rewrite",
+]
+status = "ready"
+
+[[claims]]
+id    = "E05"
+claim = "awk_rewrite_source_profile_detectable"
+scope_covered    = [
+  "the indirect AWK rewrite contains no contiguous `Hello, world!` literal",
+  "the canonical and indirect AWK implementations share the declared intent profile: BEGIN entry point plus print-to-stdout operation",
+  "the indirect AWK rewrite still satisfies CONTRACT C01 when executed",
+  "detect_awk_rewrite.sh confirms contract_declaration.toml declares C06 and its witness",
+  "detect_awk_rewrite.sh confirms the declared AWK source profile: BEGIN calling render, render function, split, for loop, and sprintf character assembly",
+]
+known_exclusions = [
+  "does not claim arbitrary AWK obfuscation can always be reduced to author intent",
+  "does not use a general-purpose AWK AST parser; it enforces a narrow intent/profile surface declared by C06",
+]
+status = "ready"
+
+[[evidence]]
+id            = "EV01"
+artifact_path = "hello-world/proof-bundle/implementation_dag.toml"
+summary       = "Nine-unit implementation DAG: six layer-0 build/prepare units (one per C01 implementation) fan into one layer-1 verify unit, with independent Go AST and AWK source-profile rewrite witnesses; contract critical path length 138 LoC."
+
+[[evidence]]
+id            = "EV02"
+artifact_path = "hello-world/proof-bundle/traceability.toml"
+summary       = "Runtime contract chain plus Go AST and AWK source-profile rewrite chains. The runtime chain declares six CODE entries, including AWK as an interpreted text-processing language. Every code path resolves on disk."
+
+[[evidence]]
+id            = "EV03"
+artifact_path = "hello-world/proof-bundle/contract_declaration.toml"
+summary       = "Six contracts: C01 declares the exact 14-byte stdout + exit-code semantics; C02..C04 declare encoding, ANSI, and BOM-prefix narrowings depending on C01; C05 declares Go semantic-AST rewrite detectability; C06 declares AWK source-profile rewrite detectability."
+
+[[evidence]]
+id            = "EV04"
+artifact_path = "hello-world/proof-bundle/review_readiness.toml"
+summary       = "Single G01 gate keyed to the contract-witness pack; pass conditions require all PASS or SKIP outcomes; block conditions name FAIL as the rejection signal."
+
+[[evidence]]
+id            = "EV05"
+artifact_path = "hello-world/proof-bundle/run_all.sh"
+summary       = "Executable witness for CONTRACT C01: builds and runs each per-language program, asserts byte-exact stdout, empty stderr, exit code 0; downgrades missing toolchains to SKIP."
+
+[[evidence]]
+id            = "EV06"
+artifact_path = "hello-world/proof-bundle/detect_semantic_rewrite.sh"
+summary       = "Executable witness for CONTRACT C05: confirms the convoluted Go rewrite hides the plain literal from text search, still satisfies C01 at runtime, and exposes declared function symbols plus simple graph edges to sqry AST analysis."
+
+[[evidence]]
+id            = "EV07"
+artifact_path = "hello-world/proof-bundle/detect_awk_rewrite.sh"
+summary       = "Executable witness for CONTRACT C06: confirms the indirect AWK rewrite hides the plain literal from text search, shares the declared intent profile with the canonical AWK implementation, still satisfies C01 at runtime, and matches the declared AWK static source profile."
+
+[[matrix]]
+id               = "M01"
+claim_id         = "E01"
+evidence_id      = "EV01"
+scope_covered    = "implementation-dag declares the fan-in build + verify shape"
+known_exclusions = ["does not address contract enforcement"]
+
+[[matrix]]
+id               = "M02"
+claim_id         = "E01"
+evidence_id      = "EV02"
+scope_covered    = "traceability declares the runtime REQ then six CODE entries then TEST, plus the Go AST and AWK source-profile rewrite REQs and CODE entries"
+known_exclusions = ["does not address contract enforcement"]
+
+[[matrix]]
+id               = "M03"
+claim_id         = "E01"
+evidence_id      = "EV03"
+scope_covered    = "contract-declaration enumerates the four contracts"
+known_exclusions = ["does not address whether the contracts were enforced on a real run"]
+
+[[matrix]]
+id               = "M04"
+claim_id         = "E01"
+evidence_id      = "EV04"
+scope_covered    = "review-readiness gate keyed to the witness pack"
+known_exclusions = ["does not contain a pass result; the gate declares the conditions"]
+
+[[matrix]]
+id               = "M05"
+claim_id         = "E02"
+evidence_id      = "EV05"
+scope_covered    = "run_all.sh enforces C01 byte-for-byte on each language"
+known_exclusions = ["SKIP outcomes leave the per-language enforcement to a later runner with the toolchain"]
+
+[[matrix]]
+id               = "M06"
+claim_id         = "E03"
+evidence_id      = "EV05"
+scope_covered    = "run_all.sh implements the failure modes (exit code, stderr non-empty, stdout drift) and returns non-zero on any of them"
+known_exclusions = ["does not enumerate environment-dependent divergences C02..C04; those rely on their own contracts inheriting from C01"]
+
+[[matrix]]
+id               = "M07"
+claim_id         = "E04"
+evidence_id      = "EV06"
+scope_covered    = "detect_semantic_rewrite.sh distinguishes text-level literal hiding from AST-level symbol and graph-edge visibility"
+known_exclusions = ["does not perform cross-version AST semantic diffing"]
+
+[[matrix]]
+id               = "M08"
+claim_id         = "E04"
+evidence_id      = "EV02"
+scope_covered    = "TRACEABILITY declares the expected AST symbols in the convoluted Go rewrite as CODE entries"
+known_exclusions = ["traceability declaration alone does not prove the symbols or graph edges resolve; EV06 is the executable witness"]
+
+[[matrix]]
+id               = "M09"
+claim_id         = "E05"
+evidence_id      = "EV07"
+scope_covered    = "detect_awk_rewrite.sh distinguishes text-level literal hiding from the C06 AWK intent/profile markers"
+known_exclusions = ["does not perform general AWK AST semantic diffing"]
+
+[[matrix]]
+id               = "M10"
+claim_id         = "E05"
+evidence_id      = "EV02"
+scope_covered    = "TRACEABILITY declares the AWK rewrite implementation, CODE entries, and TEST witness"
+known_exclusions = ["traceability declaration alone does not prove the source profile matches; EV07 is the executable witness"]

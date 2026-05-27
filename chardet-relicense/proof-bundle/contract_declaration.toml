@@ -1,0 +1,87 @@
+# Contract declaration — one auxiliary baseline plus five real
+# semantic-AST contracts the chardet v7 release is held to under the
+# relicensing dispute. AUX1 is the shallow signal (file-hash overlap)
+# kept as a cheap baseline. C06a..C06e are the load-bearing contracts —
+# they survive paraphrase, identifier renaming, and module
+# restructuring because they compare AST-level *topology* (call graph),
+# *boundary* (import edges), *shape* (control-flow histogram),
+# *contract* (public API signatures), and *behaviour* (runtime
+# fingerprint over fuzz inputs) rather than identifiers and file bytes.
+#
+# This file is intentionally not a verdict on the dispute. It declares
+# what shape of evidence the proof produces.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "contract-declaration"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Contract declaration for: chardet v6 to v7 relicensing dispute (semantic-AST version)"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "chardet-relicense/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+# ============================================================================
+# AUX1 — cheap baseline (auxiliary, not load-bearing).
+# ============================================================================
+
+[[contracts]]
+id          = "AUX1"
+domain      = "literal_source_carryover"
+statement   = "No v6 implementation source file (whitespace-normalised) MAY be byte-identical to any v7 implementation source file. Excluded: tests/, test/, __pycache__/, build/, dist/, and files matching `(test_*|*_test|test).py`. This is the cheap baseline — it collapses under paraphrase attack (any identifier renaming defeats it) and is preserved here for diagnostic continuity with the prior shallow proof, not as load-bearing evidence."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+must_name   = ["v6 file count", "v7 file count", "matching-pair count"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+# ============================================================================
+# C06 — semantic-AST contracts (load-bearing, paraphrase-resistant).
+# ============================================================================
+
+[[contracts]]
+id          = "C06a"
+domain      = "call_graph_topology"
+statement   = "The proof MUST extract the directed call graph from each version's implementation (callers = qualified function/method names; callees = the rightmost attribute name on each `ast.Call`) and report a topology-similarity score in [0,1] computed as 1 minus the mean of per-feature symmetric relative differences across these features: node count, edge count, density, strongly-connected-component count, mean in-degree, mean out-degree, max in-degree, max out-degree. Topology features are invariant to identifier renaming, so a high similarity score means the rewrite preserved the original's control structure even when every name was rewritten."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["AUX1"]
+must_name   = ["topology similarity score", "v6 node count", "v7 node count", "v6 edge count", "v7 edge count"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
+id          = "C06b"
+domain      = "import_edge_set"
+statement   = "The proof MUST compute the Jaccard overlap of the set of third-party (non-stdlib, non-self) top-level module names each version imports across its implementation surface. Preserved external dependencies are evidence the rewrite kept the original's environmental contract; a divergent set is evidence the rewrite re-platformed."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["AUX1"]
+must_name   = ["jaccard ratio", "shared count", "v6-only count", "v7-only count", "shared list"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
+id          = "C06c"
+domain      = "control_flow_histogram"
+statement   = "The proof MUST produce a per-version histogram of AST control-flow node types (`If`, `For`, `While`, `Try`, `ExceptHandler`, `Raise`, `With`, `AsyncWith`, `AsyncFor`, `Return`, `Yield`, `YieldFrom`, `Match`), normalise each by total count, and report the cosine similarity of the two histograms. Node *types* survive renaming because the AST grammar is fixed; a high cosine similarity means the rewrite's branching, looping, and exception-handling shape mirrors the original's."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["AUX1"]
+must_name   = ["cosine similarity", "v6 total nodes", "v7 total nodes"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
+id          = "C06d"
+domain      = "public_api_signature_equivalence"
+statement   = "For each public symbol exported by both versions (the intersection of the two `__all__` lists), the proof MUST extract the declared signature from the defining module (positional-arg count, keyword-only-arg count, default count, return-annotation presence) and classify the match as one of {strict — identical descriptor; renamed_args — same arity and default and return presence but different arg names; diverged — anything else}. The proof MUST report counts of each match category. This is the most direct test of preserved public-API contract."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["AUX1"]
+must_name   = ["shared count", "strict count", "renamed_args count", "diverged count"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
+id          = "C06e"
+domain      = "behavioural_fingerprint"
+statement   = "The proof MUST install both versions in isolated venvs from their respective git worktrees, generate a deterministic 1000-input fuzz corpus of random byte strings (seed = 20260522, max length 4096), invoke `chardet.detect()` from each venv on every input, and report the exact-match rate AND the `(encoding, confidence-bucket)`-match rate across the two outputs. Confidence buckets: high at or above 0.9, med in 0.5..0.9, low below 0.5, none if missing. Behavioural equivalence is the strongest contract-preservation signal because it operates at the runtime contract; behavioural divergence on common inputs is evidence the rewrite is a genuine reimplementation rather than a structural clone. If install or runtime fails, the proof MUST emit verdict=SKIP with the literal failure reason, distinguishing toolchain gap from a genuine FAIL."
+applies_to  = ["chardet-relicense/proof-bundle/fingerprint_behavior.py"]
+depends_on  = ["C06a", "C06b", "C06c", "C06d"]
+must_name   = ["exact_match_rate", "bucket_match_rate", "n_inputs", "corpus_digest"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]

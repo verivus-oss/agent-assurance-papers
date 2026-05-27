@@ -1,0 +1,297 @@
+{
+  "harness_headline": {
+    "aux1_matches": 0,
+    "aux1_v6_files": 87,
+    "aux1_v7_files": 33,
+    "c06a_similarity": 0.881,
+    "c06a_v6_nodes": 342,
+    "c06a_v7_nodes": 358,
+    "c06a_v6_edges": 488,
+    "c06a_v7_edges": 659,
+    "c06b_jaccard": 0.333,
+    "c06c_cosine": 0.984,
+    "c06c_v6_total": 652,
+    "c06c_v7_total": 848,
+    "c06d_shared": 5,
+    "c06d_strict": 3,
+    "c06d_renamed_args": 0,
+    "c06d_diverged": 2,
+    "c06e_exact_rate": 0.0,
+    "c06e_bucket_rate": 0.0,
+    "c06e_n_inputs": 1000,
+    "c06e_corpus_digest": "58e54831f84183c7"
+  },
+  "independent": {
+    "aux1": {
+      "n_v6_files": 87,
+      "n_v7_files": 33,
+      "matching_hash_pairs": 0
+    },
+    "c06a": {
+      "v6_features": {
+        "n_nodes": 342,
+        "n_edges": 488,
+        "density_nx": 0.004184459192948157,
+        "density_formula": 0.004184459192948157,
+        "density_agrees": true,
+        "scc_nx_func": 342,
+        "scc_iter": 342,
+        "scc_agrees": true,
+        "mean_in_numpy": 1.4269005847953216,
+        "mean_out_numpy": 1.4269005847953216,
+        "max_in_numpy": 34,
+        "max_out_numpy": 24
+      },
+      "v7_features": {
+        "n_nodes": 358,
+        "n_edges": 659,
+        "density_nx": 0.005156252445112123,
+        "density_formula": 0.005156252445112123,
+        "density_agrees": true,
+        "scc_nx_func": 358,
+        "scc_iter": 358,
+        "scc_agrees": true,
+        "mean_in_numpy": 1.8407821229050279,
+        "mean_out_numpy": 1.8407821229050279,
+        "max_in_numpy": 44,
+        "max_out_numpy": 42
+      },
+      "rel_diffs": [
+        0.022857142857142857,
+        0.14908456843940715,
+        0.10403845978974807,
+        0.022857142857142857,
+        0.12665903489784594,
+        0.12665903489784594,
+        0.1282051282051282,
+        0.2727272727272727
+      ],
+      "similarity": 0.8808640269160583
+    },
+    "c06b": {
+      "shared": [
+        "cchardet",
+        "datasets"
+      ],
+      "v6_only": [
+        "create_language_model"
+      ],
+      "v7_only": [
+        "charset_normalizer",
+        "confusion_training",
+        "utils"
+      ],
+      "jaccard_sets": 0.3333333333333333,
+      "jaccard_scipy": 0.33333333333333337,
+      "agrees": true
+    },
+    "c06c": {
+      "v6_total": 652,
+      "v7_total": 848,
+      "cosine_scipy": 0.9844014929937703,
+      "cosine_formula": 0.9844014929937703,
+      "agrees": true,
+      "per_node_v6": {
+        "ExceptHandler": 12,
+        "For": 72,
+        "If": 346,
+        "Raise": 10,
+        "Return": 191,
+        "Try": 12,
+        "While": 1,
+        "With": 4,
+        "Yield": 3,
+        "YieldFrom": 1
+      },
+      "per_node_v7": {
+        "ExceptHandler": 32,
+        "For": 135,
+        "If": 355,
+        "Raise": 12,
+        "Return": 253,
+        "Try": 33,
+        "While": 12,
+        "With": 16,
+        "Yield": 0,
+        "YieldFrom": 0
+      }
+    },
+    "c06d": {
+      "shared_names": [
+        "EncodingEra",
+        "UniversalDetector",
+        "__version__",
+        "detect",
+        "detect_all"
+      ],
+      "classifications": {
+        "EncodingEra": "diverged",
+        "UniversalDetector": "diverged",
+        "__version__": "strict",
+        "detect": "strict",
+        "detect_all": "strict"
+      },
+      "strict": 3,
+      "renamed_args": 0,
+      "diverged": 2,
+      "strict_rate": 0.6,
+      "bootstrap_n": 1000,
+      "bootstrap_ci_95_lo": 0.2,
+      "bootstrap_ci_95_hi": 1.0
+    },
+    "c06e_corpus_check": {
+      "corpus_digest_full": "58e54831f84183c755c2458f317fddb505c0b1546e3fd3a4eaef4b6178eb75b7",
+      "corpus_digest_truncated_16": "58e54831f84183c7",
+      "n_inputs": 1000,
+      "seed": 20260522,
+      "max_len": 4096,
+      "method": "hashlib.sha256(b'\\n'.join(corpus)).hexdigest()[:16] (matches fingerprint_behavior.py)"
+    },
+    "c06e_rates": {
+      "status": "skip",
+      "reason": "fingerprint_behavior.py emitted SKIP: behavioural fingerprint skipped: v6 install from worktree failed: ERROR: Failed to build 'file:///tmp/validate-numbers-b_deyxkz/v6' when installing build dependencies"
+    }
+  },
+  "comparison": [
+    {
+      "name": "aux1.matching_pairs",
+      "harness": 0,
+      "independent": 0,
+      "agrees": true
+    },
+    {
+      "name": "aux1.v6_files",
+      "harness": 87,
+      "independent": 87,
+      "agrees": true
+    },
+    {
+      "name": "aux1.v7_files",
+      "harness": 33,
+      "independent": 33,
+      "agrees": true
+    },
+    {
+      "name": "c06a.similarity",
+      "harness": 0.881,
+      "independent": 0.881,
+      "agrees": true
+    },
+    {
+      "name": "c06a.v6_nodes",
+      "harness": 342,
+      "independent": 342,
+      "agrees": true
+    },
+    {
+      "name": "c06a.v7_nodes",
+      "harness": 358,
+      "independent": 358,
+      "agrees": true
+    },
+    {
+      "name": "c06a.v6_edges",
+      "harness": 488,
+      "independent": 488,
+      "agrees": true
+    },
+    {
+      "name": "c06a.v7_edges",
+      "harness": 659,
+      "independent": 659,
+      "agrees": true
+    },
+    {
+      "name": "c06a.density_internal_agreement",
+      "harness": true,
+      "independent": true,
+      "agrees": true
+    },
+    {
+      "name": "c06a.scc_internal_agreement",
+      "harness": true,
+      "independent": true,
+      "agrees": true
+    },
+    {
+      "name": "c06b.jaccard",
+      "harness": 0.333,
+      "independent": 0.333,
+      "agrees": true
+    },
+    {
+      "name": "c06b.scipy_set_agreement",
+      "harness": true,
+      "independent": true,
+      "agrees": true
+    },
+    {
+      "name": "c06c.cosine",
+      "harness": 0.984,
+      "independent": 0.984,
+      "agrees": true
+    },
+    {
+      "name": "c06c.v6_total",
+      "harness": 652,
+      "independent": 652,
+      "agrees": true
+    },
+    {
+      "name": "c06c.v7_total",
+      "harness": 848,
+      "independent": 848,
+      "agrees": true
+    },
+    {
+      "name": "c06c.scipy_formula_agreement",
+      "harness": true,
+      "independent": true,
+      "agrees": true
+    },
+    {
+      "name": "c06d.shared",
+      "harness": 5,
+      "independent": 5,
+      "agrees": true
+    },
+    {
+      "name": "c06d.strict",
+      "harness": 3,
+      "independent": 3,
+      "agrees": true
+    },
+    {
+      "name": "c06d.renamed_args",
+      "harness": 0,
+      "independent": 0,
+      "agrees": true
+    },
+    {
+      "name": "c06d.diverged",
+      "harness": 2,
+      "independent": 2,
+      "agrees": true
+    },
+    {
+      "name": "c06d.bootstrap_ci_contains_point",
+      "harness": true,
+      "independent": true,
+      "agrees": true
+    },
+    {
+      "name": "c06e.corpus_digest",
+      "harness": "58e54831f84183c7",
+      "independent": "58e54831f84183c7",
+      "agrees": true
+    },
+    {
+      "name": "c06e.rates_recompute",
+      "harness": "(measured by harness on a runner with chardet installable)",
+      "independent": "SKIP: fingerprint_behavior.py emitted SKIP: behavioural fingerprint skipped: v6 install from worktree failed: ERROR: Failed to build 'file:///tmp/validate-numbers-b_deyxkz/v6' when installing build dependencies",
+      "agrees": true,
+      "skip": true
+    }
+  ],
+  "all_agree": true
+}

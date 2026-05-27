@@ -1,0 +1,123 @@
+# Implementation DAG — three layer-0 prepare units (verify clone,
+# materialise v6 worktree, materialise v7 worktree) fan into two
+# parallel layer-1 analyser units (static-AST signals, behavioural
+# fingerprint), which in turn fan into one layer-2 verify unit that
+# produces the final witness.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "implementation-dag"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Chardet v6 to v7 relicensing dispute — semantic-AST detection proof"
+spec            = "chardet-relicense/proof-bundle/README.md"
+created         = "2026-05-22"
+confidentiality = "public"
+license         = "Apache-2.0"
+total_units     = 6
+tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06"]
+tier2_units     = []
+tier3_units     = []
+
+[units.U01]
+name          = "verify-chardet-clone-present"
+summary       = "Confirm the chardet repository is cloned at /srv/repos/public/spec-poc/chardet-relicense/chardet and that both tags 6.0.0 and 7.0.0 exist. Implemented by the precheck block at the top of detect.sh."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U04", "U05"]
+estimated_loc = 25
+files_modify  = ["chardet-relicense/proof-bundle/detect.sh"]
+produces      = ["ART:chardet-clone-verified"]
+consumes      = []
+
+[units.U02]
+name          = "materialise-v6-worktree"
+summary       = "git worktree add of tag 6.0.0 (the last LGPL-era Mark Pilgrim/Dan Blanchard release before the AI rewrite) into a temporary directory so the analysers can walk the v6 implementation."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U04", "U05"]
+estimated_loc = 5
+files_modify  = ["chardet-relicense/proof-bundle/detect.sh"]
+produces      = ["ART:v6-worktree"]
+consumes      = []
+
+[units.U03]
+name          = "materialise-v7-worktree"
+summary       = "git worktree add of tag 7.0.0 (Dan Blanchard's MIT-licensed AI-rewritten release that triggered the FSF / Heather Meeker / Bruce Perens dispute) into a temporary directory."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U04", "U05"]
+estimated_loc = 5
+files_modify  = ["chardet-relicense/proof-bundle/detect.sh"]
+produces      = ["ART:v7-worktree"]
+consumes      = []
+
+[units.U04]
+name          = "extract-static-ast-signals"
+summary       = "Walk both worktrees with stdlib + networkx Python; emit AUX1 (literal carryover), C06a (call-graph topology), C06b (import-edge Jaccard), C06c (control-flow histogram cosine), C06d (public-API signature equivalence) as TSV rows. No chardet install required."
+layer         = 1
+tier          = 1
+status        = "done"
+depends_on    = ["U01", "U02", "U03"]
+blocks        = ["U06"]
+estimated_loc = 380
+files_modify  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+produces      = ["ART:static-ast-tsv"]
+consumes      = [
+  "ART:chardet-clone-verified",
+  "ART:v6-worktree",
+  "ART:v7-worktree",
+]
+
+[units.U05]
+name          = "extract-behavioural-fingerprint"
+summary       = "Install chardet from both worktrees into isolated venvs, run each `chardet.detect()` on a deterministic 1000-input fuzz corpus (seed 20260522, max length 4096), report C06e exact-match and bucket-match rates. Skips cleanly on toolchain gap."
+layer         = 1
+tier          = 1
+status        = "done"
+depends_on    = ["U01", "U02", "U03"]
+blocks        = ["U06"]
+estimated_loc = 175
+files_modify  = ["chardet-relicense/proof-bundle/fingerprint_behavior.py"]
+produces      = ["ART:behavioural-fingerprint-tsv"]
+consumes      = [
+  "ART:chardet-clone-verified",
+  "ART:v6-worktree",
+  "ART:v7-worktree",
+]
+
+[units.U06]
+name          = "emit-witness"
+summary       = "Concatenate the static-AST TSV and behavioural-fingerprint TSV into the final witness output, with the header preserved and the DELEGATED placeholder row replaced by the real C06e row from fingerprint_behavior.py."
+layer         = 2
+tier          = 1
+status        = "done"
+depends_on    = ["U04", "U05"]
+blocks        = []
+estimated_loc = 40
+files_modify  = ["chardet-relicense/proof-bundle/detect.sh"]
+produces      = ["OUT:chardet-relicense-semantic-witness"]
+consumes      = [
+  "ART:static-ast-tsv",
+  "ART:behavioural-fingerprint-tsv",
+]
+
+[computed]
+entry_points      = ["U01", "U02", "U03"]
+leaf_nodes        = ["U06"]
+critical_path     = ["U01", "U04", "U06"]
+critical_path_loc = 445
+loc_totals        = { tier1 = 630 }
+
+[computed.max_parallel]
+layer0 = 3
+layer1 = 2
+layer2 = 1

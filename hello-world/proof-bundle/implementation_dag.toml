@@ -1,0 +1,167 @@
+# Implementation DAG — six independent build/prepare units plus a single
+# cross-language verification unit and two independent source-analysis
+# witness. The language units share no artifacts (compiled languages
+# write their own binaries; AWK is interpreted); the verify unit
+# consumes one `ART:` per language and produces the final contract
+# `OUT:` deliverable.
+#
+# The shape is a fan-in: layers 0..4 are parallelizable; layer 1 is the
+# critical-path leaf because the verification depends on every binary.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "implementation-dag"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Hello, world! — multi-language proof"
+spec            = "hello-world/proof-bundle/README.md"
+created         = "2026-05-22"
+confidentiality = "public"
+license         = "Apache-2.0"
+total_units     = 9
+tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09"]
+tier2_units     = []
+tier3_units     = []
+
+[units.U01]
+name          = "build-rust-hello"
+summary       = "Compile src/rust/hello.rs to a native binary that prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 4
+files_modify  = ["hello-world/proof-bundle/src/rust/hello.rs"]
+produces      = ["ART:hello-rust-bin"]
+consumes      = []
+
+[units.U02]
+name          = "build-go-hello"
+summary       = "Compile src/go/hello.go to a native binary that prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 7
+files_modify  = ["hello-world/proof-bundle/src/go/hello.go"]
+produces      = ["ART:hello-go-bin"]
+consumes      = []
+
+[units.U03]
+name          = "build-c-hello"
+summary       = "Compile src/c/hello.c with cc to a native binary that prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 6
+files_modify  = ["hello-world/proof-bundle/src/c/hello.c"]
+produces      = ["ART:hello-c-bin"]
+consumes      = []
+
+[units.U04]
+name          = "build-java-hello"
+summary       = "Compile src/java/Hello.java with javac into a class file that prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 5
+files_modify  = ["hello-world/proof-bundle/src/java/Hello.java"]
+produces      = ["ART:hello-java-class"]
+consumes      = []
+
+[units.U05]
+name          = "build-typescript-hello"
+summary       = "Transpile src/typescript/hello.ts via tsc OR strip types via node --experimental-strip-types; runtime prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 8
+files_modify  = ["hello-world/proof-bundle/src/typescript/hello.ts"]
+produces      = ["ART:hello-typescript-runnable"]
+consumes      = []
+
+[units.U08]
+name          = "prepare-awk-hello"
+summary       = "Run src/awk/hello.awk with awk; the interpreted script prints `Hello, world!\\n` to stdout."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U06"]
+estimated_loc = 4
+files_modify  = ["hello-world/proof-bundle/src/awk/hello.awk"]
+produces      = ["ART:hello-awk-script"]
+consumes      = []
+
+[units.U06]
+name          = "verify-contract-c01"
+summary       = "Execute every per-language artifact and enforce contract_declaration.toml C01: stdout == `Hello, world!\\n`, exit code == 0, stderr empty. Implemented by run_all.sh."
+layer         = 1
+tier          = 1
+status        = "done"
+depends_on    = ["U01", "U02", "U03", "U04", "U05", "U08"]
+blocks        = []
+estimated_loc = 130
+files_modify  = ["hello-world/proof-bundle/run_all.sh"]
+produces      = ["OUT:contract-c01-witness"]
+consumes      = [
+  "ART:hello-rust-bin",
+  "ART:hello-go-bin",
+  "ART:hello-c-bin",
+  "ART:hello-java-class",
+  "ART:hello-typescript-runnable",
+  "ART:hello-awk-script",
+]
+
+[units.U07]
+name          = "verify-semantic-ast-rewrite"
+summary       = "Run detect_semantic_rewrite.sh to show that a convoluted Go rewrite can hide the greeting literal from text search while still exposing declared function symbols to sqry AST analysis."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 90
+files_modify  = [
+  "hello-world/proof-bundle/src/go_convoluted/hello.go",
+  "hello-world/proof-bundle/detect_semantic_rewrite.sh",
+]
+produces      = ["OUT:semantic-ast-detection-witness"]
+consumes      = []
+
+[units.U09]
+name          = "verify-awk-rewrite-detection"
+summary       = "Run detect_awk_rewrite.sh to show that an indirect AWK rewrite can hide the greeting literal from text search while still matching the source profile declared by CONTRACT C06."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 95
+files_modify  = [
+  "hello-world/proof-bundle/src/awk_convoluted/hello.awk",
+  "hello-world/proof-bundle/detect_awk_rewrite.sh",
+]
+produces      = ["OUT:awk-rewrite-detection-witness"]
+consumes      = []
+
+[computed]
+entry_points      = ["U01", "U02", "U03", "U04", "U05", "U07", "U08", "U09"]
+leaf_nodes        = ["U06", "U07", "U09"]
+critical_path     = ["U05", "U06"]
+critical_path_loc = 138
+loc_totals        = { tier1 = 349 }
+
+[computed.max_parallel]
+layer0 = 8
+layer1 = 1

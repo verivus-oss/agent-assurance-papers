@@ -1,0 +1,412 @@
+# ArXiv TeX Pre-flight, Fix, and Packaging Agent — encoded as a DAG-TOML
+# `implementation-dag`. Author: Werner Kasselman (grounded in public checklists).
+#
+# PURPOSE
+#
+# Decompose the end-to-end process of preparing a LaTeX paper for
+# successful arXiv submission into a machine-readable, agent-executable
+# DAG. The binding scope of what the DAG claims to address is the
+# [policy.checklist_coverage] table — each entry there is turned into
+# an explicit unit, gate, or evidence artefact. The table is populated
+# from the referenced source corpus (see GROUNDING SOURCES below), but
+# the DAG does not claim that every item in those source documents
+# appears in the table; items deliberately scoped out or pending future
+# coverage are not claimed.
+#
+# GROUNDING SOURCES (full text retrieved via Exa, 2026-05)
+# - https://trevorcampbell.me/html/arxiv.html          (flatten, 4-pass magic, delete junk)
+# - https://info.arxiv.org/help/faq/mistakes.html       (absolute paths, spaces, bib, hyperref, minted, ifpdf, boundingbox, \include vs \input, double sub/sup, ...)
+# - https://www.ianhuston.net/2011/03/checklist-for-arxiv-submission/ (spell, eq review, bib hygiene, no $Id$, no comments-to-publish)
+# - https://info.arxiv.org/help/submit_tex.html         (current: TL2025 default, bib/biber auto, .bbl compat, 00README, processor choice, no JS in PDF, hidden files stripped on announce, no on-the-fly ps->pdf)
+# - https://info.arxiv.org/help/faq/texlive.html        (TL2025/2023 notes: minted v3 cache, cleveref, hyperref+hyperxmp order, array/revtex, xelatex font lookup, no \ifpdfoutput, ...)
+#
+# GROUND-TRUTH MODEL
+# Local 4+-pass pdflatex (or chosen processor) + PDF inspection + sha
+# of every artefact is the oracle. arXiv's own run is the final judge.
+# The DAG addresses the classes of automated rejection enumerated in
+# [policy.checklist_coverage] by attaching an explicit unit, gate, or
+# evidence artefact to each entry; it does not claim to eliminate any
+# class outright (the final-judge clause above stands), nor does it
+# claim coverage of items in the referenced source corpus that are
+# absent from [policy.checklist_coverage] (whether scoped out
+# deliberately or pending future coverage), nor of rejection causes
+# outside that corpus entirely (taxonomy drift, future policy changes,
+# journal-style defects).
+#
+# GATES (reliability-style, blocking)
+# - Filename/structure audit gate (no spaces, no abs paths, relative includes, subdir policy:
+#   the agent supports BOTH Trevor's flatten-style packaging and current arXiv guidance,
+#   which permits subdirectories. Mode is selected by policy.instance.allow_subdirs.
+#   When allow_subdirs=true (default), figures/ subdirs are preserved and includes are not
+#   rewritten; the audit verifies no path escapes the staging root. When allow_subdirs=false,
+#   U02 flattens figures/ and rewrites \includegraphics paths per Trevor's rule.
+#   The two modes are mutually exclusive; neither contradicts the other.)
+# - Junk/hidden removal gate
+# - Bib/bbl version + processor-compat gate
+# - Figure format + bounding gate (matches chosen processor)
+# - Compile-and-label-resolution gate (full log, no ??, 4 passes observed)
+# - Final package hygiene gate (only declared files, no hidden, manifest matches)
+#
+# LINEAGE
+# - SPEC: spec.md (DAG-TOML core) + core/implementation-dag-kind.toml
+# - Idiom: claim-analysis-agent-gated-dag.toml (policy.* + proofs_mapping + evidence non-negotiables)
+# - IJB: every ART:/OUT:/Uxx and predicate usage resolves in core/ontology.toml
+# - No framework_profile (core only; ART/OUT/U patterns declared in core)
+#
+# INSTANCE USAGE
+# Point [policy.instance] at an external paper tree, run the units in order
+# (or parallel where layer allows), obtain the bundle + evidence pack, then
+# perform the manual web upload at https://arxiv.org/submit while viewing the
+# locally-generated PDF and the 00README instructions.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+# This document is self-contained: no [provenance], no cites_upstream
+# fields, no upstream evidence rows. Per §12.11 the empty sentinel
+# is the correct value.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version    = "0.1.0"
+template_kind     = "implementation-dag"
+docs              = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+confidentiality   = "public"
+license           = "Apache-2.0"
+title             = "ArXiv TeX Pre-flight and Packaging Agent — checklist-grounded"
+spec              = "arxiv-prep-agent-dag.toml"
+decomposition     = "arxiv-prep-agent-dag.toml"
+created           = "2026-05-23"
+total_units       = 10
+tier1_units       = ["U01","U02","U03","U04","U05","U06","U07","U08","U09","U10"]
+tier2_units       = []
+tier3_units       = []
+
+# ============================================================================
+# [policy.arxiv_prep_agent] — persona + checklist responsibilities
+# ============================================================================
+
+[policy.arxiv_prep_agent]
+name                 = "ArXiv Pre-flight and Packaging Agent"
+role                 = "TeX Compliance Engineer and Submission Packager"
+purpose              = "Transform a raw LaTeX paper tree into an arXiv-ready source bundle by attaching an explicit unit or gate to each preflight failure mode enumerated in [policy.checklist_coverage] — the binding scope of the agent's claim, populated from the Trevor Campbell, official arXiv mistakes FAQ, Ian Huston, submit_tex, and texlive checklists — and produce a clean submission tarball plus a separate, complete evidence pack. Items in those checklists that are not enumerated in [policy.checklist_coverage] are explicitly out of scope; the agent makes no claim about failure modes outside that table, and arXiv's own preflight remains the final judge."
+validation_type      = "Structural + Execution Verification"
+workflow_initiator   = false
+description          = "Consumes a paper source tree (main.tex + figures + .bib), emits a clean tarball plus machine-readable evidence that the items enumerated in [policy.checklist_coverage] were each addressed by an explicit unit or gate. The table is sourced from the Trevor Campbell, official arXiv mistakes, Ian Huston, submit_tex, and texlive checklists; items from those checklists that are not enumerated in [policy.checklist_coverage] (whether scoped out deliberately or pending future coverage) are not covered by the agent."
+
+[policy.arxiv_prep_agent.orchestration]
+consumes_events      = ["PaperSourceReady", "ArXivPrepRequested"]
+produces_events      = ["ArXivPrepComplete"]
+
+[policy.arxiv_prep_agent.responsibilities]
+items = [
+  "Source tree snapshot with full SHA-256 inventory.",
+  "Filename, path, and include hygiene (no spaces, no absolute paths, relative only, subdir policy).",
+  "Junk, hidden, unused, and VCS removal (no .git, no aux/log/pdf, no unused .sty/.tex, no $Id$).",
+  "Spell-check (including author names) + equation punctuation + manual read-through evidence.",
+  "Bibliography hygiene and version compatibility (bib vs bbl, biblatex bbl 3.3 for TL2025, .bib present if arXiv should run bibtex/biber).",
+  "Figure format and inclusion audit (pdf/png/jpg for pdflatex; ps/eps only for latex; proper BoundingBox; no on-the-fly conversion).",
+  "TeX source fixes for known arXiv pitfalls (4-pass typeout, ifpdf not pdfoutput, hyperref bookmarks=false for complex docs, \\protect\\cite in captions, minted non-hidden cache, no \\today in date).",
+  "Local 4+-pass compile under matching processor + PDF inspection gate (no unresolved labels, no fatal errors, page count + visual spot-check).",
+  "00README generation (processor hint, ignore lists, special responses) + final manifest with every check verbatim.",
+  "Clean tar/zip bundle + submission manifest + human instructions; hidden files provably absent.",
+]
+
+[policy.arxiv_prep_agent.outputs]
+submission_bundle = "OUT:arxiv-submission-bundle"          # only clean LaTeX source for arXiv
+evidence_pack     = "OUT:arxiv-prep-evidence-pack"         # all audit logs, manifest, human sign-off, etc. (never in the public tarball)
+event             = "ArXivPrepComplete"
+
+# ============================================================================
+# [policy.gates] — blocking gates (patterned after reliability_gate in claim DAG)
+# ============================================================================
+
+[policy.gates]
+filename_structure_gate = { required_verdicts = ["pass"], blocks_on = ["space_in_name", "absolute_path", "bad_include", "subdir_violation"] }
+junk_hidden_gate        = { required_verdicts = ["clean"], blocks_on = ["hidden_file_present", "aux_present", "vcs_dir_present", "unused_sty_present"] }
+bib_compat_gate         = { required_verdicts = ["compatible"], blocks_on = ["bbl_version_mismatch", "missing_bib_for_arxiv_run", "biblatex_backend_mismatch"] }
+figure_format_gate      = { required_verdicts = ["match_processor"], blocks_on = ["wrong_extension_for_processor", "missing_boundingbox", "mixed_ps_pdf_without_conversion"] }
+compile_label_gate      = { required_verdicts = ["4pass_clean"], blocks_on = ["tex_error", "unresolved_label", "pdf_conversion_fail", "hyperref_pdfmark_conflict"] }
+package_hygiene_gate    = { required_verdicts = ["manifest_match"], blocks_on = ["undeclared_file", "hidden_in_tar", "sha_mismatch"] }
+
+# ============================================================================
+# [policy.checklist_coverage] — explicit mapping from source checklists to units
+# ============================================================================
+
+[policy.checklist_coverage]
+# Expanded from 9 conflated representative entries to 32 atomic entries via the Option B
+# corrective-program workflow (see docs/reviews/2026-05-24-arxiv-prep-dag/option-b-audit/
+# and option-b-swarm-audit/ for the audit trail). Each entry below is one distinct
+# preflight pitfall from the referenced source corpus, mapped to a producing unit and
+# the ART(s) that evidence its handling. The 10 in-corpus pitfalls deliberately NOT in
+# this table are documented as gaps in
+# docs/reviews/2026-05-24-arxiv-prep-dag/fourth-pass/option-b/proposed-mappings.toml
+# (items with is_gap = true). Per the binding-scope clauses in
+# [policy.arxiv_prep_agent].purpose and .description, items absent from this table are
+# explicitly out of scope; the agent makes no claim about them.
+"arxiv-mistakes.absolute-filenames" = { units = ["U02"], evidence = "ART:filename-audit-report" }
+"arxiv-mistakes.boundingbox" = { units = ["U05"], evidence = "ART:figure-audit-report" }
+"arxiv-mistakes.double-sub-sup" = { units = ["U06","U08"], evidence = "ART:human-review-report,ART:compile-and-pdf-evidence" }
+"arxiv-mistakes.dvips-incompat" = { units = ["U05","U07"], evidence = "ART:figure-audit-report,ART:source-fix-log" }
+"arxiv-mistakes.hyperref-bookmarks-false" = { units = ["U07"], evidence = "ART:source-fix-log" }
+"arxiv-mistakes.ifpdf-not-ifx-pdfoutput" = { units = ["U07"], evidence = "ART:source-fix-log" }
+"arxiv-mistakes.last-minute-changes" = { units = ["U08"], evidence = "ART:compile-and-pdf-evidence" }
+"arxiv-mistakes.minted-frozencache-non-hidden" = { units = ["U07"], evidence = "ART:source-fix-log" }
+"arxiv-mistakes.mixed-figures" = { units = ["U05"], evidence = "ART:figure-audit-report" }
+"arxiv-mistakes.non-tex-files" = { units = ["U03","U09"], evidence = "ART:junk-audit-report,ART:arxiv-prep-manifest" }
+"arxiv-mistakes.protect-cite-in-captions" = { units = ["U07"], evidence = "ART:source-fix-log" }
+"arxiv-mistakes.readme-for-ignore" = { units = ["U09"], evidence = "ART:arxiv-prep-manifest" }
+"arxiv-mistakes.spaces-in-names" = { units = ["U02"], evidence = "ART:filename-audit-report" }
+"arxiv-mistakes.user-intervention-inp" = { units = ["U08"], evidence = "ART:compile-and-pdf-evidence" }
+"ianhuston.check-bib-text-style" = { units = ["U04"], evidence = "ART:bib-audit-report" }
+"ianhuston.move-bbl-or-include-bib" = { units = ["U04"], evidence = "ART:bib-audit-report" }
+"ianhuston.punctuation-in-equations" = { units = ["U06"], evidence = "ART:human-review-report" }
+"ianhuston.read-equations" = { units = ["U06"], evidence = "ART:human-review-report" }
+"ianhuston.remove-rev-control-strings" = { units = ["U03"], evidence = "ART:junk-audit-report" }
+"ianhuston.spellcheck-authors" = { units = ["U06"], evidence = "ART:human-review-report" }
+"submit_tex.bbl-compat-3-3-tl2025" = { units = ["U04","U08"], evidence = "ART:bib-audit-report,ART:compile-and-pdf-evidence" }
+"submit_tex.bib-auto-with-version-rules" = { units = ["U04"], evidence = "ART:bib-audit-report" }
+"submit_tex.figure-formats-per-processor" = { units = ["U05"], evidence = "ART:figure-audit-report" }
+"submit_tex.hidden-files-deleted-on-announce" = { units = ["U03","U09"], evidence = "ART:junk-audit-report,ART:arxiv-prep-manifest" }
+"submit_tex.no-js-in-pdf" = { units = ["U08"], evidence = "ART:compile-and-pdf-evidence" }
+"submit_tex.processor-choice" = { units = ["U08","U09"], evidence = "ART:compile-and-pdf-evidence,ART:arxiv-prep-manifest" }
+"submit_tex.tl2025-default" = { units = ["U04","U07"], evidence = "ART:bib-audit-report,ART:source-fix-log" }
+"texlive_2025.no-today-in-date" = { units = ["U07"], evidence = "ART:source-fix-log" }
+"trevorcampbell.compile-in-tmp-and-verify" = { units = ["U01","U08"], evidence = "ART:source-snapshot,ART:compile-and-pdf-evidence" }
+"trevorcampbell.delete-junk-hidden-vcs" = { units = ["U03"], evidence = "ART:junk-audit-report" }
+"trevorcampbell.flatten-subdirs" = { units = ["U02"], evidence = "ART:filename-audit-report" }
+"trevorcampbell.typeout-4-pass-line" = { units = ["U07"], evidence = "ART:source-fix-log" }
+
+# ============================================================================
+# [policy.proofs_mapping] — every responsibility bound to exactly one producing unit
+# (strings under "produces" keys are checked by IJB validator because "produces" is a declared relation predicate)
+# ============================================================================
+
+[policy.proofs_mapping]
+"arxiv_prep_agent.responsibilities.snapshot"                = { unit = "U01", produces = "ART:source-snapshot" }
+"arxiv_prep_agent.responsibilities.filename_hygiene"        = { unit = "U02", produces = "ART:filename-audit-report" }
+"arxiv_prep_agent.responsibilities.junk_removal"            = { unit = "U03", produces = "ART:junk-audit-report" }
+"arxiv_prep_agent.responsibilities.bib_hygiene"             = { unit = "U04", produces = "ART:bib-audit-report" }
+"arxiv_prep_agent.responsibilities.figure_format"           = { unit = "U05", produces = "ART:figure-audit-report" }
+"arxiv_prep_agent.responsibilities.human_review"            = { unit = "U06", produces = "ART:human-review-report" }
+"arxiv_prep_agent.responsibilities.source_fixes"            = { unit = "U07", produces = "ART:source-fix-log" }
+"arxiv_prep_agent.responsibilities.compile_gate"            = { unit = "U08", produces = "ART:compile-and-pdf-evidence" }
+"arxiv_prep_agent.responsibilities.manifest_and_00readme"   = { unit = "U09", produces = "ART:arxiv-prep-manifest" }
+"arxiv_prep_agent.responsibilities.package_and_emit"        = { unit = "U10", produces = "OUT:arxiv-submission-bundle" }
+"arxiv_prep_agent.outputs.submission_bundle"               = { unit = "U10", produces = "OUT:arxiv-submission-bundle" }
+"arxiv_prep_agent.outputs.evidence_pack"                    = { unit = "U10", produces = "OUT:arxiv-prep-evidence-pack" }
+"arxiv_prep_agent.outputs.event"                            = { unit = "U10", produces = "OUT:arxiv-prep-complete-event" }
+
+# ============================================================================
+# [policy.evidence] — non-negotiable invariants (every run must satisfy)
+# ============================================================================
+
+[policy.evidence]
+every_audit_produces_verbatim_grep_or_ls_output     = true
+compile_evidence_includes_full_log_and_final_pdf_sha = true
+four_or_more_passes_observed_in_log                 = true
+no_unresolved_labels_or_citation_marks_in_pdf       = true
+package_tar_contains_exactly_the_files_listed_in_manifest = true
+no_hidden_files_or_vcs_dirs_in_final_bundle         = true
+bib_or_bbl_present_and_version_recorded             = true
+figure_extensions_match_chosen_processor            = true
+all_includes_are_relative_and_resolvable            = true
+llm_disclosure_location_must_be_manually_verified = true   # record policy URL + retrieval date in the human-review-report; no automated unit performs this check in the current DAG
+human_review_report_signed_off_by_operator          = true
+critical_path_must_pass_all_gates_before_U10        = true
+
+# ============================================================================
+# [policy.instance] — fill at point of use (or by orchestrator)
+# ============================================================================
+
+[policy.instance]
+paper_source_dir       = "chardet-relicense/manuscript/"
+staging_dir            = "arxiv-prep/"
+main_tex               = "main.tex"
+chosen_processor       = "pdflatex"        # pdflatex | latex | xelatex | pdftex
+bib_style              = "plainnat"        # or whatever; arXiv will run bibtex/biber if .bib present
+allow_subdirs          = true              # true (default) = keep figures/ subdir per current arXiv guidance; false = flatten + rewrite includes per Trevor's rule. scripts/ under figures/ is stripped in both modes (U03).
+require_4pass_magic    = true
+hyperref_bookmarks     = false             # safe default for papers with TOC/appendices
+minted_cache_dir       = "minted-cache"    # never .minted* (hidden)
+source_fetch_allowlist = []                # not used here; present for symmetry with claim DAG
+
+# ============================================================================
+# UNITS — strictly layered, gates block forward progress
+# ============================================================================
+
+# U01 — snapshot the exact bytes we will work on
+[units.U01]
+name           = "snapshot-paper-source-tree"
+summary        = "Copy paper_source_dir to staging_dir, compute SHA-256 of every file (including subdirs), write source-manifest.toml. This is the immutable ground truth for the rest of the run."
+layer          = 0
+tier           = 1
+status         = "pending"
+depends_on     = []
+blocks         = ["U02","U03"]
+estimated_loc  = 35
+files_modify   = ["arxiv-prep/source-manifest.toml", "arxiv-prep/"]
+produces       = ["ART:source-snapshot"]
+consumes       = []
+
+# U02 — filename / include / structure gate (first blocker)
+[units.U02]
+name           = "audit-filename-and-include-hygiene"
+summary        = "Recursively scan for spaces in names, absolute paths in \\input/\\includegraphics/\\include, bad characters, and subdir policy violations. Emit verbatim grep/ls report. If allow_subdirs=false, flatten figures/ and rewrite includes (Trevor rule). Block on any failure."
+layer          = 1
+tier           = 1
+status         = "pending"
+depends_on     = ["U01"]
+blocks         = ["U04","U05","U06"]
+estimated_loc  = 55
+files_modify   = ["arxiv-prep/filename-audit-report.toml"]
+produces       = ["ART:filename-audit-report"]
+consumes       = ["ART:source-snapshot"]
+
+# U03 — junk / hidden / VCS gate (parallel with U02 at layer 1)
+[units.U03]
+name           = "audit-and-remove-junk-hidden-vcs"
+summary        = "Find and delete (from staging) all .aux .log .out .blg .pdf .git/ .DS_Store/ __pycache__/ unused .sty/.cls/.tex, any file beginning with ., and any $Id$ or CVS revision strings inside .tex. Emit ls -a before/after report."
+layer          = 1
+tier           = 1
+status         = "pending"
+depends_on     = ["U01"]
+blocks         = ["U04","U05","U06"]
+estimated_loc  = 40
+files_modify   = [
+  "arxiv-prep/junk-audit-report.toml",
+  "arxiv-prep/figures/scripts/",   # remove non-figure helpers
+]
+produces       = ["ART:junk-audit-report"]
+consumes       = ["ART:source-snapshot"]
+
+# U04 — bib / bbl / reference hygiene gate (Ian + current submit_tex)
+[units.U04]
+name           = "prepare-bibliography-for-arxiv-processor"
+summary        = "If .bib present, decide whether to let arXiv run bibtex/biber (recommended for TL2025) or pre-generate .bbl. Verify bbl version (3.3 for TL2025, 3.2/3.3 for TL2023). Add arXiv YYMM.NNNNN ids where missing. Remove any hand-typed bib errors. Emit report with exact bbl header and backend used."
+layer          = 2
+tier           = 1
+status         = "pending"
+depends_on     = ["U02","U03"]
+blocks         = ["U07"]
+estimated_loc  = 50
+files_modify   = ["arxiv-prep/bib-audit-report.toml", "arxiv-prep/references.bbl"]  # .bbl generated only if pre-compiling; otherwise .bib is used and arXiv runs the backend
+produces       = ["ART:bib-audit-report"]
+consumes       = ["ART:filename-audit-report","ART:junk-audit-report"]
+
+# U05 — figure format + inclusion gate (must match processor)
+[units.U05]
+name           = "audit-and-normalize-figures"
+summary        = "For pdflatex: ensure only .pdf/.png/.jpg under figures/, no .ps/.eps left. For latex: only .ps/.eps. Check %%BoundingBox near top of any EPS. Rewrite \\includegraphics paths if flattening occurred. Emit report + list of included figures with their formats."
+layer          = 2
+tier           = 1
+status         = "pending"
+depends_on     = ["U02","U03"]
+blocks         = ["U07"]
+estimated_loc  = 45
+files_modify   = ["arxiv-prep/figure-audit-report.toml"]
+produces       = ["ART:figure-audit-report"]
+consumes       = ["ART:filename-audit-report","ART:junk-audit-report"]
+
+# U06 — human review artefacts (spell, authors, equations, punctuation)
+[units.U06]
+name           = "human-review-spell-equations-authors"
+summary        = "Run spellcheck on main.tex + abstract + author list (special care for names per Ian). Read every equation for trailing punctuation (\\,, or . inside math). Produce signed human-review-report.toml with verbatim quotes of any issues found and operator sign-off. Evidence from this unit is required before the compile gate (U08) and final packaging (U10); the human sign-off functions as a manual gate."
+layer          = 3
+tier           = 1
+status         = "pending"
+depends_on     = ["U02","U03"]
+blocks         = ["U08"]
+estimated_loc  = 60
+files_modify   = ["arxiv-prep/human-review-report.toml"]
+produces       = ["ART:human-review-report"]
+consumes       = ["ART:filename-audit-report","ART:junk-audit-report"]
+
+# U07 — apply all automated source fixes (the \"magic\" layer)
+[units.U07]
+name           = "apply-arxiv-pitfall-fixes"
+summary        = "Inject \\typeout{get arXiv to do 4 passes...} after \\end{document} if required. Switch any \\ifx\\pdfoutput to \\usepackage{ifpdf} + \\ifpdf. Add [bookmarks=false] to hyperref if paper has complex sections. \\protect all \\cite inside \\caption. Fix minted to cachedir=minted-cache (non-hidden). Remove \\today from \\date. Apply any biblatex order or other TL2025 fixes. Log every edit verbatim."
+layer          = 3
+tier           = 1
+status         = "pending"
+depends_on     = ["U04","U05"]
+blocks         = ["U08"]
+estimated_loc  = 70
+files_modify   = [
+  "arxiv-prep/main.tex",
+  "arxiv-prep/source-fix-log.toml",
+]
+produces       = ["ART:source-fix-log"]
+consumes       = ["ART:bib-audit-report","ART:figure-audit-report"]
+
+# U08 — the compile gate (the real oracle)
+[units.U08]
+name           = "compile-verify-4pass-pdf-inspection"
+summary        = "Run chosen_processor on main.tex four (or more) times with -interaction=nonstopmode. Capture full .log. Verify (a) exit 0, (b) 'Label(s) may have changed' appears then is resolved, (c) no '??' or 'undefined reference' in final PDF, (d) PDF SHA + page count recorded, (e) visual spot-check notes (no JS, no rotation, figures present). Emit compile-and-pdf-evidence bundle. This gate blocks packaging."
+layer          = 4
+tier           = 1
+status         = "pending"
+depends_on     = ["U06","U07"]
+blocks         = ["U09"]
+estimated_loc  = 80
+files_modify   = [
+  "arxiv-prep/compile-and-pdf-evidence.toml",
+  "arxiv-prep/main.pdf",   # the verified one (copied or symlinked for manifest)
+]
+produces       = ["ART:compile-and-pdf-evidence"]
+consumes       = ["ART:human-review-report","ART:source-fix-log"]
+
+# U09 — final hygiene + 00README + manifest (submission instructions)
+[units.U09]
+name           = "assemble-manifest-and-00readme"
+summary        = "Walk the clean source tree (not the full staging dir), build exact file list + SHA256 for the submission bundle only. The arxiv-prep-manifest.toml is written to a separate evidence/ subdirectory (outside the submission tarball) so it can include its own hash. Generate 00README.XXX and record all gate verdicts. This manifest + the full evidence set become the evidence pack."
+layer          = 5
+tier           = 1
+status         = "pending"
+depends_on     = ["U08"]
+blocks         = ["U10"]
+estimated_loc  = 40
+files_modify   = [
+  "arxiv-prep/evidence/arxiv-prep-manifest.toml",   # manifest lives in evidence/ — never inside the submission tarball
+  "arxiv-prep/00README.XXX",                        # 00README is part of the submission bundle (arXiv reads it)
+]
+produces       = ["ART:arxiv-prep-manifest"]
+consumes       = ["ART:compile-and-pdf-evidence"]
+
+# U10 — package + emit (terminal)
+[units.U10]
+name           = "package-and-emit-arxiv-bundle"
+summary        = "Create two separate artefacts: (1) arxiv_submission_bundle.tar.gz containing ONLY the clean LaTeX source (main.tex, references.bib, figures/, 00README.XXX, AND references.bbl IF AND ONLY IF U04 chose to pre-generate it — when U04 leaves bibliography compilation to arXiv, the .bbl is omitted and only .bib is shipped) — this is what is uploaded to arXiv; (2) arxiv_prep_evidence_bundle.tar.gz containing all internal audit TOMLs, logs, manifest, and human sign-off. Never mix the two. The bib-audit-report from U04 records which mode was chosen; U10 reads that record to decide .bbl inclusion. Write the three OUT: artefacts and the completion event."
+layer          = 6
+tier           = 1
+status         = "pending"
+depends_on     = ["U09"]
+blocks         = []
+estimated_loc  = 30
+files_modify   = [
+  "arxiv-prep/arxiv_submission_bundle.tar.gz",        # clean LaTeX only
+  "arxiv-prep/arxiv_prep_evidence_bundle.tar.gz",     # all internal audit + logs + human sign-off
+  "arxiv-prep/arxiv-prep-complete.event.toml",
+]
+produces       = ["OUT:arxiv-submission-bundle", "OUT:arxiv-prep-evidence-pack", "OUT:arxiv-prep-complete-event"]
+consumes       = ["ART:arxiv-prep-manifest"]
+
+# ============================================================================
+# [computed] — must be exactly what validate_implementation_dag.py recomputes
+# ============================================================================
+
+[computed]
+entry_points      = ["U01"]
+leaf_nodes        = ["U10"]
+# Critical path (longest by estimated_loc): U01->U02->U04->U07->U08->U09->U10
+# 35 + 55 + 50 + 70 + 80 + 40 + 30 = 360
+critical_path     = ["U01","U02","U04","U07","U08","U09","U10"]
+critical_path_loc = 360
+loc_totals        = { tier1 = 505, all = 505 }
+
+[computed.max_parallel]
+layer0 = 1   # U01
+layer1 = 2   # U02 + U03 (filename + junk audits, no shared writes)
+layer2 = 2   # U04 + U05 (bib + figures)
+layer3 = 2   # U06 + U07 (human review + automated fixes)
+layer4 = 1   # U08 (compile gate)
+layer5 = 1   # U09 (manifest)
+layer6 = 1   # U10 (package)

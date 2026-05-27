@@ -1,0 +1,89 @@
+# Traceability for the chardet v6 to v7 semantic-AST relicensing proof.
+#
+# One intent, one feature, one normative requirement, one
+# implementation with three CODE references (the harness driver, the
+# static-AST analyser, the behavioural-fingerprint runner), and one
+# e2e TEST that runs `detect.sh`.
+#
+# The chardet source itself is NOT copied into this repo. The CODE
+# references point at this repo's detection harness; the detector
+# reads from /srv/repos/public/spec-poc/chardet-relicense/chardet/
+# (the cloned upstream).
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version   = "0.1.0"
+template_kind    = "traceability"
+docs             = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+ontology_version = 1
+title            = "Traceability for: chardet v6 to v7 relicensing proof (semantic-AST)"
+source_spec      = "chardet-relicense/proof-bundle/README.md"
+owners           = ["verivus-oss"]
+created          = "2026-05-22"
+confidentiality  = "public"
+license          = "Apache-2.0"
+
+[[intents]]
+id          = "INT:paraphrase-resistant-relicense-detection"
+name        = "Paraphrase-resistant relicense detection"
+statement   = "Produce structural, reproducible numbers that survive paraphrase and identifier renaming, so a reviewer can judge whether an AI-driven rewrite preserved the original's call structure, dependency boundary, control-flow shape, public-API contract, and runtime behaviour — not just whether any file survived verbatim."
+realized_by = ["REQ:six-aux1-c06a-c06e-signals-on-chardet-v6-v7"]
+
+[[features]]
+id             = "FEAT:chardet-relicense-semantic-witness"
+name           = "Chardet relicense semantic-AST witness"
+constrained_by = ["REQ:six-aux1-c06a-c06e-signals-on-chardet-v6-v7"]
+implemented_by = ["IMP:extract-semantic-ast-signals"]
+produces       = ["OUT:chardet-relicense-semantic-witness"]
+
+[[requirements]]
+id               = "REQ:six-aux1-c06a-c06e-signals-on-chardet-v6-v7"
+statement        = "The proof MUST emit one auxiliary baseline signal (AUX1 literal source carryover) plus five semantic-AST signals (C06a call-graph topology; C06b import-edge set; C06c control-flow histogram; C06d public-API signature equivalence; C06e behavioural fingerprint over a 1000-input deterministic fuzz corpus) when run against checkouts of chardet at tags 6.0.0 and 7.0.0. Verdicts MUST be drawn from the closed set PASS / FAIL / MEASURED / OBSERVED / DELEGATED / SKIP / ABSENT / INCONCLUSIVE."
+requirement_kind = "functional"
+priority         = "must"
+source           = "chardet-relicense/proof-bundle/contract_declaration.toml#AUX1..C06e"
+constrains       = ["IMP:extract-semantic-ast-signals"]
+verified_by      = ["TEST:chardet-relicense::structural-signals"]
+
+[[implementations]]
+id         = "IMP:extract-semantic-ast-signals"
+name       = "Chardet v6 to v7 semantic-AST signal extractor"
+summary    = "Three-file harness (a bash driver, a stdlib+networkx Python AST walker for the five static signals, a separate Python venv runner for the behavioural fingerprint) that materialises the two tags via git worktree and emits the six signals as a TSV table."
+implements = ["REQ:six-aux1-c06a-c06e-signals-on-chardet-v6-v7"]
+code       = ["CODE:detect-harness", "CODE:extract-static-signals", "CODE:fingerprint-behaviour"]
+tests      = ["TEST:chardet-relicense::structural-signals"]
+
+[[code]]
+id       = "CODE:detect-harness"
+path     = "chardet-relicense/proof-bundle/detect.sh"
+symbol   = "detect"
+language = "bash"
+realizes = ["IMP:extract-semantic-ast-signals"]
+
+[[code]]
+id       = "CODE:extract-static-signals"
+path     = "chardet-relicense/proof-bundle/extract_signals.py"
+symbol   = "main"
+language = "python"
+realizes = ["IMP:extract-semantic-ast-signals"]
+
+[[code]]
+id       = "CODE:fingerprint-behaviour"
+path     = "chardet-relicense/proof-bundle/fingerprint_behavior.py"
+symbol   = "main"
+language = "python"
+realizes = ["IMP:extract-semantic-ast-signals"]
+
+[[tests]]
+id        = "TEST:chardet-relicense::structural-signals"
+path      = "chardet-relicense/proof-bundle/detect.sh"
+test_kind = "e2e"
+verifies  = ["REQ:six-aux1-c06a-c06e-signals-on-chardet-v6-v7"]
+command   = "bash chardet-relicense/proof-bundle/detect.sh"
+
+[[outputs]]
+id       = "OUT:chardet-relicense-semantic-witness"
+name     = "Chardet relicense semantic-AST witness"
+realizes = ["FEAT:chardet-relicense-semantic-witness", "INT:paraphrase-resistant-relicense-detection"]

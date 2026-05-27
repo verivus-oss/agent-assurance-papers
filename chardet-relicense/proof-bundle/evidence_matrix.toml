@@ -1,0 +1,160 @@
+# Evidence matrix — claims about what the chardet semantic-AST proof
+# actually demonstrates, the evidence that backs each, and the matrix
+# linking the two. The load-bearing claim is E02 ("the proof produces
+# paraphrase-resistant structural signals on the actual chardet v6/v7
+# pair"); E01 is structural completeness; E03 is the explicit non-claim
+# (the proof does NOT render a legal verdict, does NOT measure
+# training-data provenance, does NOT address Mozilla's upstream
+# copyright claim, does NOT copy chardet source into this repository).
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "evidence-matrix"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Evidence matrix: chardet v6 to v7 semantic-AST proof"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "chardet-relicense/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[claims]]
+id    = "E01"
+claim = "structurally_complete_pack"
+scope_covered    = [
+  "implementation-dag declares six units (three prepare, two analyser, one verify) forming a layered fan-in/fan-out DAG",
+  "traceability declares one normative requirement with three CODE references and one e2e test",
+  "contract-declaration declares AUX1 (cheap baseline) plus C06a, C06b, C06c, C06d, C06e with explicit verdict-bucket semantics for each",
+  "review-readiness gate names the witness pack as the gating artifact and lists FAIL verdicts as block conditions",
+]
+known_exclusions = [
+  "does not prove production readiness as a general-purpose relicensing detector",
+  "does not validate behaviour under chardet releases other than 6.0.0 and 7.0.0",
+]
+status = "ready"
+
+[[claims]]
+id    = "E02"
+claim = "paraphrase_resistant_signals_on_actual_v6_v7"
+scope_covered    = [
+  "detect.sh materialises the two real tags from the upstream chardet repo via git worktree",
+  "extract_signals.py walks both worktrees with stdlib+networkx and emits one TSV row per static signal (AUX1, C06a, C06b, C06c, C06d)",
+  "fingerprint_behavior.py installs both versions from their worktrees into isolated venvs and runs a deterministic 1000-input fuzz corpus through each",
+  "the captured pre-commit run reports AUX1=PASS (0/87x33), C06a similarity=0.881, C06b jaccard=0.333 (sys.stdlib_module_names filter applied), C06c cosine=0.984, C06d 3 strict / 0 renamed / 2 diverged out of 5 shared, C06e exact=0/1000 bucket=0/1000",
+  "all five C06 signals survive identifier renaming because they compare AST topology, dependency boundary, control-flow node types, signature shape, and runtime behaviour rather than identifiers",
+]
+known_exclusions = [
+  "the static signals describe whole-module structure; they do not catch a paraphrase that surgically rewrites individual functions while preserving module boundaries",
+  "C06e SKIPs cleanly on toolchain gap (no pip / no compiler for native deps in either worktree) and is therefore not a signal under those conditions",
+  "C06d 'diverged' currently includes class-vs-class comparisons where the proof does not resolve the class definition into a signature descriptor; reviewer must read the evidence column to distinguish actual signature divergence from unresolved-class-kind cases",
+]
+status = "ready"
+
+[[claims]]
+id    = "E03"
+claim = "explicit_non_claims"
+scope_covered    = [
+  "the proof does NOT render a legal verdict on the chardet relicense dispute",
+  "the proof does NOT measure training-data provenance; if Claude saw chardet 6.x during training, no structural inspection of the v7 output can prove or disprove that",
+  "the proof does NOT address Mozilla's upstream copyright claim against v6 (the v6 to v7 comparison is downstream of the Mozilla to v6 question)",
+  "the proof does NOT copy chardet source into this repository; the detection harness reads from a separate clone under /srv/repos/public/spec-poc/chardet-relicense/chardet/",
+  "the proof does NOT generalise to other rewrites; a future proof-X-relicense would need its own contract set tuned to X's expression surface",
+]
+known_exclusions = [
+  "does not constitute legal advice",
+]
+status = "ready"
+
+[[evidence]]
+id            = "EV01"
+artifact_path = "chardet-relicense/proof-bundle/implementation_dag.toml"
+summary       = "Six-unit DAG: three layer-0 prepare units fan into two layer-1 analyser units (static-AST + behavioural fingerprint) and one layer-2 verify unit; critical path 445 LoC."
+
+[[evidence]]
+id            = "EV02"
+artifact_path = "chardet-relicense/proof-bundle/traceability.toml"
+summary       = "One intent, one feature, one requirement, one implementation, three CODE entries (detect.sh + extract_signals.py + fingerprint_behavior.py), one e2e TEST whose command is `bash chardet-relicense/proof-bundle/detect.sh`."
+
+[[evidence]]
+id            = "EV03"
+artifact_path = "chardet-relicense/proof-bundle/contract_declaration.toml"
+summary       = "Six contracts: AUX1 (literal source carryover, cheap baseline), C06a (call-graph topology, paraphrase-resistant), C06b (import-edge Jaccard), C06c (control-flow histogram cosine), C06d (public-API signature equivalence), C06e (behavioural fingerprint on 1000 fuzz inputs)."
+
+[[evidence]]
+id            = "EV04"
+artifact_path = "chardet-relicense/proof-bundle/review_readiness.toml"
+summary       = "Single G01 gate keyed to the semantic-AST witness pack; pass conditions require detect.sh exit 0, every contract producing a TSV row, no FAIL on any contract."
+
+[[evidence]]
+id            = "EV05"
+artifact_path = "chardet-relicense/proof-bundle/detect.sh"
+summary       = "Executable witness: precheck for chardet clone + tags 6.0.0/7.0.0, materialise both as detached worktrees in a tempdir, invoke extract_signals.py for AUX1+C06a..C06d, invoke fingerprint_behavior.py for C06e, emit TSV plus SUMMARY block. Exit 0 on no-FAIL, 1 on FAIL, 2 on prerequisite missing."
+
+[[evidence]]
+id            = "EV06"
+artifact_path = "chardet-relicense/proof-bundle/extract_signals.py"
+summary       = "Stdlib+networkx Python walker: iterates implementation .py files (tests excluded — including root-level test*.py / *_test.py), builds call graph and control-flow histogram via ast, computes topology / set / signature signals, emits TSV rows for AUX1 and C06a..C06d."
+
+[[evidence]]
+id            = "EV07"
+artifact_path = "chardet-relicense/proof-bundle/fingerprint_behavior.py"
+summary       = "Stdlib Python venv manager: creates two isolated venvs, pip-installs chardet from each worktree, generates a deterministic 1000-input fuzz corpus (seed 20260522, max length 4096), runs `chardet.detect()` from each venv, reports exact-match and bucket-match rates as the C06e TSV row. SKIPs cleanly on toolchain gap."
+
+[[matrix]]
+id               = "M01"
+claim_id         = "E01"
+evidence_id      = "EV01"
+scope_covered    = "implementation-dag declares the layered prepare + analyse + verify shape"
+known_exclusions = ["does not address whether the analysers produced honest numbers"]
+
+[[matrix]]
+id               = "M02"
+claim_id         = "E01"
+evidence_id      = "EV02"
+scope_covered    = "traceability declares the REQ then three CODE entries then one e2e TEST"
+known_exclusions = ["does not address signal correctness"]
+
+[[matrix]]
+id               = "M03"
+claim_id         = "E01"
+evidence_id      = "EV03"
+scope_covered    = "contract-declaration enumerates AUX1 plus C06a..C06e with explicit verdict-bucket semantics"
+known_exclusions = ["does not address whether the contracts cover every form of expression a court might recognize"]
+
+[[matrix]]
+id               = "M04"
+claim_id         = "E01"
+evidence_id      = "EV04"
+scope_covered    = "review-readiness gate keyed to the witness pack with explicit pass / block conditions"
+known_exclusions = ["does not contain a pass result; the gate declares the conditions"]
+
+[[matrix]]
+id               = "M05"
+claim_id         = "E02"
+evidence_id      = "EV05"
+scope_covered    = "detect.sh produces all six signals against the actual chardet v6/v7 tags"
+known_exclusions = ["the numbers describe one chardet release pair; other rewrites in the chardet 7.x series may move them"]
+
+[[matrix]]
+id               = "M06"
+claim_id         = "E02"
+evidence_id      = "EV06"
+scope_covered    = "extract_signals.py walks both worktrees and exposes the algorithm for AUX1 + C06a..C06d"
+known_exclusions = ["surgical per-function paraphrase that preserves module boundaries is out of this signal set's reach"]
+
+[[matrix]]
+id               = "M07"
+claim_id         = "E02"
+evidence_id      = "EV07"
+scope_covered    = "fingerprint_behavior.py provides the runtime contract signal C06e via venv install + fuzz corpus"
+known_exclusions = ["a SKIP on the runner does not prove behavioural equivalence; it documents toolchain gap"]
+
+[[matrix]]
+id               = "M08"
+claim_id         = "E03"
+evidence_id      = "EV03"
+scope_covered    = "the contract file is explicit about which verdicts are gating vs measured vs observed vs delegated; no contract declares a legal conclusion"
+known_exclusions = ["does not enumerate every legal theory under which v7 might or might not be a derivative work"]

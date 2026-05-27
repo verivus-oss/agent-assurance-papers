@@ -1,0 +1,102 @@
+# Contract declaration — the observable contracts the Hello-World
+# implementations are held to. These are testable byte-level statements
+# a reviewer should not have to infer. C01 is the load-bearing contract
+# (output byte sequence + exit code); C02..C04 narrow specific
+# misbehaviour modes that real Hello-World implementations have shipped
+# (locale-dependent encoding, ANSI escapes, BOM prefix). C05 is a
+# source-analysis contract: a convoluted rewrite can hide from literal
+# text matching but not from declared AST-symbol resolution. C06 is the
+# AWK-specific source-profile version of that claim.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "contract-declaration"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Contract declaration for: Hello, world! proof"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "hello-world/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[contracts]]
+id          = "C01"
+domain      = "observable_output"
+statement   = "Each implementation MUST write the exact UTF-8 byte sequence `Hello, world!\\n` (14 bytes: H e l l o COMMA SPACE w o r l d EXCLAMATION LF) to stdout, write zero bytes to stderr, and exit with code 0."
+applies_to  = [
+  "hello-world/proof-bundle/src/rust/hello.rs",
+  "hello-world/proof-bundle/src/go/hello.go",
+  "hello-world/proof-bundle/src/c/hello.c",
+  "hello-world/proof-bundle/src/java/Hello.java",
+  "hello-world/proof-bundle/src/typescript/hello.ts",
+  "hello-world/proof-bundle/src/awk/hello.awk",
+]
+must_name   = ["exact stdout bytes", "exact stderr empty", "exit code"]
+verified_by = [
+  "TEST:hello-world-proof::contract-c01",
+  "hello-world/proof-bundle/run_all.sh",
+]
+
+[[contracts]]
+id          = "C02"
+domain      = "encoding"
+statement   = "The output bytes MUST NOT be locale-dependent. Each implementation MUST emit ASCII bytes that are also valid UTF-8; runtimes that default to UTF-16 (Java on some JDKs writing to a Windows console, for example) MUST be configured to UTF-8 before the test runs."
+applies_to  = [
+  "hello-world/proof-bundle/src/java/Hello.java",
+  "hello-world/proof-bundle/run_all.sh",
+]
+depends_on  = ["C01"]
+verified_by = ["TEST:hello-world-proof::contract-c01"]
+
+[[contracts]]
+id          = "C03"
+domain      = "no_ansi_escape_sequences"
+statement   = "The output MUST contain no ANSI escape sequences, no terminal control characters, and no colour markup. A consumer redirecting stdout to a pipe MUST receive the same 14 bytes a terminal would receive."
+applies_to  = [
+  "hello-world/proof-bundle/src/rust/hello.rs",
+  "hello-world/proof-bundle/src/go/hello.go",
+  "hello-world/proof-bundle/src/c/hello.c",
+  "hello-world/proof-bundle/src/java/Hello.java",
+  "hello-world/proof-bundle/src/typescript/hello.ts",
+  "hello-world/proof-bundle/src/awk/hello.awk",
+]
+depends_on  = ["C01"]
+verified_by = ["TEST:hello-world-proof::contract-c01"]
+
+[[contracts]]
+id          = "C04"
+domain      = "no_bom_prefix"
+statement   = "The output MUST NOT begin with a UTF-8 byte-order mark (EF BB BF). Some compilers' default stdout wrappers prefix one; the run harness rejects any non-`H` first byte."
+applies_to  = [
+  "hello-world/proof-bundle/src/typescript/hello.ts",
+  "hello-world/proof-bundle/src/java/Hello.java",
+]
+depends_on  = ["C01"]
+verified_by = ["TEST:hello-world-proof::contract-c01"]
+
+[[contracts]]
+id          = "C05"
+domain      = "semantic_ast_rewrite_detectability"
+statement   = "A source rewrite that avoids the contiguous literal `Hello, world!` MUST still expose its declared function symbols and simple graph edges through AST-aware analysis. The proof fixture demonstrates this with a convoluted Go implementation whose `concealedBytes`, `renderLine`, `emit`, and `main` functions, caller edge from `main` to `renderLine`, and `fmt` import edge are resolved by sqry even though the greeting literal is absent from source text."
+applies_to  = [
+  "hello-world/proof-bundle/src/go_convoluted/hello.go",
+  "hello-world/proof-bundle/detect_semantic_rewrite.sh",
+]
+depends_on  = ["C01"]
+must_name   = ["literal absent from source text", "runtime output still satisfies C01", "declared AST symbols resolve", "simple AST graph edges resolve"]
+verified_by = ["TEST:hello-world-proof::semantic-ast-rewrite"]
+
+[[contracts]]
+id          = "C06"
+domain      = "awk_rewrite_source_profile_detectability"
+statement   = "A constrained AWK rewrite that avoids the contiguous literal `Hello, world!` MUST remain similar to the canonical AWK implementation at the declared intent-profile level: a BEGIN entry point and print-to-stdout operation. The rewrite MUST also expose its declared source profile: a BEGIN action that calls `render`, a `render` function, `split`-based byte-token expansion, a `for` loop, and `sprintf(\"%c\", ...)` character assembly. The fixture proves these profiles are detectable without sqry support for AWK and that the rewrite still satisfies C01 at runtime."
+applies_to  = [
+  "hello-world/proof-bundle/src/awk_convoluted/hello.awk",
+  "hello-world/proof-bundle/detect_awk_rewrite.sh",
+]
+depends_on  = ["C01"]
+must_name   = ["literal absent from AWK source text", "canonical and rewritten AWK share intent profile", "runtime output still satisfies C01", "declared AWK source profile matches", "C06 witness declared in contract file"]
+verified_by = ["TEST:hello-world-proof::awk-rewrite-detection"]

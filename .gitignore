@@ -1,0 +1,30 @@
+# Python/cache output.
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# sqry indexes and caches are rebuilt from the checkout.
+.sqry/
+.sqry-cache/
+
+# LaTeX intermediates.
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Local scratch files.
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Generated arXiv staging/output. Release tarballs and evidence packs
+# should be published as release artifacts, not kept as normal source.
+arxiv-prep/

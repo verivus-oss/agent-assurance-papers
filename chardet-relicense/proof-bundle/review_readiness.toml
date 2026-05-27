@@ -1,0 +1,59 @@
+# Review readiness — the single gate the chardet semantic-AST proof
+# must pass before it can claim to provide paraphrase-resistant
+# evidence about the dispute. The gate is keyed to one artifact class
+# and blocks on either a missing prerequisite or any FAIL signal.
+# MEASURED / OBSERVED / DELEGATED / SKIP verdicts do NOT block the
+# gate; the proof's job is to expose the signals, not render a verdict.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "readiness-gate"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Review readiness: chardet v6 to v7 semantic-AST proof"
+status          = "ready"
+created         = "2026-05-22"
+review_subject  = "chardet-relicense/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[artifact_classes]]
+id          = "A01"
+name        = "semantic_ast_detection_pack"
+description = "The artifacts a reviewer needs to confirm the proof produced paraphrase-resistant, reproducible numbers: TRACEABILITY, CONTRACT_DECLARATION (AUX1, C06a..C06e), IMPLEMENTATION_DAG, EVIDENCE_MATRIX, the three-file detection harness (detect.sh + extract_signals.py + fingerprint_behavior.py), and the captured TSV output."
+
+[[gates]]
+id                 = "G01"
+artifact_class     = "A01"
+name               = "Semantic-AST detection-witness gate"
+purpose            = "Block review until detect.sh has been executed against a chardet clone with tags 6.0.0 and 7.0.0 present, the TSV output covers all six contracts, and no AUX1 FAIL or other FAIL verdict has occurred. MEASURED / OBSERVED / DELEGATED / SKIP verdicts do NOT block the gate; the proof's job is to expose paraphrase-resistant signals, not render a verdict on the dispute."
+required_documents = [
+  "chardet-relicense/proof-bundle/traceability.toml",
+  "chardet-relicense/proof-bundle/contract_declaration.toml",
+  "chardet-relicense/proof-bundle/implementation_dag.toml",
+  "chardet-relicense/proof-bundle/evidence_matrix.toml",
+  "chardet-relicense/proof-bundle/detect.sh",
+  "chardet-relicense/proof-bundle/extract_signals.py",
+  "chardet-relicense/proof-bundle/fingerprint_behavior.py",
+]
+required_links     = [
+  "TRACEABILITY.IMP to CONTRACT_DECLARATION.AUX1",
+  "TRACEABILITY.IMP to CONTRACT_DECLARATION.C06a",
+  "TRACEABILITY.IMP to CONTRACT_DECLARATION.C06e",
+  "CONTRACT_DECLARATION.applies_to to TRACEABILITY.code.path",
+  "EVIDENCE_MATRIX.EV05 to TRACEABILITY.tests.command",
+]
+pass_conditions    = [
+  "detect.sh exits 0",
+  "every contract AUX1 and C06a..C06e produces a TSV row",
+  "no FAIL verdict on any contract",
+]
+block_conditions   = [
+  "chardet clone or tags missing at the configured path",
+  "AUX1 FAIL (some v6 file survived verbatim)",
+  "extract_signals.py crashes on either worktree",
+  "fingerprint_behavior.py crashes (as distinct from a clean SKIP)",
+]
+next_step = "if AUX1 FAILs on a new chardet release, the relicense claim should be re-litigated; if C06e SKIPs on this runner, document the toolchain gap and rerun on a runner where pip install from the local worktrees succeeds"

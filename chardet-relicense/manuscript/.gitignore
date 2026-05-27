@@ -1,0 +1,13 @@
+# LaTeX build artefacts. `make` regenerates them from main.tex +
+# references.bib + the figures. The published main.pdf is tracked
+# (so the paper can be read without rebuilding); everything else
+# is transient.
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz

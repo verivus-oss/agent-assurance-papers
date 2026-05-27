@@ -1,0 +1,257 @@
+# Traceability for the multi-language Hello-World proof.
+#
+# The first chain is one intent -> one feature -> one normative
+# requirement -> one implementation with six CODE references (one per
+# language) and one TEST that runs `run_all.sh` and verifies CONTRACT
+# C01 on every language at once. A second narrow chain demonstrates
+# that a convoluted Go rewrite can hide the greeting literal from text
+# search while still exposing declared AST symbols and simple graph
+# edges to sqry. A third narrow chain demonstrates AWK-specific
+# source-profile detection for an indirect rewrite.
+#
+# Every `path` resolves to a real file under repo root. Every entry
+# in `code` and `tests` resolves to an entity declared below. The
+# `language` field on each `[[code]]` entry is informational; the
+# experimental sqry-backed validator
+# (validators/validate_code_symbols.py) uses it for cross-language
+# AST resolution.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version   = "0.1.0"
+template_kind    = "traceability"
+docs             = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+ontology_version = 1
+title            = "Traceability for: Hello, world! across multiple languages"
+source_spec      = "hello-world/proof-bundle/README.md"
+owners           = ["verivus-oss"]
+created          = "2026-05-22"
+confidentiality  = "public"
+license          = "Apache-2.0"
+
+[[intents]]
+id          = "INT:hello-world-proof"
+name        = "Hello, world! proof"
+statement   = "Demonstrate that a DAG-TOML contract declaration governs identical observable behaviour across multiple implementation languages."
+realized_by = ["REQ:hello-line-on-stdout-with-zero-exit"]
+
+[[intents]]
+id          = "INT:semantic-ast-rewrite-detection"
+name        = "Semantic AST rewrite detection"
+statement   = "Demonstrate that rewriting a program in a more convoluted form can defeat literal text inspection without hiding declared AST-level structure and simple graph edges."
+realized_by = ["REQ:semantic-ast-rewrite-detectable"]
+
+[[intents]]
+id          = "INT:awk-rewrite-detection"
+name        = "AWK rewrite source-profile detection"
+statement   = "Demonstrate that an indirect AWK rewrite can defeat literal text inspection without hiding a declared, deterministic source profile."
+realized_by = ["REQ:awk-rewrite-source-profile-detectable"]
+
+[[features]]
+id            = "FEAT:hello-world-multilang"
+name          = "Multi-language Hello, world!"
+constrained_by = ["REQ:hello-line-on-stdout-with-zero-exit"]
+implemented_by = ["IMP:hello-world-binaries"]
+produces       = ["OUT:contract-c01-witness"]
+
+[[features]]
+id             = "FEAT:semantic-ast-rewrite-detection"
+name           = "Semantic AST rewrite detection"
+constrained_by = ["REQ:semantic-ast-rewrite-detectable"]
+implemented_by = ["IMP:convoluted-go-hello"]
+produces       = ["OUT:semantic-ast-detection-witness"]
+
+[[features]]
+id             = "FEAT:awk-rewrite-detection"
+name           = "AWK rewrite source-profile detection"
+constrained_by = ["REQ:awk-rewrite-source-profile-detectable"]
+implemented_by = ["IMP:convoluted-awk-hello"]
+produces       = ["OUT:awk-rewrite-detection-witness"]
+
+[[requirements]]
+id               = "REQ:hello-line-on-stdout-with-zero-exit"
+statement        = "Every Hello-World implementation in this example MUST write the exact byte sequence `Hello, world!\\n` to stdout, write nothing to stderr, and exit with code 0."
+requirement_kind = "functional"
+priority         = "must"
+source           = "hello-world/proof-bundle/contract_declaration.toml#C01"
+constrains       = ["IMP:hello-world-binaries"]
+verified_by      = ["TEST:hello-world-proof::contract-c01"]
+
+[[requirements]]
+id               = "REQ:semantic-ast-rewrite-detectable"
+statement        = "A deliberately convoluted source rewrite MUST be detectable at the AST-symbol and simple graph-edge level even when the contiguous output literal is absent from the source text."
+requirement_kind = "functional"
+priority         = "must"
+source           = "hello-world/proof-bundle/contract_declaration.toml#C05"
+constrains       = ["IMP:convoluted-go-hello"]
+verified_by      = ["TEST:hello-world-proof::semantic-ast-rewrite"]
+
+[[requirements]]
+id               = "REQ:awk-rewrite-source-profile-detectable"
+statement        = "A deliberately indirect AWK rewrite MUST remain similar to the canonical AWK implementation at the declared intent-profile level and MUST be detectable through its declared source profile even when the contiguous output literal is absent from the source text."
+requirement_kind = "functional"
+priority         = "must"
+source           = "hello-world/proof-bundle/contract_declaration.toml#C06"
+constrains       = ["IMP:convoluted-awk-hello"]
+verified_by      = ["TEST:hello-world-proof::awk-rewrite-detection"]
+
+[[implementations]]
+id         = "IMP:hello-world-binaries"
+name       = "Six-implementation Hello-World proof"
+summary    = "Six smallest-possible programs (Rust, Go, C, Java, TypeScript, AWK) that each satisfy CONTRACT C01 when invoked by run_all.sh."
+implements = ["REQ:hello-line-on-stdout-with-zero-exit"]
+code       = [
+  "CODE:hello-rust",
+  "CODE:hello-go",
+  "CODE:hello-c",
+  "CODE:hello-java",
+  "CODE:hello-typescript",
+  "CODE:hello-awk",
+]
+tests      = ["TEST:hello-world-proof::contract-c01"]
+
+[[implementations]]
+id         = "IMP:convoluted-go-hello"
+name       = "Convoluted Go Hello-World rewrite"
+summary    = "A Go implementation that assembles the greeting from byte values and helper calls so the plain literal is absent while AST-aware tooling still resolves the declared function symbols."
+implements = ["REQ:semantic-ast-rewrite-detectable"]
+code       = [
+  "CODE:hello-go-convoluted-main",
+  "CODE:hello-go-convoluted-bytes",
+  "CODE:hello-go-convoluted-render",
+  "CODE:hello-go-convoluted-emit",
+]
+tests      = ["TEST:hello-world-proof::semantic-ast-rewrite"]
+
+[[implementations]]
+id         = "IMP:convoluted-awk-hello"
+name       = "Convoluted AWK Hello-World rewrite"
+summary    = "An AWK implementation that preserves the canonical AWK intent profile (BEGIN plus print-to-stdout) while assembling the greeting from decimal character codes through split, a render function, a for loop, and sprintf character assembly."
+implements = ["REQ:awk-rewrite-source-profile-detectable"]
+code       = [
+  "CODE:hello-awk-convoluted-begin",
+  "CODE:hello-awk-convoluted-render",
+]
+tests      = ["TEST:hello-world-proof::awk-rewrite-detection"]
+
+[[code]]
+id       = "CODE:hello-rust"
+path     = "hello-world/proof-bundle/src/rust/hello.rs"
+symbol   = "main"
+language = "rust"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-go"
+path     = "hello-world/proof-bundle/src/go/hello.go"
+symbol   = "main"
+language = "go"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-c"
+path     = "hello-world/proof-bundle/src/c/hello.c"
+symbol   = "main"
+language = "c"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-java"
+path     = "hello-world/proof-bundle/src/java/Hello.java"
+symbol   = "main"
+language = "java"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-typescript"
+path     = "hello-world/proof-bundle/src/typescript/hello.ts"
+symbol   = "main"
+language = "typescript"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-awk"
+path     = "hello-world/proof-bundle/src/awk/hello.awk"
+symbol   = "BEGIN"
+language = "awk"
+realizes = ["IMP:hello-world-binaries"]
+
+[[code]]
+id       = "CODE:hello-go-convoluted-main"
+path     = "hello-world/proof-bundle/src/go_convoluted/hello.go"
+symbol   = "main"
+language = "go"
+realizes = ["IMP:convoluted-go-hello"]
+
+[[code]]
+id       = "CODE:hello-go-convoluted-bytes"
+path     = "hello-world/proof-bundle/src/go_convoluted/hello.go"
+symbol   = "concealedBytes"
+language = "go"
+realizes = ["IMP:convoluted-go-hello"]
+
+[[code]]
+id       = "CODE:hello-go-convoluted-render"
+path     = "hello-world/proof-bundle/src/go_convoluted/hello.go"
+symbol   = "renderLine"
+language = "go"
+realizes = ["IMP:convoluted-go-hello"]
+
+[[code]]
+id       = "CODE:hello-go-convoluted-emit"
+path     = "hello-world/proof-bundle/src/go_convoluted/hello.go"
+symbol   = "emit"
+language = "go"
+realizes = ["IMP:convoluted-go-hello"]
+
+[[code]]
+id       = "CODE:hello-awk-convoluted-begin"
+path     = "hello-world/proof-bundle/src/awk_convoluted/hello.awk"
+symbol   = "BEGIN"
+language = "awk"
+realizes = ["IMP:convoluted-awk-hello"]
+
+[[code]]
+id       = "CODE:hello-awk-convoluted-render"
+path     = "hello-world/proof-bundle/src/awk_convoluted/hello.awk"
+symbol   = "render"
+language = "awk"
+realizes = ["IMP:convoluted-awk-hello"]
+
+[[tests]]
+id        = "TEST:hello-world-proof::contract-c01"
+path      = "hello-world/proof-bundle/run_all.sh"
+test_kind = "e2e"
+verifies  = ["REQ:hello-line-on-stdout-with-zero-exit"]
+command   = "bash hello-world/proof-bundle/run_all.sh"
+
+[[tests]]
+id        = "TEST:hello-world-proof::semantic-ast-rewrite"
+path      = "hello-world/proof-bundle/detect_semantic_rewrite.sh"
+test_kind = "smoke"
+verifies  = ["REQ:semantic-ast-rewrite-detectable"]
+command   = "bash hello-world/proof-bundle/detect_semantic_rewrite.sh"
+
+[[tests]]
+id        = "TEST:hello-world-proof::awk-rewrite-detection"
+path      = "hello-world/proof-bundle/detect_awk_rewrite.sh"
+test_kind = "smoke"
+verifies  = ["REQ:awk-rewrite-source-profile-detectable"]
+command   = "bash hello-world/proof-bundle/detect_awk_rewrite.sh"
+
+[[outputs]]
+id       = "OUT:contract-c01-witness"
+name     = "Contract-C01 enforcement witness"
+realizes = ["FEAT:hello-world-multilang", "INT:hello-world-proof"]
+
+[[outputs]]
+id       = "OUT:semantic-ast-detection-witness"
+name     = "Semantic AST rewrite detection witness"
+realizes = ["FEAT:semantic-ast-rewrite-detection", "INT:semantic-ast-rewrite-detection"]
+
+[[outputs]]
+id       = "OUT:awk-rewrite-detection-witness"
+name     = "AWK rewrite source-profile detection witness"
+realizes = ["FEAT:awk-rewrite-detection", "INT:awk-rewrite-detection"]

@@ -1,0 +1,240 @@
+# VERIFICATION REPORT — arXiv paper at chardet-relicense/manuscript/ (HEAD of working tree,
+# not yet committed; the proof bundle it documents lives at
+# chardet-relicense/proof-bundle/ and is committed at 220cff4).
+#
+# Format: a single `contract-declaration` carrying one contract per
+# item the multi-LLM reviewers (codex, gemini, grok) must verify by
+# INSPECTING the paper source (main.tex, references.bib, figures,
+# README, Makefile) AND the proof bundle the paper documents AND a
+# LIVE detect.sh run.
+#
+# NOT acceptable as evidence:
+#   - this report's own prose
+#   - the commit message
+#   - the README's claims
+#   - Claude's summary in the conversation
+#   - the LaTeX preamble's metadata
+#
+# Acceptable as evidence:
+#   - byte-level inspection of chardet-relicense/manuscript/main.tex content
+#   - byte-level inspection of chardet-relicense/manuscript/references.bib content
+#   - fresh `make` build of chardet-relicense/manuscript/main.pdf observed clean
+#   - fresh `bash chardet-relicense/proof-bundle/detect.sh` output
+#   - web-fetch of cited URLs to confirm they resolve and contain
+#     the claimed content (use exa or web_fetch MCP tools)
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version    = "0.1.0"
+template_kind     = "contract-declaration"
+docs              = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title             = "Verification report for the chardet semantic-AST proof paper"
+status            = "in_review"
+created           = "2026-05-22"
+review_subject    = "chardet-relicense/manuscript/ (HEAD of working tree)"
+confidentiality   = "public"
+license           = "Apache-2.0"
+
+[review]
+verifier_must = """
+For every contract below, verify the statement against the named
+artifacts in `verified_by` by INSPECTING the artifacts directly.
+
+NOT acceptable as evidence:
+  - this report's own prose
+  - the commit message of the parent commit
+  - the README's claims
+  - Claude's summary in conversation history
+  - the LaTeX preamble's title / author block
+
+Acceptable as evidence:
+  - byte-level inspection of chardet-relicense/manuscript/main.tex
+  - byte-level inspection of chardet-relicense/manuscript/references.bib
+  - fresh `cd chardet-relicense/manuscript && make` observed clean
+  - fresh `bash chardet-relicense/proof-bundle/detect.sh` output
+  - web-fetch of cited URLs to confirm they resolve and contain
+    the claimed content (use exa, web_search, or web_fetch MCP)
+  - byte-level inspection of chardet-relicense/manuscript/figures/scripts/*
+
+If the cited artifact does not match the contract statement, flag
+a concrete blocker with file path + line range + literal contradiction.
+
+If Claude (the implementer) disagrees with a finding, Claude MUST
+respond with the same shape: a file path and line range, not an
+assertion. Approval MUST be based on inspected code, tests, docs, and
+the actual artifacts on disk — NOT on intent, plan compliance claims,
+or "should be fixed" language.
+
+PREREQUISITES:
+  - /srv/repos/external/verivus-oss/agent-assurance-papers is the papers repo
+  - /srv/repos/public/spec-poc/chardet-relicense/chardet has tags 6.0.0 and 7.0.0
+  - TeX Live (any modern stock distribution) is available; if absent,
+    REJECT the build contracts as INCONCLUSIVE rather than skipping
+    them silently
+  - python3 with networkx is available (already pinned in requirements.txt)
+"""
+
+# ============================================================================
+# Build correctness (V01..V04)
+# ============================================================================
+
+[[contracts]]
+id          = "V01"
+domain      = "paper_directory_well_formed"
+statement   = "chardet-relicense/manuscript/ contains the following expected files: main.tex, references.bib, Makefile, README.md, main.pdf, verification_report.toml (this file), and a figures/ subdirectory. figures/ contains exactly three PDFs (fig1_implementation_dag.pdf, fig2_topology_features.pdf, fig3_control_flow_hist.pdf) plus a scripts/ subdirectory holding gen_figures.py and gen_figures.sh. The .aux / .bbl / .blg / .log / .out files produced by `make` are build artefacts and are NOT expected to be present in a clean checkout; their presence after a build is not a violation."
+applies_to  = ["chardet-relicense/manuscript/"]
+verified_by = ["ls -la chardet-relicense/manuscript/", "ls -la chardet-relicense/manuscript/figures/", "ls -la chardet-relicense/manuscript/figures/scripts/"]
+
+[[contracts]]
+id          = "V02"
+domain      = "make_builds_pdf_cleanly"
+statement   = "Running `make` from chardet-relicense/manuscript/ builds main.pdf with zero undefined references and zero undefined citations. The build uses only packages available in stock TeX Live (no acmart, IEEEtran, or CTAN-only dependencies). The reviewer MUST run `cd chardet-relicense/manuscript && make clean && make` and observe both the final exit code (0) and the absence of `LaTeX Warning: There were undefined references` or `LaTeX Warning: Citation 'X' undefined` in the build log."
+applies_to  = ["chardet-relicense/manuscript/Makefile", "chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/Makefile", "chardet-relicense/manuscript/main.tex", "live make output"]
+
+[[contracts]]
+id          = "V03"
+domain      = "pdf_page_count_in_range"
+statement   = "The generated main.pdf is between 10 and 16 pages inclusive. The prompt target was 10-14 pages but the agent reported 15; either is acceptable. More than 16 pages is padding."
+applies_to  = ["chardet-relicense/manuscript/main.pdf"]
+verified_by = ["pdfinfo chardet-relicense/manuscript/main.pdf | grep Pages — or — `python3 -c 'import subprocess; print(subprocess.run([\"pdfinfo\",\"chardet-relicense/manuscript/main.pdf\"],capture_output=True,text=True).stdout)'`"]
+
+[[contracts]]
+id          = "V04"
+domain      = "figures_generated_programmatically"
+statement   = "Every PDF under chardet-relicense/manuscript/figures/ has a corresponding generator script under chardet-relicense/manuscript/figures/scripts/ that produces it. Specifically: gen_figures.py contains matplotlib code that emits fig1_implementation_dag.pdf, fig2_topology_features.pdf, fig3_control_flow_hist.pdf. gen_figures.sh is a thin wrapper that materialises the chardet worktrees (so the figure numbers come from the same data as the paper). The reviewer MUST inspect gen_figures.py and confirm it produces the three named outputs."
+applies_to  = ["chardet-relicense/manuscript/figures/scripts/gen_figures.py", "chardet-relicense/manuscript/figures/scripts/gen_figures.sh"]
+verified_by = ["chardet-relicense/manuscript/figures/scripts/gen_figures.py", "chardet-relicense/manuscript/figures/scripts/gen_figures.sh"]
+
+# ============================================================================
+# Numeric fidelity (V05..V09) — every number in the paper must come
+# from the live detect.sh output OR a cited external source.
+# ============================================================================
+
+[[contracts]]
+id          = "V05"
+domain      = "headline_numbers_match_live_detect_sh"
+statement   = "The headline results table in main.tex (Section 7) cites these exact values: AUX1 PASS with 0 matches over 87 v6 / 33 v7 files; C06a similarity 0.881; C06b jaccard 0.333; C06c cosine 0.984; C06d 3 strict / 0 renamed / 2 diverged of 5 shared; C06e exact_match_rate 0.000 and bucket_match_rate 0.000 over 1000 inputs with corpus_digest 58e54831f84183c7. The reviewer MUST run `bash chardet-relicense/proof-bundle/detect.sh` and confirm every one of these numbers appears verbatim in the live output. If any number disagrees, that is a concrete blocker."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/proof-bundle/detect.sh"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 7 results table)", "live detect.sh output"]
+
+[[contracts]]
+id          = "V06"
+domain      = "section_7_table_format"
+statement   = "Section 7 of chardet-relicense/manuscript/main.tex contains a structured results table (probably a LaTeX `tabular` or `booktabs` table) where each row corresponds to one contract id (AUX1, C06a, C06b, C06c, C06d, C06e) and the columns include the signal name, the verdict, and the headline number. The reviewer MUST locate this table by inspecting main.tex and confirm all six contract ids appear."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 7)"]
+
+[[contracts]]
+id          = "V07"
+domain      = "no_invented_intermediate_numbers"
+statement   = "Any numeric claim in main.tex that is NOT directly from detect.sh output (e.g., LoC counts of the proof bundle, file counts in v6 vs v7 implementation, percentage differences computed by the paper itself) MUST either appear in the live detect.sh output OR be trivially recomputable from `git ls-tree` / `wc -l` on the chardet checkouts. The reviewer SHOULD spot-check at least three such numbers and confirm they trace to a real source."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (every numeric value)"]
+
+[[contracts]]
+id          = "V08"
+domain      = "figure_2_data_matches_extract_signals"
+statement   = "Figure 2 (topology features) plots a SUBSET of C06a's per-feature comparison between v6 and v7. The subset depicted MUST be drawn from the same `_graph_topology` function `extract_signals.py` uses for the C06a similarity score; the figure generator MUST import that function from the proof bundle rather than re-implementing it. The reviewer MUST confirm `chardet-relicense/manuscript/figures/scripts/gen_figures.py` imports and calls `_build_call_graph` and `_graph_topology` from the bundle, and that the specific features plotted (nodes, edges, sccs, mean_in_degree, max_in_degree, max_out_degree at the time of writing) are a subset of the eight features `_graph_topology` produces. A figure showing a subset is acceptable; a figure recomputing the values via a different code path would be a violation."
+applies_to  = ["chardet-relicense/manuscript/figures/fig2_topology_features.pdf", "chardet-relicense/manuscript/figures/scripts/gen_figures.py", "chardet-relicense/proof-bundle/extract_signals.py"]
+verified_by = ["chardet-relicense/manuscript/figures/scripts/gen_figures.py (the imports and the `_graph_topology` call site)", "chardet-relicense/proof-bundle/extract_signals.py (`_graph_topology` definition)"]
+
+[[contracts]]
+id          = "V09"
+domain      = "figure_3_data_matches_extract_signals"
+statement   = "Figure 3 (control-flow histogram) plots per-AST-node-type values for v6 vs v7. The values MAY be presented as normalised fractions (the form used to compute the cosine similarity that C06c reports) rather than raw counts, since fractions are the comparable form across two implementations of different total size. The histogram generator MUST import `_control_flow_histogram` from the bundle rather than re-implementing it; the reviewer MUST confirm that import + call site in `chardet-relicense/manuscript/figures/scripts/gen_figures.py`. The raw counts visible in detect.sh's C06c evidence column (e.g., `If: v6=346 v7=355`) MUST appear in the figure's axis labels, tooltips, or accompanying caption text, or be trivially recomputable from the plotted fractions and the totals stated in the caption."
+applies_to  = ["chardet-relicense/manuscript/figures/fig3_control_flow_hist.pdf", "chardet-relicense/manuscript/figures/scripts/gen_figures.py"]
+verified_by = ["chardet-relicense/manuscript/figures/scripts/gen_figures.py (the `_control_flow_histogram` import and call site)", "live detect.sh output", "chardet-relicense/manuscript/main.tex figure caption (Figure 3)"]
+
+# ============================================================================
+# Citation honesty (V10..V12) — every BibTeX entry must resolve.
+# ============================================================================
+
+[[contracts]]
+id          = "V10"
+domain      = "no_invented_academic_citations"
+statement   = "Every `@article`, `@inproceedings`, `@book`, or `@phdthesis` entry in chardet-relicense/manuscript/references.bib MUST correspond to a real paper. The reviewer MUST spot-check at least four entries (Baxter ICSM 1998 clone detection; Jiang DECKARD ICSE 2007; Falleri GumTree ASE 2014; Carlini quantifying memorization arXiv:2202.07646) by fetching either the DOI, the conference proceedings page, the arXiv URL, or the publisher page and confirming title and authors match. The Ziegler GitHub Copilot recitation post is a blog-format @misc rather than an academic entry; it is verified separately under V11. Use exa or web_fetch."
+applies_to  = ["chardet-relicense/manuscript/references.bib"]
+verified_by = ["chardet-relicense/manuscript/references.bib", "web-fetched verification of each spot-checked entry"]
+
+[[contracts]]
+id          = "V11"
+domain      = "misc_entries_use_url_fallback_correctly"
+statement   = "Entries in references.bib that use `@misc` (typically because no canonical academic citation exists, e.g., Phoenix Technologies v. IBM, the chardet GitHub issues, the news articles) MUST carry a URL field with a real, fetchable URL AND an `urldate` or `note` field documenting when the URL was accessed. The reviewer MUST spot-check at least three @misc entries by fetching the URL and confirming the page exists."
+applies_to  = ["chardet-relicense/manuscript/references.bib"]
+verified_by = ["chardet-relicense/manuscript/references.bib", "web-fetched verification of each spot-checked @misc URL"]
+
+[[contracts]]
+id          = "V12"
+domain      = "all_cited_keys_appear_in_bibliography"
+statement   = "Every `\\cite{key}` invocation in main.tex resolves to a `@type{key,...}` entry in references.bib. There MUST be zero undefined citations in the build log. The reviewer MUST observe `cd chardet-relicense/manuscript && make clean && make` producing no `LaTeX Warning: Citation 'X' undefined` lines."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/manuscript/references.bib"]
+verified_by = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/manuscript/references.bib", "live make build log"]
+
+# ============================================================================
+# Methodology accuracy (V13..V15) — paper descriptions must match
+# what the harness actually does.
+# ============================================================================
+
+[[contracts]]
+id          = "V13"
+domain      = "section_5_methodology_matches_code"
+statement   = "Section 5 of main.tex describes each of the six signals (AUX1, C06a, C06b, C06c, C06d, C06e). Each subsection MUST accurately describe what the corresponding signal function in extract_signals.py or fingerprint_behavior.py actually computes. The reviewer MUST cross-check at least three subsections against their implementing functions (e.g., section 5.2 C06a against `signal_c06a_call_graph` / `_graph_topology` / `_build_call_graph`)."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/proof-bundle/extract_signals.py", "chardet-relicense/proof-bundle/fingerprint_behavior.py"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 5)", "chardet-relicense/proof-bundle/extract_signals.py", "chardet-relicense/proof-bundle/fingerprint_behavior.py"]
+
+[[contracts]]
+id          = "V14"
+domain      = "section_6_harness_details_match_detect_sh"
+statement   = "Section 6 of main.tex describes harness mechanics: git-worktree materialisation, test-file exclusion rules, determinism guarantees, venv isolation, sandbox compatibility (the --shared mirror trick). These descriptions MUST match what detect.sh, extract_signals.py, and fingerprint_behavior.py actually implement. The reviewer MUST locate the --shared mirror description and confirm it matches the actual `git clone --quiet --shared` line in detect.sh."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/proof-bundle/detect.sh", "chardet-relicense/proof-bundle/extract_signals.py"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 6)", "chardet-relicense/proof-bundle/detect.sh"]
+
+[[contracts]]
+id          = "V15"
+domain      = "section_8_reproducibility_instructions_actually_work"
+statement   = "Section 8 of main.tex gives reproduction instructions (git clone command for chardet, the harness invocation, the expected output). The reviewer MUST follow these instructions byte-for-byte starting from a fresh shell, and confirm the captured output matches what the paper claims. If the instructions assume environment that isn't documented (e.g., specific Python version, pre-installed networkx), that's a concrete blocker."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/manuscript/README.md"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 8)", "live execution of the cited commands"]
+
+# ============================================================================
+# Honest framing (V16..V18) — no taking sides, honest limitations,
+# transparent acknowledgments.
+# ============================================================================
+
+[[contracts]]
+id          = "V16"
+domain      = "section_7_3_legal_framing_neutral"
+statement   = "Section 7.3 (Legal framing) of main.tex MUST present both legal readings — (a) Baker v. Selden + Oracle v. Google supports the MIT relicense; (b) strict LGPL §0/§5 interpretation of contract-shape preservation as derivative supports the FSF position — with equal weight. The paper MUST NOT conclude which is correct. The reviewer MUST locate this section, confirm both readings are present, and confirm no conclusory language (e.g., 'we conclude that v7 is/is not a derivative work') appears."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 7.3 or wherever legal framing appears)"]
+
+[[contracts]]
+id          = "V17"
+domain      = "section_9_limitations_honest"
+statement   = "Section 9 (Threats to Validity / Limitations) MUST list at least these limitations: (a) signals tuned to Python, won't generalise without a per-language AST walker; (b) C06a operates at module level — surgical per-function paraphrase preserving module-level call graph isn't caught; (c) C06e requires venv install — toolchain gaps degrade to SKIP rather than FAIL; (d) fuzz corpus is random bytes, not targeted; (e) the proof addresses output-vs-output and cannot address training-data provenance. The reviewer MUST locate each of these five limitations in Section 9 and quote the lines."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 9)"]
+
+[[contracts]]
+id          = "V18"
+domain      = "acknowledgments_attribute_each_role"
+statement   = "The Acknowledgments section in chardet-relicense/manuscript/main.tex MUST contain three explicitly labelled paragraphs (or equivalent structural separation) that each name a distinct role: (a) the human contributor by name and email, with explicit description of what the human contributed (direction, scoping, judgment calls, the broader spec ecosystem, acceptance criteria — NOT the LaTeX or Python); (b) the LLM author (Claude Opus 4.7, Anthropic, via the Claude Code agent harness) with the commit it worked from; (c) the three LLM reviewers (Codex, Grok, Gemini) named individually with their model identifiers, access posture (sandbox / approval mode / MCP servers used), the iteration outcomes (rounds, verdicts), and what each reviewer caught. The Gemini quota-exhaustion gap MUST be explicitly acknowledged rather than silently omitted. The reviewer MUST locate each of these elements verbatim."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Acknowledgments section)"]
+
+[[contracts]]
+id          = "V19"
+domain      = "chardet_issue_325_attribution_correct"
+statement   = "Every reference to chardet GitHub issue #325 in chardet-relicense/manuscript/main.tex, chardet-relicense/manuscript/references.bib, and chardet-relicense/proof-bundle/README.md MUST attribute the issue to its actual opener — `@gooba42` — and MUST NOT attribute it to Bruce Perens. The GitHub REST API confirms `user.login = gooba42` and `title = \"Nullified License\"` (verifiable via `curl -s https://api.github.com/repos/chardet/chardet/issues/325`)."
+applies_to  = ["chardet-relicense/manuscript/main.tex", "chardet-relicense/manuscript/references.bib", "chardet-relicense/proof-bundle/README.md"]
+verified_by = ["chardet-relicense/manuscript/main.tex (dispute timeline table around line 194)", "chardet-relicense/manuscript/references.bib (`@misc{chardet325, ...}` entry)", "chardet-relicense/proof-bundle/README.md (dispute timeline table around line 24)", "live `curl -s https://api.github.com/repos/chardet/chardet/issues/325 | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"user\"][\"login\"], d[\"title\"])'`"]
+
+[[contracts]]
+id          = "V20"
+domain      = "venv_install_honest_about_network"
+statement   = "The Behavioural Isolation subsection (Section 6 / sec:venv) in chardet-relicense/manuscript/main.tex MUST acknowledge that `pip install [worktree-path]` does NOT operate fully offline by default: PEP 517 build backends (setuptools, wheel, etc.) are resolved through pip and may be fetched from PyPI if not already cached. The paper MUST explain that a sandbox blocking PyPI access will degrade C06e to verdict `SKIP` rather than `FAIL`, distinguishing toolchain gap from contract violation. A reviewer running detect.sh in a sandbox without pip cache access will see SKIP; this is expected and documented, not a regression."
+applies_to  = ["chardet-relicense/manuscript/main.tex"]
+verified_by = ["chardet-relicense/manuscript/main.tex (Section 6 / sec:venv)", "chardet-relicense/proof-bundle/fingerprint_behavior.py (the `_emit_skip` code path)"]

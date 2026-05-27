@@ -1,0 +1,231 @@
+# VERIFICATION REPORT (v0.2) — proof-chardet-relicense rewritten to
+# test the semantic-AST framing the spec was designed for.
+#
+# Format: a single `contract-declaration` carrying one contract per
+# item the multi-LLM reviewers must verify. Each [[contracts]] entry is
+# the testable statement; verification MUST be done by INSPECTING the
+# cited artifacts, NOT by trusting this report's prose, the commit
+# message, the CHANGELOG, the README, or Claude's summary.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version    = "0.1.0"
+template_kind     = "contract-declaration"
+docs              = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title             = "Verification report for proof-chardet-relicense (semantic-AST rewrite)"
+status            = "in_review"
+created           = "2026-05-22"
+review_subject    = "chardet-relicense/proof-bundle (at HEAD)"
+confidentiality   = "public"
+license           = "Apache-2.0"
+
+[review]
+verifier_must = """
+For every contract below, verify the statement against the named
+artifacts in `verified_by` by INSPECTING the artifacts directly:
+reading the cited TOML / Python / bash source AND, where the
+contract demands it, executing detect.sh against the actual chardet
+clone.
+
+Do NOT accept this report's prose, the commit message, the
+CHANGELOG, the README, or Claude's summary as evidence.
+
+If the cited artifact does not match the contract statement, flag
+it as a concrete blocker with the literal file path and line range
+that contradicts the statement.
+
+If Claude (the implementer) disagrees with a finding, Claude MUST
+respond with the same shape: a file path and line range, not an
+assertion. Approval MUST be based on inspected code, tests, docs,
+and the actual detect.sh output observed on the runner — NOT on
+intent, plan compliance claims, or "should be fixed" language.
+
+PREREQUISITES THE REVIEWER MUST CHECK BEFORE RUNNING detect.sh:
+  - /srv/repos/public/spec-poc/chardet-relicense/chardet is a git repo
+  - that repo has tags 6.0.0 and 7.0.0
+  - networkx is installed in the host python interpreter
+  - python -m venv works (for the C06e behavioural fingerprint)
+
+WHY THIS PROOF IS NOT THE EARLIER VERSION:
+
+The v0.1 of this proof tested file SHA-256 overlap, name-set
+Jaccard, and substring greps for `legacy_rename`. Every one of
+those signals collapses under paraphrase: rename every identifier
+and the file hashes change, the symbol-name Jaccard goes to zero,
+the substring grep returns no hits. v0.1 produced a verdict but the
+verdict was not paraphrase-resistant. v0.2 replaces every contract
+with one that survives identifier renaming and module
+restructuring, because each signal compares either AST grammar
+(C06c control-flow node types), graph topology (C06a call graph),
+external boundary (C06b imports), declared shape (C06d signatures),
+or runtime behaviour (C06e fuzz fingerprint).
+
+The cheap baseline AUX1 is retained as a diagnostic, explicitly
+labelled non-load-bearing.
+"""
+
+# ============================================================================
+# Bundle structural completeness (V01..V04)
+# ============================================================================
+
+[[contracts]]
+id          = "V01"
+domain      = "implementation_dag_well_formed"
+statement   = "`chardet-relicense/proof-bundle/implementation_dag.toml` declares exactly six units with `total_units = 6`, layered as three layer-0 prepare units (U01 verify-clone, U02 v6-worktree, U03 v7-worktree), two layer-1 analyser units (U04 static-AST, U05 behavioural-fingerprint), one layer-2 verify unit (U06 emit-witness); every `consumes` entry matches a `produces` entry on another unit; `[computed].critical_path` walks from a layer-0 entry through U04 to U06."
+applies_to  = ["chardet-relicense/proof-bundle/implementation_dag.toml"]
+verified_by = [
+  "chardet-relicense/proof-bundle/implementation_dag.toml",
+  "validators/validate_implementation_dag.py — should report PASSED",
+]
+
+[[contracts]]
+id          = "V02"
+domain      = "traceability_well_formed"
+statement   = "`chardet-relicense/proof-bundle/traceability.toml` declares one INT, one FEAT, one normative REQ, one IMP whose `code` list contains exactly three CODE entries pointing at `detect.sh`, `extract_signals.py`, and `fingerprint_behavior.py`, and one TEST whose `command` is `bash chardet-relicense/proof-bundle/detect.sh`. Every CODE `path` resolves on disk."
+applies_to  = ["chardet-relicense/proof-bundle/traceability.toml"]
+verified_by = [
+  "chardet-relicense/proof-bundle/traceability.toml",
+  "validators/validate_traceability.py --check-paths-exist — should report PASSED",
+]
+
+[[contracts]]
+id          = "V03"
+domain      = "contract_declaration_well_formed"
+statement   = "`chardet-relicense/proof-bundle/contract_declaration.toml` declares exactly six contracts with ids AUX1, C06a, C06b, C06c, C06d, C06e. AUX1 is the cheap baseline; C06a..C06e are the load-bearing semantic-AST contracts. Every `applies_to` entry refers to a real file under the proof bundle; every `verified_by` entry refers to the e2e TEST id declared in traceability.toml."
+applies_to  = ["chardet-relicense/proof-bundle/contract_declaration.toml"]
+verified_by = [
+  "chardet-relicense/proof-bundle/contract_declaration.toml",
+  "validators/validate_review_readiness.py — should report PASSED with entries=6",
+]
+
+[[contracts]]
+id          = "V04"
+domain      = "review_readiness_and_evidence_matrix_well_formed"
+statement   = "review_readiness.toml declares a single G01 gate whose `block_conditions` include 'AUX1 FAIL' and other FAILs; evidence_matrix.toml declares three claims (E01, E02, E03) backed by seven evidence entries (EV01..EV07) in an eight-row matrix; E03 explicitly lists the four non-claims (no legal verdict, no training-data measurement, no Mozilla claim address, no chardet source carried in). Both files pass `validate_review_readiness.py`."
+applies_to  = [
+  "chardet-relicense/proof-bundle/review_readiness.toml",
+  "chardet-relicense/proof-bundle/evidence_matrix.toml",
+]
+verified_by = [
+  "chardet-relicense/proof-bundle/review_readiness.toml",
+  "chardet-relicense/proof-bundle/evidence_matrix.toml",
+  "validators/validate_review_readiness.py on each",
+]
+
+# ============================================================================
+# Semantic-AST signal correctness (V05..V10) — these require executing
+# detect.sh against the actual chardet clone, NOT just reading source.
+# ============================================================================
+
+[[contracts]]
+id          = "V05"
+domain      = "detect_sh_precheck"
+statement   = "`detect.sh` exits with code 2 and a clear message if the chardet clone is missing OR if tag 6.0.0 or 7.0.0 is missing. The reviewer MUST verify either by inspecting the precheck block at the top of the script (the loop over `${v6_tag}` and `${v7_tag}` with `git rev-parse`) OR by temporarily renaming the clone and observing the exit code."
+applies_to  = ["chardet-relicense/proof-bundle/detect.sh"]
+verified_by = [
+  "chardet-relicense/proof-bundle/detect.sh (precheck block)",
+  "observed exit code on a missing prerequisite",
+]
+
+[[contracts]]
+id          = "V06"
+domain      = "detect_sh_emits_six_signal_rows"
+statement   = "When detect.sh runs against the actual chardet clone with tags 6.0.0 and 7.0.0, the combined output (extract_signals.py + fingerprint_behavior.py) contains exactly six data rows whose `contract` column values are exactly the set {AUX1, C06a, C06b, C06c, C06d, C06e}, plus a header row, plus a `# SUMMARY` block. The DELEGATED placeholder row from extract_signals.py for C06e MUST NOT appear in the final output (detect.sh filters it before printing); the real C06e row from fingerprint_behavior.py replaces it."
+applies_to  = [
+  "chardet-relicense/proof-bundle/detect.sh",
+  "chardet-relicense/proof-bundle/extract_signals.py",
+  "chardet-relicense/proof-bundle/fingerprint_behavior.py",
+]
+verified_by = [
+  "chardet-relicense/proof-bundle/detect.sh (the `grep -v` block that filters DELEGATED)",
+  "live detect.sh run output",
+]
+
+[[contracts]]
+id          = "V07"
+domain      = "c06a_call_graph_invariant_to_renaming"
+statement   = "C06a (call-graph topology) similarity is computed from features that are stable under identifier renaming: node count, edge count, density, SCC count, mean/max in/out degree. None of these features uses the function or callee NAME as part of the similarity calculation. The reviewer MUST inspect `_graph_topology` and `signal_c06a_call_graph` in extract_signals.py and confirm the feature vector contains no name-derived value."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+verified_by = ["chardet-relicense/proof-bundle/extract_signals.py (functions _graph_topology and signal_c06a_call_graph)"]
+
+[[contracts]]
+id          = "V08"
+domain      = "c06c_control_flow_invariant_to_renaming"
+statement   = "C06c (control-flow histogram cosine) is computed over a closed set of `ast` node TYPE NAMES (If, For, While, Try, ExceptHandler, Raise, With, AsyncWith, AsyncFor, Return, Yield, YieldFrom, Match). These names are part of the Python AST grammar and survive any identifier renaming in the analysed source. The reviewer MUST inspect `_CONTROL_FLOW_NODES` and `_control_flow_histogram` in extract_signals.py and confirm no source identifier flows into the histogram bucket keys."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+verified_by = ["chardet-relicense/proof-bundle/extract_signals.py (_CONTROL_FLOW_NODES tuple and _control_flow_histogram function)"]
+
+[[contracts]]
+id          = "V09"
+domain      = "c06e_runs_or_skips_cleanly"
+statement   = "C06e (behavioural fingerprint) MUST either (a) succeed and emit a TSV row with verdict=MEASURED reporting exact_match_rate and bucket_match_rate over a deterministic 1000-input fuzz corpus (seed 20260522), OR (b) emit a TSV row with verdict=SKIP and the literal failure reason (venv creation failed / pip install failed / runner crashed / wrong output shape). It MUST NOT silently exit nonzero; the reviewer MUST observe one of these two outcomes."
+applies_to  = ["chardet-relicense/proof-bundle/fingerprint_behavior.py"]
+verified_by = [
+  "chardet-relicense/proof-bundle/fingerprint_behavior.py (main function exit paths)",
+  "live detect.sh run output",
+]
+
+[[contracts]]
+id          = "V10"
+domain      = "static_test_file_exclusion_is_strict"
+statement   = "The `iter_impl_py_files` helper in extract_signals.py MUST exclude not only files under `tests/`, `test/`, `__pycache__/`, `build/`, `dist/`, `.tox/`, `.venv/` directories, but also root-level files whose name matches `(test_*|*_test|test).py`. The reviewer MUST inspect the helper's filter clauses and confirm both the directory check AND the filename regex are present."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+verified_by = ["chardet-relicense/proof-bundle/extract_signals.py (iter_impl_py_files function and _TEST_FILENAME_RE regex)"]
+
+# ============================================================================
+# Bundle integrity (V11..V14)
+# ============================================================================
+
+[[contracts]]
+id          = "V11"
+domain      = "ijb_conformance"
+statement   = "Every TOML file under `chardet-relicense/proof-bundle/` (including this verification report) passes `validators/validate_ijb_conformance.py --check-references-exist`."
+applies_to  = ["chardet-relicense/proof-bundle/"]
+verified_by = ["validators/validate_ijb_conformance.py on each *.toml in the bundle"]
+
+[[contracts]]
+id          = "V12"
+domain      = "rust_go_primaries_pass"
+statement   = "The Rust + Go primary validators (`tools/dagtoml-validate-rs/target/release/dagtoml-validate-rs` and `tools/dagtoml-validate-go`, built fresh from this branch) accept every *.toml under `chardet-relicense/proof-bundle/`. The reviewer MUST run both primaries themselves and observe `DAGTOML VALIDATION PASSED` from each."
+applies_to  = ["tools/dagtoml-validate-rs", "tools/dagtoml-validate-go", "chardet-relicense/proof-bundle/"]
+verified_by = ["live Rust primary output", "live Go primary output"]
+
+[[contracts]]
+id          = "V13"
+domain      = "no_chardet_source_carried_in"
+statement   = "No file under `chardet-relicense/proof-bundle/` is a copy of any chardet source file. The bundle reads from a separate clone at `/srv/repos/public/spec-poc/chardet-relicense/chardet`. The reviewer MUST confirm by inspecting every file and observing none contain chardet implementation source — specifically: no `import chardet`-style import statement that pulls chardet INTO the bundle's analysis code (the test runners inside fingerprint_behavior.py DO use `import chardet` inside subprocess strings; those are runtime-only and not part of this bundle's static source). The reviewer MUST also confirm none of the bundle's files contain `class UniversalDetector`, any `langArabicModel` / `langBulgarianModel` / `langBretonModel` definitions, or any Mozilla copyright notice from chardet v6."
+applies_to  = ["chardet-relicense/proof-bundle/"]
+verified_by = [
+  "manual inspection of every file in the bundle",
+  "the reviewer's own grep over the bundle for class-definition / lang-model / Mozilla-copyright patterns",
+]
+
+[[contracts]]
+id          = "V14"
+domain      = "deterministic_static_reproducibility"
+statement   = "Two consecutive runs of detect.sh against the same chardet clone at the same tags produce byte-identical OUTPUT for the AUX1, C06a, C06b, C06c, and C06d rows (the static-AST signals). The C06e row's `corpus_digest` field is deterministic given the fixed RANDOM_SEED; the `exact_match_rate` and `bucket_match_rate` are deterministic given the inputs are deterministic and the installed chardet versions are unchanged. The reviewer MUST verify by running detect.sh twice and comparing outputs (modulo the precheck-printed `repo:`/`v6 tag:`/`v7 tag:` lines and `Preparing worktree` git-worktree informational lines)."
+applies_to  = [
+  "chardet-relicense/proof-bundle/detect.sh",
+  "chardet-relicense/proof-bundle/extract_signals.py",
+  "chardet-relicense/proof-bundle/fingerprint_behavior.py",
+]
+verified_by = ["diff of two live detect.sh runs"]
+
+# ============================================================================
+# Honest non-claims (V15)
+# ============================================================================
+
+[[contracts]]
+id          = "V15"
+domain      = "explicit_non_claims_in_readme_and_evidence_matrix"
+statement   = "README.md AND evidence_matrix.toml claim E03 both explicitly state the proof's four non-claims: (a) does NOT render a legal verdict, (b) does NOT measure training-data provenance, (c) does NOT address Mozilla's upstream copyright claim against v6, (d) does NOT copy chardet source into this repository. The reviewer MUST locate each of these four non-claims in BOTH files and quote the file:line of each."
+applies_to  = [
+  "chardet-relicense/proof-bundle/README.md",
+  "chardet-relicense/proof-bundle/evidence_matrix.toml",
+]
+verified_by = [
+  "chardet-relicense/proof-bundle/README.md (section: What this proof deliberately does NOT do)",
+  "chardet-relicense/proof-bundle/evidence_matrix.toml (claim E03 and its scope_covered + known_exclusions blocks)",
+]
