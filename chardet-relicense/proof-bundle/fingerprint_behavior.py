@@ -79,21 +79,25 @@ def _fuzz_corpus(seed: int, n: int, max_len: int) -> list[bytes]:
     return corpus
 
 
-def _detect_one(py: pathlib.Path, corpus_path: pathlib.Path) -> list[dict] | str:
-    """Run chardet.detect() on each input in `corpus_path` (a file with
+def _detect_one(py: pathlib.Path, corpus_path: pathlib.Path, module_name: str = "chardet") -> list[dict] | str:
+    """Run <module>.detect() on each input in `corpus_path` (a file with
     one base64-per-line representation of the corpus). Returns the
-    parsed JSON output, or an error string."""
-    runner = """
+    parsed JSON output, or an error string. The module must expose a
+    chardet-compatible detect() returning {"encoding": str|None,
+    "confidence": float|None, ...}; charset-normalizer ships such a
+    shim in `charset_normalizer.legacy.detect` re-exported at the
+    package root."""
+    runner = f"""
 import base64, json, sys
-import chardet
+import {module_name} as _det
 out = []
 for line in sys.stdin:
     raw = base64.b64decode(line.strip())
     try:
-        result = chardet.detect(raw)
+        result = _det.detect(raw)
     except Exception as e:
-        result = {"error": type(e).__name__}
-    out.append(result if isinstance(result, dict) else {"non_dict": str(result)})
+        result = {{"error": type(e).__name__}}
+    out.append(result if isinstance(result, dict) else {{"non_dict": str(result)}})
 sys.stdout.write(json.dumps(out))
 """
     res = subprocess.run(
@@ -127,12 +131,25 @@ def _bucket(result: dict) -> tuple[str | None, str | None]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--v6-tree", required=True, help="git-worktree of chardet at 6.0.0")
-    parser.add_argument("--v7-tree", required=True, help="git-worktree of chardet at 7.0.0")
+    parser.add_argument("--tree-a", dest="tree_a", help="worktree of side A")
+    parser.add_argument("--tree-b", dest="tree_b", help="worktree of side B")
+    parser.add_argument("--module-a", dest="module_a", default="chardet",
+                        help="python module name to import on side A (default chardet)")
+    parser.add_argument("--module-b", dest="module_b", default="chardet",
+                        help="python module name to import on side B (default chardet)")
+    parser.add_argument("--v6-tree", dest="v6_tree", help="legacy alias for --tree-a")
+    parser.add_argument("--v7-tree", dest="v7_tree", help="legacy alias for --tree-b")
     args = parser.parse_args()
 
-    v6_tree = pathlib.Path(args.v6_tree).resolve()
-    v7_tree = pathlib.Path(args.v7_tree).resolve()
+    tree_a_str = args.tree_a or args.v6_tree
+    tree_b_str = args.tree_b or args.v7_tree
+    if not tree_a_str or not tree_b_str:
+        parser.error("must supply --tree-a/--tree-b (or legacy --v6-tree/--v7-tree)")
+
+    v6_tree = pathlib.Path(tree_a_str).resolve()
+    v7_tree = pathlib.Path(tree_b_str).resolve()
+    module_a = args.module_a
+    module_b = args.module_b
 
     workdir = pathlib.Path(tempfile.mkdtemp(prefix="chardet-fingerprint-"))
     try:
@@ -167,13 +184,13 @@ def main() -> int:
             "\n".join(base64.b64encode(b).decode() for b in corpus) + "\n"
         )
 
-        r6 = _detect_one(py6, corpus_path)
+        r6 = _detect_one(py6, corpus_path, module_a)
         if isinstance(r6, str):
-            _emit_skip(f"v6 runner failed: {r6}")
+            _emit_skip(f"side-A runner ({module_a}) failed: {r6}")
             return 0
-        r7 = _detect_one(py7, corpus_path)
+        r7 = _detect_one(py7, corpus_path, module_b)
         if isinstance(r7, str):
-            _emit_skip(f"v7 runner failed: {r7}")
+            _emit_skip(f"side-B runner ({module_b}) failed: {r7}")
             return 0
 
         if len(r6) != N_INPUTS or len(r7) != N_INPUTS:

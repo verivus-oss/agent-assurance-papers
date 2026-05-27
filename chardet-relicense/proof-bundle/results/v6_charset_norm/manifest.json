@@ -1,0 +1,5 @@
+{
+  "pair": "v6_charset_norm",
+  "side_a": {"repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet", "tag": "6.0.0", "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee", "pkg": "chardet", "module": "chardet"},
+  "side_b": {"repo": "/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer", "tag": "3.4.7", "sha": "0f07891bf516b5d5231f1bd4dd2d8da7d4d09a9a", "pkg": "charset_normalizer", "module": "charset_normalizer"}
+}

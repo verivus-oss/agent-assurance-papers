@@ -2,6 +2,15 @@
 """extract_signals.py — five AST-level signals + one auxiliary baseline
 for the chardet v6 → v7 relicensing proof.
 
+v2 calibration extension (Phase 1a agent Q): this script is now
+pair-agnostic. It still defaults to comparing chardet 6.0.0 vs 7.0.0
+when invoked with the legacy --v6-root / --v7-root flags, but accepts
+--root-a / --root-b and --pkg-a / --pkg-b so the same harness can be
+pointed at calibration pairs (chardet 5 vs 6, chardet 6 vs
+charset-normalizer). The "package name" controls (a) the import-edge
+self-exclusion set in C06b and (b) which `__init__.py` is treated as
+the public-API surface in C06d.
+
 This script is the substantive answer to the question "did the rewrite
 preserve enough of the original's *structure* to be a derivative work,
 even if every literal was renamed?". File-hash and name-set checks
@@ -302,8 +311,8 @@ _STDLIB_HINT: frozenset[str] = (
 )
 
 
-def _collect_imports(root: pathlib.Path) -> set[str]:
-    pkg_name_candidates = {"chardet"}
+def _collect_imports(root: pathlib.Path, pkg_name: str = "chardet") -> set[str]:
+    pkg_name_candidates = {pkg_name}
     out: set[str] = set()
     for p in iter_impl_py_files(root):
         try:
@@ -322,9 +331,12 @@ def _collect_imports(root: pathlib.Path) -> set[str]:
     return {m for m in out if m and m not in _STDLIB_HINT and m not in pkg_name_candidates}
 
 
-def signal_c06b_import_edges(v6: pathlib.Path, v7: pathlib.Path) -> dict:
-    i6 = _collect_imports(v6)
-    i7 = _collect_imports(v7)
+def signal_c06b_import_edges(
+    v6: pathlib.Path, v7: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> dict:
+    i6 = _collect_imports(v6, pkg_a)
+    i7 = _collect_imports(v7, pkg_b)
     inter = i6 & i7
     union = i6 | i7
     jaccard = len(inter) / len(union) if union else 0.0
@@ -398,12 +410,12 @@ def signal_c06c_control_flow(v6: pathlib.Path, v7: pathlib.Path) -> dict:
 # C06d — public-API signature equivalence
 # ----------------------------------------------------------------------------
 
-def _collect_public_signatures(root: pathlib.Path) -> dict[str, dict]:
+def _collect_public_signatures(root: pathlib.Path, pkg_name: str = "chardet") -> dict[str, dict]:
     """Return {public_symbol_name: signature_descriptor} for everything
-    re-exported by chardet/__init__.py via `__all__`."""
+    re-exported by <pkg_name>/__init__.py via `__all__`."""
     init_candidates = [
-        root / "chardet" / "__init__.py",
-        root / "src" / "chardet" / "__init__.py",
+        root / pkg_name / "__init__.py",
+        root / "src" / pkg_name / "__init__.py",
     ]
     init = next((p for p in init_candidates if p.is_file()), None)
     if init is None:
@@ -497,9 +509,12 @@ def _signature_match(a: dict, b: dict) -> str:
     return "diverged"
 
 
-def signal_c06d_signature_equivalence(v6: pathlib.Path, v7: pathlib.Path) -> dict:
-    s6 = _collect_public_signatures(v6)
-    s7 = _collect_public_signatures(v7)
+def signal_c06d_signature_equivalence(
+    v6: pathlib.Path, v7: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> dict:
+    s6 = _collect_public_signatures(v6, pkg_a)
+    s7 = _collect_public_signatures(v7, pkg_b)
     common = sorted(set(s6) & set(s7))
     if not common:
         return {
@@ -549,25 +564,40 @@ def signal_c06e_behavioural_skip(v6: pathlib.Path, v7: pathlib.Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--v6-root", required=True, help="checkout of chardet 6.0.0")
-    parser.add_argument("--v7-root", required=True, help="checkout of chardet 7.0.0")
+    # New pair-agnostic flags (preferred).
+    parser.add_argument("--root-a", dest="root_a", help="checkout of side A of the pair")
+    parser.add_argument("--root-b", dest="root_b", help="checkout of side B of the pair")
+    parser.add_argument("--pkg-a", dest="pkg_a", default="chardet",
+                        help="top-level package name on side A (for C06b self-exclusion + C06d API surface)")
+    parser.add_argument("--pkg-b", dest="pkg_b", default="chardet",
+                        help="top-level package name on side B")
+    # Legacy aliases retained for v1-era invocations.
+    parser.add_argument("--v6-root", dest="v6_root", help="alias for --root-a (legacy)")
+    parser.add_argument("--v7-root", dest="v7_root", help="alias for --root-b (legacy)")
     args = parser.parse_args()
 
-    v6 = pathlib.Path(args.v6_root).resolve()
-    v7 = pathlib.Path(args.v7_root).resolve()
+    root_a_str = args.root_a or args.v6_root
+    root_b_str = args.root_b or args.v7_root
+    if not root_a_str or not root_b_str:
+        parser.error("must supply --root-a/--root-b (or legacy --v6-root/--v7-root)")
+
+    v6 = pathlib.Path(root_a_str).resolve()
+    v7 = pathlib.Path(root_b_str).resolve()
     if not v6.is_dir():
-        print(f"error: --v6-root {v6} is not a directory", file=sys.stderr)
+        print(f"error: --root-a {v6} is not a directory", file=sys.stderr)
         return 2
     if not v7.is_dir():
-        print(f"error: --v7-root {v7} is not a directory", file=sys.stderr)
+        print(f"error: --root-b {v7} is not a directory", file=sys.stderr)
         return 2
+
+    pkg_a, pkg_b = args.pkg_a, args.pkg_b
 
     signals = [
         signal_aux1_literal_carry(v6, v7),
         signal_c06a_call_graph(v6, v7),
-        signal_c06b_import_edges(v6, v7),
+        signal_c06b_import_edges(v6, v7, pkg_a, pkg_b),
         signal_c06c_control_flow(v6, v7),
-        signal_c06d_signature_equivalence(v6, v7),
+        signal_c06d_signature_equivalence(v6, v7, pkg_a, pkg_b),
         signal_c06e_behavioural_skip(v6, v7),
     ]
 

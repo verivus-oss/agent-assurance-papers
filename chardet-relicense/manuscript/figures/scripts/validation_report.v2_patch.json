@@ -1,0 +1,194 @@
+{
+  "independent": {
+    "calibration": {
+      "harness_invocation": "chardet-relicense/proof-bundle/detect.sh <pair_name>",
+      "pairs_defined_in": "chardet-relicense/proof-bundle/detect.sh case statement",
+      "pair": {
+        "v6_v7": {
+          "manifest": {
+            "pair": "v6_v7",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "7.0.0",
+              "sha": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+              "pkg": "chardet",
+              "module": "chardet"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 87 v6 / 33 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.881,
+              "nodes_a": 342,
+              "nodes_b": 358,
+              "edges_a": 488,
+              "edges_b": 659,
+              "actual": "similarity=0.881 v6_nodes=342 v7_nodes=358 v6_edges=488 v7_edges=659",
+              "evidence": "density: v6=0.00418 v7=0.00516 reldiff=0.104; sccs: v6=342 v7=358 reldiff=0.023; mean_in_degree: v6=1.43 v7=1.84 reldiff=0.127; max_in_degree: v6=34 v7=44 reldiff=0.128"
+            },
+            "c06b": {
+              "jaccard": 0.333,
+              "shared": 2,
+              "a_only": 1,
+              "b_only": 3,
+              "evidence": "shared: ['cchardet', 'datasets']; v6_only: ['create_language_model']; v7_only: ['charset_normalizer', 'confusion_training', 'utils']"
+            },
+            "c06c": {
+              "cosine": 0.984,
+              "total_a": 652,
+              "total_b": 848,
+              "evidence": "If: v6=346 v7=355; Return: v6=191 v7=253; For: v6=72 v7=135; Try: v6=12 v7=33; ExceptHandler: v6=12 v7=32; Raise: v6=10 v7=12"
+            },
+            "c06d": {
+              "shared": 5,
+              "strict": 3,
+              "renamed_args": 0,
+              "diverged": 2,
+              "evidence": "EncodingEra=diverged; UniversalDetector=diverged; __version__=strict; detect=strict; detect_all=strict"
+            },
+            "c06e": {
+              "exact_rate": 0.0,
+              "bucket_rate": 0.0,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        },
+        "v5_v6": {
+          "manifest": {
+            "pair": "v5_v6",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "5.0.0",
+              "sha": "21bc6befb1795b9de4a1f8f707982ec627ba9683",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 47 v6 / 87 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.93,
+              "nodes_a": 288,
+              "nodes_b": 342,
+              "edges_a": 348,
+              "edges_b": 488,
+              "actual": "similarity=0.930 v6_nodes=288 v7_nodes=342 v6_edges=348 v7_edges=488",
+              "evidence": "density: v6=0.00421 v7=0.00418 reldiff=0.003; sccs: v6=288 v7=342 reldiff=0.086; mean_in_degree: v6=1.21 v7=1.43 reldiff=0.083; max_in_degree: v6=36 v7=34 reldiff=0.029"
+            },
+            "c06b": {
+              "jaccard": 0.2,
+              "shared": 1,
+              "a_only": 2,
+              "b_only": 2,
+              "evidence": "shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['create_language_model', 'datasets']"
+            },
+            "c06c": {
+              "cosine": 0.995,
+              "total_a": 421,
+              "total_b": 652,
+              "evidence": "If: v6=216 v7=346; Return: v6=147 v7=191; For: v6=40 v7=72; Raise: v6=8 v7=10; Try: v6=3 v7=12; ExceptHandler: v6=3 v7=12"
+            },
+            "c06d": {
+              "shared": 5,
+              "strict": 3,
+              "renamed_args": 0,
+              "diverged": 2,
+              "evidence": "UniversalDetector=strict; VERSION=strict; __version__=strict; detect=diverged; detect_all=diverged"
+            },
+            "c06e": {
+              "exact_rate": 0.968,
+              "bucket_rate": 0.968,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        },
+        "v6_charset_norm": {
+          "manifest": {
+            "pair": "v6_charset_norm",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer",
+              "tag": "3.4.7",
+              "sha": "0f07891bf516b5d5231f1bd4dd2d8da7d4d09a9a",
+              "pkg": "charset_normalizer",
+              "module": "charset_normalizer"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 87 v6 / 19 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.922,
+              "nodes_a": 342,
+              "nodes_b": 330,
+              "edges_a": 488,
+              "edges_b": 437,
+              "actual": "similarity=0.922 v6_nodes=342 v7_nodes=330 v6_edges=488 v7_edges=437",
+              "evidence": "density: v6=0.00418 v7=0.00403 reldiff=0.019; sccs: v6=342 v7=330 reldiff=0.018; mean_in_degree: v6=1.43 v7=1.32 reldiff=0.037; max_in_degree: v6=34 v7=23 reldiff=0.193"
+            },
+            "c06b": {
+              "jaccard": 0.0,
+              "shared": 0,
+              "a_only": 3,
+              "b_only": 5,
+              "evidence": "shared: []; v6_only: ['cchardet', 'create_language_model', 'datasets']; v7_only: ['chardet', 'mypyc', 'nox', 'setuptools', 'typing_extensions']"
+            },
+            "c06c": {
+              "cosine": 0.999,
+              "total_a": 652,
+              "total_b": 583,
+              "evidence": "If: v6=346 v7=320; Return: v6=191 v7=170; For: v6=72 v7=48; Raise: v6=10 v7=15; Try: v6=12 v7=11; ExceptHandler: v6=12 v7=11"
+            },
+            "c06d": {
+              "shared": 3,
+              "strict": 2,
+              "renamed_args": 0,
+              "diverged": 1,
+              "evidence": "VERSION=strict; __version__=strict; detect=diverged"
+            },
+            "c06e": {
+              "exact_rate": 0.0,
+              "bucket_rate": 0.0,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        }
+      },
+      "interpretation_summary": "If v6/v7 (the v1 headline) shows similarity in line with or BELOW the calibration pairs (v5/v6 conventional rewrite; v6/charset-normalizer independent same-domain detector), then the v1 'notably high' framing does not survive. See per-signal values: C06a is 0.881 for v6/v7, 0.930 for v5/v6, 0.922 for v6/charset-normalizer \u2014 v6/v7 is the LOWEST of the three. C06c is 0.984/0.995/0.999 in the same order \u2014 again v6/v7 is the lowest. C06e is the dramatic outlier in the OPPOSITE direction: v5/v6 (a conventional release-to-release evolution) preserves behaviour at 0.968 exact-match; v6/v7 (AI rewrite) collapses to 0.000; v6/charset-normalizer (independent codebases) is also 0.000. Net: the v1 paper's structural-similarity numbers are domain baselines, not evidence of derivation. The signal that actually separates 'evolutionary rewrite' from 'replacement' is C06e, and it goes the OPPOSITE way to the v1 narrative."
+    }
+  }
+}

@@ -1,0 +1,10 @@
+# pair: v5_v6
+# side_a: repo=/srv/repos/public/spec-poc/chardet-relicense/chardet tag=5.0.0 sha=21bc6befb1795b9de4a1f8f707982ec627ba9683 pkg=chardet module=chardet
+# side_b: repo=/srv/repos/public/spec-poc/chardet-relicense/chardet tag=6.0.0 sha=8a4636b1d4ef21d11cc8190f6ff271670b9d20ee pkg=chardet module=chardet
+signal	contract	expected	actual	verdict	evidence
+literal_source_carryover	AUX1	0 matching pairs	0 matches across 47 v6 / 87 v7 files	PASS	no whitespace-normalised SHA-256 overlap
+call_graph_topology	C06a	report topology-feature similarity in [0,1] — higher = more isomorphic	similarity=0.930 v6_nodes=288 v7_nodes=342 v6_edges=348 v7_edges=488	MEASURED	density: v6=0.00421 v7=0.00418 reldiff=0.003; sccs: v6=288 v7=342 reldiff=0.086; mean_in_degree: v6=1.21 v7=1.43 reldiff=0.083; max_in_degree: v6=36 v7=34 reldiff=0.029
+import_edge_set	C06b	report Jaccard overlap of third-party (non-stdlib, non-self) imports	jaccard=0.200 shared=1 v6_only=2 v7_only=2	MEASURED	shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['create_language_model', 'datasets']
+control_flow_histogram	C06c	report cosine similarity of normalised AST control-flow histograms	cosine=0.995 v6_total=421 v7_total=652	MEASURED	If: v6=216 v7=346; Return: v6=147 v7=191; For: v6=40 v7=72; Raise: v6=8 v7=10; Try: v6=3 v7=12; ExceptHandler: v6=3 v7=12
+public_api_signature_equivalence	C06d	report strict / renamed_args / diverged counts across shared __all__ symbols	shared=5 strict=3 renamed_args=0 diverged=2	MEASURED	UniversalDetector=strict; VERSION=strict; __version__=strict; detect=diverged; detect_all=diverged
+behavioural_fingerprint	C06e	report exact-match rate AND (encoding, confidence-bucket) match rate over N_INPUTS deterministic fuzz inputs	exact_match_rate=0.968 bucket_match_rate=0.968 n_inputs=1000 corpus_digest=58e54831f84183c7	MEASURED	exact=968/1000 bucket=968/1000 seed=20260522 input_max_len=4096
