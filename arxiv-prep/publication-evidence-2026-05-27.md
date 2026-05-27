@@ -11,6 +11,17 @@ Repository: `/srv/repos/external/verivus-oss/agent-assurance-papers`
 - `arxiv-prep/README.md` now points to `hello-world/proof-bundle/` and the sibling validator repo.
 - `arxiv-prep/00README.XXX` records category, comments, license, and repository metadata.
 - `arxiv-prep/arxiv-metadata.md` records the metadata to enter in the arXiv UI.
+- License selected at arXiv upload on 2026-05-28: Creative Commons
+  Attribution 4.0 International (CC BY 4.0,
+  <http://creativecommons.org/licenses/by/4.0/>). This selection is
+  durable per arXiv policy — future replacements may not downgrade the
+  license, so both `arxiv-metadata.md` and `00README.XXX` were updated
+  to pin the actual choice rather than leaving the conditional
+  "default unless author chooses CC" phrasing.
+- Comments field updated at arXiv upload to surface the artifact and
+  specification repository URLs (`Code:` and `Spec:` prefixes) on the
+  abstract listing page. The URLs are also present in the rendered PDF
+  in section "arXiv and Artifact Packaging Notes".
 - `.gitignore` no longer hides the entire `arxiv-prep/` tree.
 - The repository README describes the moved paper/proof layout without
   preserving obsolete spec-repo path strings.
@@ -51,9 +62,18 @@ This is BibTeX, Version 0.99e (TeX Live 2026)
 The top-level auxiliary file: main.aux
 The style file: plainnat.bst
 Database file #1: references.bib
-Output written on main.pdf (8 pages, 213366 bytes).
+Output written on main.pdf (8 pages, 211700 bytes).
 Transcript written on main.log.
 ```
+
+The 2026-05-28 rebuilds produced a slightly smaller PDF than the
+original May-27 build because the title block no longer renders a date
+line; the page count is unchanged. A follow-up rebuild on 2026-05-28
+also enabled `\usepackage[hyphens]{url}` and
+`\setlength{\emergencystretch}{3em}` to remove the last Overfull \hbox
+warning in `\section{arXiv and Artifact Packaging Notes}` (the long
+`agent-assurance-papers` URL); the rebuilt `main.log` has no Overfull
+\hbox warnings.
 
 ## Validation Commands
 
@@ -102,27 +122,36 @@ exit: 1
 ```sh
 cd arxiv-prep
 tar --sort=name --owner=0 --group=0 --numeric-owner \
-  --mtime='2026-05-27 00:00Z' \
+  --mtime='2026-05-28 00:00Z' \
   -czf arxiv_submission_bundle.tar.gz \
-  00README.XXX main.tex references.bib
+  main.tex references.bib
 ```
 
 Bundle contents:
 
 ```text
-00README.XXX
 main.tex
 references.bib
 ```
 
+The bundle originally included `00README.XXX`, but the arXiv web UI
+stalled indefinitely on that file during the first upload attempt and
+only progressed after it was deleted from the upload set. `00README.XXX`
+is retained in the repository as a local build-notes record but is no
+longer included in the shipped tarball.
+
 ## Final Hashes
 
+Refreshed 2026-05-28 after the title-page date was removed, the body
+run date was updated from May 22 to May 27, 2026, and the preamble was
+adjusted to eliminate the last Overfull \hbox warning.
+
 ```text
-a29e0434b84a60d75bb938d6c164bf4d3a47e7ead02bc98a603d8e9bba8585f1  arxiv-prep/main.tex
+768cd7aa73f7b02348ebdf0d4203e78d602698952056d0dda99556e1be281cfc  arxiv-prep/main.tex
 5749f067db965cbcfda7003ca2b6775ba925a8fe3c4f868079a44962bf353cd0  arxiv-prep/references.bib
-bf8c02acc101549eadb6d4f45207d55fe1dc0c1c73c6d8916dd0c16406f1eff5  arxiv-prep/00README.XXX
-e3e3753368be8dafe1aa810b443d2bcd74a60a12ded3e605e67d312093fa9d46  arxiv-prep/main.pdf
+a9aff3e4642eb6d5aa33418039ce6c5579975e63309387e5ec69537f55b4a327  arxiv-prep/00README.XXX  (local only; not in bundle; updated 2026-05-28 with CC BY 4.0 + repo URLs in Comments)
+b82e5c5ade164bb4df62d46180d86fc6c0296c863fc2b57e13ea129ca760bb2a  arxiv-prep/main.pdf
 2244abc915f18fe1779d4710fa1fd4d5646cbfb9164eb24892e6c7a2e52aaad9  arxiv-prep/main.bbl
-511565b094a49829cb74a64c95e04204170e0b6c90ec2eea0b6c6bf72de2f830  arxiv-prep/arxiv_submission_bundle.tar.gz
-ecd9adb02c22d2b06f68b3958b58a60fcf9e4eab112294fb733a5f5c144edf61  arxiv-prep/arxiv-metadata.md
+c9c6237c5e8210f5ad548db02d9b215ef7c74c590e3b6788c4993438894d8360  arxiv-prep/arxiv_submission_bundle.tar.gz  (main.tex + references.bib only)
+8dc9483d5a153e0663d6dc9810eda9cd5a552e23b9805b1204c867037a15518d  arxiv-prep/arxiv-metadata.md
 ```

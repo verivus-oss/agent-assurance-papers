@@ -11,3 +11,6 @@
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+
+# Session-local scratch (review prompts, build notes) — not for publication.
+REVIEW_PROMPT.md

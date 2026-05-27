@@ -7,10 +7,11 @@ pipeline (verivus-oss/agent-assurance-papers) on 2026-05-27.
 ARXIV METADATA
 --------------
 Primary category: cs.SE
-Comments: 8 pages, 0 figures; executable artifact report; proof bundle and
-source package available in the artifact repository.
-License: arXiv.org perpetual, non-exclusive license unless the author chooses
-a Creative Commons license at upload time.
+Comments: 8 pages, 0 figures; executable artifact report.
+Code: https://github.com/verivus-oss/agent-assurance-papers
+Spec: https://github.com/verivus-oss/agent-assurance
+License: Creative Commons Attribution 4.0 International (CC BY 4.0),
+http://creativecommons.org/licenses/by/4.0/.
 Artifact repository: https://github.com/verivus-oss/agent-assurance-papers
 Specification repository: https://github.com/verivus-oss/agent-assurance
 
@@ -71,6 +72,6 @@ U01 snapshot → U02 filename audit → U03 junk strip → U04 bib hygiene →
 U05 figure audit → U06 human review → U07 source-fix log → U08 4-pass
 compile gate → U09 manifest + this 00README → U10 packaging.
 
-The final local compile produced an 8-page, 213 366-byte PDF with SHA-256
-e3e3753368be8dafe1aa810b443d2bcd74a60a12ded3e605e67d312093fa9d46; arXiv
+The final local compile produced an 8-page, 211 700-byte PDF with SHA-256
+b82e5c5ade164bb4df62d46180d86fc6c0296c863fc2b57e13ea129ca760bb2a; arXiv
 should observe an equivalent PDF when running its own 4-pass pdflatex chain.

@@ -12,12 +12,13 @@
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{xcolor}
-\usepackage{url}
+\usepackage[hyphens]{url}
 \usepackage[numbers]{natbib}
 \usepackage[hidelinks,bookmarks=false]{hyperref}
 
 \setlength{\parskip}{4pt}
 \setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
 \setlist[itemize]{leftmargin=*,nosep}
 
 \definecolor{codebg}{gray}{0.96}
@@ -38,7 +39,7 @@
 
 \title{\bfseries A Minimal Executable Proof for Multi-Language Contract Traceability}
 \author{Werner Kasselman\\Verivus OSS\\\texttt{werner@verivus.com}}
-\date{May 22, 2026}
+\date{}
 
 \begin{document}
 \maketitle
@@ -192,7 +193,7 @@ implementation-DAG validator:
 \section{Observed Execution}
 
 All commands in this section were run from the repository root on
-May 22, 2026. The Java toolchain was not available on the runner, so
+May 27, 2026. The Java toolchain was not available on the runner, so
 the Java implementation is not claimed to have executed in this run.
 The harness reports that condition as SKIP, not PASS.
 

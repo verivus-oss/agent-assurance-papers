@@ -30,13 +30,27 @@ The target is the arXiv publication package for the Hello-World proof paper:
 
 ## Current Submission Artifact Hashes
 
+Refreshed 2026-05-28 after (a) removing the title-page date from
+`main.tex` (`\date{May 22, 2026}` → `\date{}`), (b) updating the
+body-text run date from May 22 to May 27, 2026, (c) eliminating the
+last Overfull \hbox warning by enabling `\usepackage[hyphens]{url}` and
+`\setlength{\emergencystretch}{3em}` in the preamble, (d) dropping the
+legacy `00README.XXX` from the upload bundle because the arXiv web UI
+stalled on it during the first upload attempt, and (e) adding a
+minimal `00README.json` to the bundle in the modern arXiv structured
+format (spec: <https://info.arxiv.org/help/00README.html>) pinning
+`compiler=pdflatex` and `main.tex` as the toplevel source. The legacy
+`00README.XXX` file is preserved in the repository as a local
+build-notes record but is no longer shipped to arXiv.
+
 ```text
-a29e0434b84a60d75bb938d6c164bf4d3a47e7ead02bc98a603d8e9bba8585f1  arxiv-prep/main.tex
+768cd7aa73f7b02348ebdf0d4203e78d602698952056d0dda99556e1be281cfc  arxiv-prep/main.tex
 5749f067db965cbcfda7003ca2b6775ba925a8fe3c4f868079a44962bf353cd0  arxiv-prep/references.bib
-bf8c02acc101549eadb6d4f45207d55fe1dc0c1c73c6d8916dd0c16406f1eff5  arxiv-prep/00README.XXX
-511565b094a49829cb74a64c95e04204170e0b6c90ec2eea0b6c6bf72de2f830  arxiv-prep/arxiv_submission_bundle.tar.gz
-e3e3753368be8dafe1aa810b443d2bcd74a60a12ded3e605e67d312093fa9d46  arxiv-prep/main.pdf
-ecd9adb02c22d2b06f68b3958b58a60fcf9e4eab112294fb733a5f5c144edf61  arxiv-prep/arxiv-metadata.md
+867b808493f78f39365fd8ade98854b14010c7bfdd24de6fb262bb5b158399b3  arxiv-prep/00README.json
+a9aff3e4642eb6d5aa33418039ce6c5579975e63309387e5ec69537f55b4a327  arxiv-prep/00README.XXX  (local only; not in bundle; updated 2026-05-28 with CC BY 4.0 + repo URLs in Comments)
+afa68651352203527ec292e9946f0a179cbcfbcfbeaca3c9a9fb95c79ea129f2  arxiv-prep/arxiv_submission_bundle.tar.gz  (00README.json + main.tex + references.bib)
+b82e5c5ade164bb4df62d46180d86fc6c0296c863fc2b57e13ea129ca760bb2a  arxiv-prep/main.pdf
+8dc9483d5a153e0663d6dc9810eda9cd5a552e23b9805b1204c867037a15518d  arxiv-prep/arxiv-metadata.md
 ```
 
 ## Corrective-Program Spec

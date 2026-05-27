@@ -8,13 +8,13 @@ Primary category: `cs.SE`
 
 Cross-list categories: none
 
-Comments: 8 pages, 0 figures; executable artifact report; proof bundle and source package available in the artifact repository.
+Comments: 8 pages, 0 figures; executable artifact report. Code: https://github.com/verivus-oss/agent-assurance-papers Spec: https://github.com/verivus-oss/agent-assurance
 
-License: arXiv.org perpetual, non-exclusive license unless the author explicitly chooses a Creative Commons license at upload time.
+License: Creative Commons Attribution 4.0 International (CC BY 4.0) — http://creativecommons.org/licenses/by/4.0/
 
-Artifact repository: https://github.com/verivus-oss/agent-assurance-papers
+Artifact repository (surfaced in Comments and in section "arXiv and Artifact Packaging Notes"): https://github.com/verivus-oss/agent-assurance-papers
 
-Specification repository: https://github.com/verivus-oss/agent-assurance
+Specification repository (surfaced in Comments and in section "arXiv and Artifact Packaging Notes"): https://github.com/verivus-oss/agent-assurance
 
 Abstract:
 
