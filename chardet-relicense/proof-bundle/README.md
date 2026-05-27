@@ -137,25 +137,25 @@ behavioural_fingerprint	C06e	report exact-match rate AND (encoding, confidence-b
 ## Validate the spec artifacts
 
 ```bash
-python3 validators/validate_implementation_dag.py \
+python3 ../agent-assurance/validators/validate_implementation_dag.py \
   chardet-relicense/proof-bundle/implementation_dag.toml
-python3 validators/validate_traceability.py \
+python3 ../agent-assurance/validators/validate_traceability.py \
   chardet-relicense/proof-bundle/traceability.toml --repo-root . --check-paths-exist
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   chardet-relicense/proof-bundle/review_readiness.toml
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   chardet-relicense/proof-bundle/contract_declaration.toml
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   chardet-relicense/proof-bundle/evidence_matrix.toml
 
 for f in chardet-relicense/proof-bundle/*.toml; do
-  python3 validators/validate_ijb_conformance.py "$f" \
-    --repo-root . --check-references-exist
+  python3 ../agent-assurance/validators/validate_ijb_conformance.py "$f" \
+    --repo-root ../agent-assurance --check-references-exist
 done
 
-./tools/dagtoml-validate-rs/target/release/dagtoml-validate-rs --repo-root . \
+../agent-assurance/tools/dagtoml-validate-rs/target/release/dagtoml-validate-rs --repo-root ../agent-assurance \
   chardet-relicense/proof-bundle/*.toml
-/tmp/dagtoml-validate-go --repo-root . \
+/tmp/dagtoml-validate-go --repo-root ../agent-assurance \
   chardet-relicense/proof-bundle/*.toml
 ```
 

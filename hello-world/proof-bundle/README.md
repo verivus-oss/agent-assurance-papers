@@ -169,23 +169,23 @@ The cross-reference rules from `spec.md §5` apply throughout:
 
 ```bash
 # Spec validators
-python3 validators/validate_implementation_dag.py \
+python3 ../agent-assurance/validators/validate_implementation_dag.py \
   hello-world/proof-bundle/implementation_dag.toml
 
-python3 validators/validate_traceability.py \
+python3 ../agent-assurance/validators/validate_traceability.py \
   hello-world/proof-bundle/traceability.toml \
   --repo-root . --check-paths-exist
 
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   hello-world/proof-bundle/review_readiness.toml
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   hello-world/proof-bundle/contract_declaration.toml
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
   hello-world/proof-bundle/evidence_matrix.toml
 
-python3 validators/validate_ijb_conformance.py \
+python3 ../agent-assurance/validators/validate_ijb_conformance.py \
   hello-world/proof-bundle/traceability.toml \
-  --repo-root . --check-references-exist
+  --repo-root ../agent-assurance --check-references-exist
 # (repeat IJB validator for the other four TOML files)
 
 # Contract witness

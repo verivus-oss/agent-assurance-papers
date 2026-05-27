@@ -9,14 +9,14 @@ minimal-example repository.
 
 ```text
 chardet-relicense/
-  manuscript/     LaTeX paper package formerly at agent-assurance/paper/
-  proof-bundle/   Executable proof formerly at agent-assurance/examples/proof-chardet-relicense/
+  manuscript/     LaTeX paper package moved out of the spec repository
+  proof-bundle/   Executable proof moved out of the spec repository
 
 hello-world/
-  manuscript/     LaTeX paper package formerly at agent-assurance/paper-hello-world/
-  proof-bundle/   Executable proof formerly at agent-assurance/examples/proof-hello-world/
+  manuscript/     LaTeX paper package moved out of the spec repository
+  proof-bundle/   Executable proof moved out of the spec repository
 
-arxiv-prep/       Generated arXiv staging/output workspace formerly at agent-assurance/paper-arxiv-prep/
+arxiv-prep/       Generated arXiv staging/output workspace for the current submission
 arxiv-prep-agent-dag.toml
                   DAG-TOML workflow for arXiv TeX pre-flight and packaging
 ```

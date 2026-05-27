@@ -1,0 +1,76 @@
+arXiv 00README — Hello-World Proof Paper
+==========================================
+
+This source package was prepared by the spec-grounded arxiv-prep-agent-dag.toml
+pipeline (verivus-oss/agent-assurance-papers) on 2026-05-27.
+
+ARXIV METADATA
+--------------
+Primary category: cs.SE
+Comments: 8 pages, 0 figures; executable artifact report; proof bundle and
+source package available in the artifact repository.
+License: arXiv.org perpetual, non-exclusive license unless the author chooses
+a Creative Commons license at upload time.
+Artifact repository: https://github.com/verivus-oss/agent-assurance-papers
+Specification repository: https://github.com/verivus-oss/agent-assurance
+
+PROCESSOR
+---------
+Use pdflatex. The package uses pdfTeX 3.141592653-2.6-1.40.29 features and
+was verified to build with TeX Live 2026. Do NOT attempt latex (DVI) ->
+ps2pdf; pdflatex must produce the final PDF directly.
+
+BIBLIOGRAPHY
+------------
+references.bib is shipped; .bbl is NOT pre-generated. arXiv should run
+bibtex (the natbib backend, plainnat style). The local verification used
+BibTeX 0.99e from TeX Live 2026.
+
+BUILD ORDER
+-----------
+pdflatex main.tex
+bibtex main
+pdflatex main.tex
+pdflatex main.tex
+
+A trailing \typeout line after \end{document} requests the 4-pass magic
+to ensure cross-references resolve on arXiv's batch compiler.
+
+CONTENTS
+--------
+main.tex          — paper source (single-file LaTeX article, plainnat
+                     bibliography, hyperref [hidelinks,bookmarks=false],
+                     listings + xcolor for code blocks, natbib).
+references.bib    — 15-entry bibliography of arXiv help docs, ACM/SIGSOFT
+                     guidance, and prior work on source-analysis methods.
+
+There are NO figures and NO image files in this package.
+
+IGNORE LISTS
+------------
+None. Every file in the tarball is required.
+
+SPECIAL RESPONSES
+-----------------
+- "Hyperref Warning: Token not allowed in a PDF string": expected and
+   non-fatal; hyperref is loaded with [hidelinks,bookmarks=false] precisely
+   to minimise these.
+- "Underfull/Overfull hbox": standard typesetting messages; ignore.
+
+CONTACT
+-------
+Werner Kasselman <werner@verivus.com> — Verivus OSS.
+
+PROVENANCE
+----------
+This source bundle was assembled through the 10-unit arxiv-prep-agent DAG
+defined in arxiv-prep-agent-dag.toml of verivus-oss/agent-assurance-papers.
+The publication evidence report records the local verification commands and
+hashes outside the arXiv upload tarball. The pipeline run trail:
+U01 snapshot → U02 filename audit → U03 junk strip → U04 bib hygiene →
+U05 figure audit → U06 human review → U07 source-fix log → U08 4-pass
+compile gate → U09 manifest + this 00README → U10 packaging.
+
+The final local compile produced an 8-page, 213 366-byte PDF with SHA-256
+e3e3753368be8dafe1aa810b443d2bcd74a60a12ded3e605e67d312093fa9d46; arXiv
+should observe an equivalent PDF when running its own 4-pass pdflatex chain.

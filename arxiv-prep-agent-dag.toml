@@ -55,7 +55,7 @@
 #
 # INSTANCE USAGE
 # Point [policy.instance] at an external paper tree, run the units in order
-# (or parallel where layer allows), obtain the bundle + evidence pack, then
+# (or parallel where layer allows), obtain the bundle and local evidence, then
 # perform the manual web upload at https://arxiv.org/submit while viewing the
 # locally-generated PDF and the 00README instructions.
 
@@ -87,10 +87,10 @@ tier3_units       = []
 [policy.arxiv_prep_agent]
 name                 = "ArXiv Pre-flight and Packaging Agent"
 role                 = "TeX Compliance Engineer and Submission Packager"
-purpose              = "Transform a raw LaTeX paper tree into an arXiv-ready source bundle by attaching an explicit unit or gate to each preflight failure mode enumerated in [policy.checklist_coverage] — the binding scope of the agent's claim, populated from the Trevor Campbell, official arXiv mistakes FAQ, Ian Huston, submit_tex, and texlive checklists — and produce a clean submission tarball plus a separate, complete evidence pack. Items in those checklists that are not enumerated in [policy.checklist_coverage] are explicitly out of scope; the agent makes no claim about failure modes outside that table, and arXiv's own preflight remains the final judge."
+purpose              = "Transform a raw LaTeX paper tree into an arXiv-ready source bundle by attaching an explicit unit or gate to each preflight failure mode enumerated in [policy.checklist_coverage] — the binding scope of the agent's claim, populated from the Trevor Campbell, official arXiv mistakes FAQ, Ian Huston, submit_tex, and texlive checklists — and produce a clean submission tarball plus local publication evidence. Items in those checklists that are not enumerated in [policy.checklist_coverage] are explicitly out of scope; the agent makes no claim about failure modes outside that table, and arXiv's own preflight remains the final judge."
 validation_type      = "Structural + Execution Verification"
 workflow_initiator   = false
-description          = "Consumes a paper source tree (main.tex + figures + .bib), emits a clean tarball plus machine-readable evidence that the items enumerated in [policy.checklist_coverage] were each addressed by an explicit unit or gate. The table is sourced from the Trevor Campbell, official arXiv mistakes, Ian Huston, submit_tex, and texlive checklists; items from those checklists that are not enumerated in [policy.checklist_coverage] (whether scoped out deliberately or pending future coverage) are not covered by the agent."
+description          = "Consumes a paper source tree (main.tex + figures + .bib), emits a clean tarball plus local evidence that the items enumerated in [policy.checklist_coverage] were each addressed by an explicit unit or gate. The table is sourced from the Trevor Campbell, official arXiv mistakes, Ian Huston, submit_tex, and texlive checklists; items from those checklists that are not enumerated in [policy.checklist_coverage] (whether scoped out deliberately or pending future coverage) are not covered by the agent."
 
 [policy.arxiv_prep_agent.orchestration]
 consumes_events      = ["PaperSourceReady", "ArXivPrepRequested"]
@@ -107,12 +107,12 @@ items = [
   "TeX source fixes for known arXiv pitfalls (4-pass typeout, ifpdf not pdfoutput, hyperref bookmarks=false for complex docs, \\protect\\cite in captions, minted non-hidden cache, no \\today in date).",
   "Local 4+-pass compile under matching processor + PDF inspection gate (no unresolved labels, no fatal errors, page count + visual spot-check).",
   "00README generation (processor hint, ignore lists, special responses) + final manifest with every check verbatim.",
-  "Clean tar/zip bundle + submission manifest + human instructions; hidden files provably absent.",
+  "Clean tar/zip bundle + publication evidence + human instructions; hidden files provably absent.",
 ]
 
 [policy.arxiv_prep_agent.outputs]
 submission_bundle = "OUT:arxiv-submission-bundle"          # only clean LaTeX source for arXiv
-evidence_pack     = "OUT:arxiv-prep-evidence-pack"         # all audit logs, manifest, human sign-off, etc. (never in the public tarball)
+publication_evidence = "OUT:arxiv-prep-publication-evidence" # local audit logs, manifest, human sign-off, etc. (never in the public tarball)
 event             = "ArXivPrepComplete"
 
 # ============================================================================
@@ -192,7 +192,7 @@ package_hygiene_gate    = { required_verdicts = ["manifest_match"], blocks_on = 
 "arxiv_prep_agent.responsibilities.manifest_and_00readme"   = { unit = "U09", produces = "ART:arxiv-prep-manifest" }
 "arxiv_prep_agent.responsibilities.package_and_emit"        = { unit = "U10", produces = "OUT:arxiv-submission-bundle" }
 "arxiv_prep_agent.outputs.submission_bundle"               = { unit = "U10", produces = "OUT:arxiv-submission-bundle" }
-"arxiv_prep_agent.outputs.evidence_pack"                    = { unit = "U10", produces = "OUT:arxiv-prep-evidence-pack" }
+"arxiv_prep_agent.outputs.publication_evidence"             = { unit = "U10", produces = "OUT:arxiv-prep-publication-evidence" }
 "arxiv_prep_agent.outputs.event"                            = { unit = "U10", produces = "OUT:arxiv-prep-complete-event" }
 
 # ============================================================================
@@ -357,7 +357,7 @@ consumes       = ["ART:human-review-report","ART:source-fix-log"]
 # U09 — final hygiene + 00README + manifest (submission instructions)
 [units.U09]
 name           = "assemble-manifest-and-00readme"
-summary        = "Walk the clean source tree (not the full staging dir), build exact file list + SHA256 for the submission bundle only. The arxiv-prep-manifest.toml is written to a separate evidence/ subdirectory (outside the submission tarball) so it can include its own hash. Generate 00README.XXX and record all gate verdicts. This manifest + the full evidence set become the evidence pack."
+summary        = "Walk the clean source tree (not the full staging dir), build exact file list + SHA256 for the submission bundle only. Write local publication evidence outside the submission tarball so it can include its own hash. Generate 00README.XXX and record all gate verdicts."
 layer          = 5
 tier           = 1
 status         = "pending"
@@ -383,10 +383,10 @@ blocks         = []
 estimated_loc  = 30
 files_modify   = [
   "arxiv-prep/arxiv_submission_bundle.tar.gz",        # clean LaTeX only
-  "arxiv-prep/arxiv_prep_evidence_bundle.tar.gz",     # all internal audit + logs + human sign-off
+  "arxiv-prep/publication-evidence-2026-05-27.md",    # local audit + logs + human sign-off
   "arxiv-prep/arxiv-prep-complete.event.toml",
 ]
-produces       = ["OUT:arxiv-submission-bundle", "OUT:arxiv-prep-evidence-pack", "OUT:arxiv-prep-complete-event"]
+produces       = ["OUT:arxiv-submission-bundle", "OUT:arxiv-prep-publication-evidence", "OUT:arxiv-prep-complete-event"]
 consumes       = ["ART:arxiv-prep-manifest"]
 
 # ============================================================================

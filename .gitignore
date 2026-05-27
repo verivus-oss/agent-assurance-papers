@@ -25,6 +25,5 @@ Thumbs.db
 *.swo
 *~
 
-# Generated arXiv staging/output. Release tarballs and evidence packs
-# should be published as release artifacts, not kept as normal source.
-arxiv-prep/
+# The arXiv prep tree is tracked as publication evidence. Generic LaTeX
+# intermediates above still keep aux/log/blg/bbl files out of normal source.
