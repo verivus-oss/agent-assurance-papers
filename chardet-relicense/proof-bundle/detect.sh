@@ -10,7 +10,11 @@
 #   C06b  import-edge set              (third-party Jaccard)
 #   C06c  control-flow histogram       (cosine similarity of normalised hist)
 #   C06d  public-API signature equiv   (strict / renamed_args / diverged)
-#   C06e  behavioural fingerprint      (1000 deterministic fuzz inputs)
+#   C06e  behavioural fingerprint      (multi-bucket realistic corpus +
+#                                       1000-random-byte control; per-bucket
+#                                       exact / bucket / normalized match
+#                                       rates — one TSV row per bucket
+#                                       plus an aggregate row)
 #
 # Exit code:
 #   0  no FAIL verdicts
@@ -75,9 +79,12 @@ static_out="$(python3 "${here}/extract_signals.py" \
   --v7-root "${tmp}/v7")"
 
 set +e
+fingerprint_report_json="${tmp}/c06e_report.json"
 fingerprint_out="$(python3 "${here}/fingerprint_behavior.py" \
   --v6-tree "${tmp}/v6" \
-  --v7-tree "${tmp}/v7" 2>&1)"
+  --v7-tree "${tmp}/v7" \
+  --corpus-dir "${here}/corpora" \
+  --report-json "${fingerprint_report_json}" 2>&1)"
 set -e
 
 # Header + 5 static rows (extract_signals.py's DELEGATED placeholder is

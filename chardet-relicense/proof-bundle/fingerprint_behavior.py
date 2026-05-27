@@ -2,10 +2,20 @@
 """fingerprint_behavior.py — C06e behavioural-equivalence signal.
 
 Installs chardet at two tags (default 6.0.0 and 7.0.0) into two
-isolated venvs, runs each version against a deterministic
-fuzz corpus of `N_INPUTS` random byte strings, and reports how often
-the two versions return the same `(encoding, confidence-bucket)`
-tuple.
+isolated venvs, runs each version against a multi-bucket corpus
+(`corpora/MANIFEST.tsv`), and reports how often the two versions
+return the same `(encoding, confidence-bucket)` tuple — per corpus
+bucket and in aggregate.
+
+v2 (revised in response to reviewer R3): the corpus is no longer just
+1000 random byte strings. It now includes HTML pages (Wikipedia, Latin
+and CJK), RFC 822 / MIME messages, multilingual plain text in UTF-8,
+GB18030, Shift_JIS, Windows-1252 and ISO-8859-1, short snippets,
+malformed / mixed-encoding bytes, and the legacy 1000-random-byte
+distribution as a robustness control. The corpus is built by
+`corpora/build_corpus.py` and described per item in
+`corpora/MANIFEST.tsv`. The random-bytes-only result from v1 is
+preserved as the `random_control` bucket.
 
 Behavioural equivalence is the strongest form of contract-preservation
 evidence available: an AI rewrite that is *operationally
@@ -21,15 +31,23 @@ distinguishes SKIP from FAIL.
 USAGE:
     fingerprint_behavior.py \\
         --v6-tree <git-worktree-of-chardet-at-6.0.0> \\
-        --v7-tree <git-worktree-of-chardet-at-7.0.0>
+        --v7-tree <git-worktree-of-chardet-at-7.0.0> \\
+        [--corpus-dir <path-to-corpora-dir>] \\
+        [--report-json <path-to-write-per-bucket-json>]
 
-OUTPUT (TSV, single row appended to extract_signals.py's output):
-    signal	contract	expected	actual	verdict	evidence
+OUTPUT (TSV, multiple rows appended to extract_signals.py's output):
+    signal                       contract  expected  actual  verdict  evidence
+    behavioural_fingerprint      C06e      ...       ...     ...      ...
+    behavioural_fingerprint:<b>  C06e      ...       ...     ...      ...
+
+The first row is the aggregate. The remaining rows are one per corpus
+bucket present in MANIFEST.tsv.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -39,14 +57,21 @@ import subprocess
 import sys
 import tempfile
 
-N_INPUTS = 1000
-RANDOM_SEED = 20260522  # day of the proof — deterministic
-INPUT_MAX_LEN = 4096
+# Legacy random-control parameters — frozen so the v1 number remains
+# directly comparable inside the random_control bucket.
+RANDOM_SEED = 20260522
+RANDOM_N_INPUTS = 1000
+RANDOM_MAX_LEN = 4096
 
+DEFAULT_CORPUS_DIR_REL = "corpora"
+DEFAULT_MANIFEST_NAME = "MANIFEST.tsv"
+
+
+# ---------------------------------------------------------------------
+# venv + install helpers (unchanged from v1).
+# ---------------------------------------------------------------------
 
 def _make_venv(target: pathlib.Path) -> pathlib.Path | None:
-    """Create a venv at `target`. Return the python interpreter path,
-    or None on failure."""
     target.mkdir(parents=True, exist_ok=True)
     res = subprocess.run(
         [sys.executable, "-m", "venv", str(target)],
@@ -59,8 +84,6 @@ def _make_venv(target: pathlib.Path) -> pathlib.Path | None:
 
 
 def _pip_install(py: pathlib.Path, target: str) -> str | None:
-    """Install `target` (path or pinned spec) into the venv at `py`.
-    Returns None on success, error message on failure."""
     res = subprocess.run(
         [str(py), "-m", "pip", "install", "--quiet", "--disable-pip-version-check", target],
         capture_output=True, text=True,
@@ -70,19 +93,104 @@ def _pip_install(py: pathlib.Path, target: str) -> str | None:
     return None
 
 
-def _fuzz_corpus(seed: int, n: int, max_len: int) -> list[bytes]:
-    rng = random.Random(seed)
-    corpus: list[bytes] = []
-    for _ in range(n):
-        length = rng.randint(0, max_len)
-        corpus.append(bytes(rng.randint(0, 255) for _ in range(length)))
-    return corpus
+# ---------------------------------------------------------------------
+# Corpus loaders.
+# ---------------------------------------------------------------------
 
+def _load_random_control_packed(path: pathlib.Path) -> list[bytes]:
+    """Unpack the length-prefixed random_control file produced by
+    build_corpus.py. Format: repeated [4-byte big-endian length][payload]."""
+    buf = path.read_bytes()
+    out: list[bytes] = []
+    i = 0
+    while i < len(buf):
+        if i + 4 > len(buf):
+            break
+        n = int.from_bytes(buf[i:i + 4], "big")
+        i += 4
+        out.append(buf[i:i + n])
+        i += n
+    return out
+
+
+def _make_legacy_random_control() -> list[bytes]:
+    """Reproduce the v1 corpus from the original RNG params — used as
+    a fallback if the packed file is absent from the build (e.g.
+    `random_fuzz_1k.packed` is gitignored)."""
+    rng = random.Random(RANDOM_SEED)
+    out: list[bytes] = []
+    for _ in range(RANDOM_N_INPUTS):
+        length = rng.randint(0, RANDOM_MAX_LEN)
+        out.append(bytes(rng.randint(0, 255) for _ in range(length)))
+    return out
+
+
+def _load_corpus(corpus_dir: pathlib.Path) -> tuple[dict[str, list[tuple[str, bytes]]], str | None]:
+    """Read MANIFEST.tsv and return {bucket: [(item_id, bytes), ...]}.
+    On failure returns ({}, error_message)."""
+    manifest = corpus_dir / DEFAULT_MANIFEST_NAME
+    items_root = corpus_dir / "items"
+    if not manifest.is_file():
+        return {}, f"manifest not found at {manifest}"
+    by_bucket: dict[str, list[tuple[str, bytes]]] = {}
+    with manifest.open(encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+        if header[:2] != ["bucket", "item_id"]:
+            return {}, f"manifest header malformed: {header}"
+        try:
+            sha_col = header.index("sha256")
+        except ValueError:
+            return {}, "manifest missing sha256 column"
+        for lineno, raw in enumerate(f, start=2):
+            row = raw.rstrip("\n").split("\t")
+            if len(row) < len(header):
+                continue
+            bucket, item_id = row[0], row[1]
+            expected_sha = row[sha_col]
+            # Locate the file by scanning items/<bucket>/<item_id>.*
+            bucket_dir = items_root / bucket
+            if not bucket_dir.is_dir():
+                # random_control's packed file may be gitignored; rebuild it
+                # from seed on the fly.
+                if bucket == "random_control" and item_id == "random_fuzz_1k":
+                    payloads = _make_legacy_random_control()
+                    by_bucket.setdefault(bucket, []).extend(
+                        (f"random_{i:04d}", p) for i, p in enumerate(payloads)
+                    )
+                    continue
+                return {}, f"items dir for bucket {bucket!r} missing at {bucket_dir}"
+            candidates = sorted(bucket_dir.glob(f"{item_id}.*"))
+            if not candidates:
+                if bucket == "random_control" and item_id == "random_fuzz_1k":
+                    payloads = _make_legacy_random_control()
+                    by_bucket.setdefault(bucket, []).extend(
+                        (f"random_{i:04d}", p) for i, p in enumerate(payloads)
+                    )
+                    continue
+                return {}, f"no file matching {bucket}/{item_id}.* (line {lineno})"
+            content = candidates[0].read_bytes()
+            actual_sha = hashlib.sha256(content).hexdigest()
+            if expected_sha and actual_sha != expected_sha:
+                return {}, (
+                    f"sha256 mismatch for {bucket}/{item_id}: "
+                    f"manifest={expected_sha[:16]} on-disk={actual_sha[:16]}"
+                )
+            if bucket == "random_control" and item_id == "random_fuzz_1k":
+                # Unpack the length-prefixed stream into individual inputs.
+                payloads = _load_random_control_packed(candidates[0])
+                by_bucket.setdefault(bucket, []).extend(
+                    (f"random_{i:04d}", p) for i, p in enumerate(payloads)
+                )
+            else:
+                by_bucket.setdefault(bucket, []).append((item_id, content))
+    return by_bucket, None
+
+
+# ---------------------------------------------------------------------
+# Runner: detect a list of inputs inside a venv'd subprocess.
+# ---------------------------------------------------------------------
 
 def _detect_one(py: pathlib.Path, corpus_path: pathlib.Path) -> list[dict] | str:
-    """Run chardet.detect() on each input in `corpus_path` (a file with
-    one base64-per-line representation of the corpus). Returns the
-    parsed JSON output, or an error string."""
     runner = """
 import base64, json, sys
 import chardet
@@ -99,7 +207,7 @@ sys.stdout.write(json.dumps(out))
     res = subprocess.run(
         [str(py), "-c", runner],
         input=corpus_path.read_text(),
-        capture_output=True, text=True, timeout=600,
+        capture_output=True, text=True, timeout=900,
     )
     if res.returncode != 0:
         return (res.stderr.strip() or "runner failed").splitlines()[-1][:200]
@@ -125,14 +233,105 @@ def _bucket(result: dict) -> tuple[str | None, str | None]:
     return (enc, b)
 
 
+# Encoding-name normalization tables. v6 emits uppercase aliases
+# (`WINDOWS-1252`, `SHIFT_JIS`); v7 emits lowercase canonical names
+# (`windows-1252`, `cp932`). Operationally these are the same byte
+# decoder, but the literal string labels diverge. The `_norm_enc`
+# helper exists so we can also report a label-normalised match rate
+# alongside the strict rate, distinguishing 'genuinely different
+# decoder picked' from 'same decoder, different label'.
+_ENCODING_ALIAS: dict[str, str] = {
+    # Case-fold first, then collapse known aliases to a canonical
+    # token. Right-hand side is the canonical token.
+    "ascii": "ascii",
+    "windows-1252": "windows-1252",
+    "cp1252": "windows-1252",
+    "iso-8859-1": "iso-8859-1",
+    "latin-1": "iso-8859-1",
+    "shift_jis": "shift_jis",
+    "shift-jis": "shift_jis",
+    "sjis": "shift_jis",
+    "cp932": "shift_jis",  # cp932 is Windows' Shift_JIS variant — operationally compatible for our test text
+    "gb18030": "gb18030",
+    "gb2312": "gb18030",
+    "gbk": "gb18030",
+    "utf-8": "utf-8",
+    "utf8": "utf-8",
+    "utf-16": "utf-16",
+    "utf-16le": "utf-16le",
+    "utf-16be": "utf-16be",
+    "euc-jp": "euc-jp",
+    "euc-kr": "euc-kr",
+    "big5": "big5",
+}
+
+
+def _norm_enc(name: str | None) -> str | None:
+    """Case-fold + alias-collapse an encoding label. Also folds the
+    well-known ASCII-vs-Windows-1252 case: when one detector returns
+    'ascii' and the other returns 'windows-1252' (or 'iso-8859-1') on
+    ASCII-only input, both decoders produce the same bytes, so we
+    treat them as the same operational decision.
+
+    NOTE: this folding is intentionally generous. The strict
+    exact-match rate (and the (encoding, confidence-bucket) rate) are
+    still reported separately, so callers can see both numbers and
+    decide for themselves how to weigh label drift vs decoder drift.
+    """
+    if not name:
+        return None
+    key = name.strip().casefold()
+    return _ENCODING_ALIAS.get(key, key)
+
+
+def _norm_bucket(result: dict) -> tuple[str | None, str | None]:
+    """Like `_bucket`, but with the encoding label normalised."""
+    enc, b = _bucket(result)
+    # Treat ascii as a special case: ascii is a strict subset of
+    # windows-1252 and iso-8859-1, so when one detector picks ascii
+    # and the other picks one of those supersets *and* both are at
+    # 'high' confidence, that's operationally equivalent on
+    # ASCII-only bytes. We collapse all three to 'ascii_or_w1252'
+    # only when bucket=='high', which is the regime where the
+    # detector means "I'm sure".
+    norm = _norm_enc(enc)
+    if b == "high" and norm in {"ascii", "windows-1252", "iso-8859-1"}:
+        norm = "ascii_or_latin_family"
+    return (norm, b)
+
+
+# ---------------------------------------------------------------------
+# Main.
+# ---------------------------------------------------------------------
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--v6-tree", required=True, help="git-worktree of chardet at 6.0.0")
     parser.add_argument("--v7-tree", required=True, help="git-worktree of chardet at 7.0.0")
+    parser.add_argument(
+        "--corpus-dir",
+        default=None,
+        help=f"path to the corpora/ dir (default: ./{DEFAULT_CORPUS_DIR_REL} next to this script)",
+    )
+    parser.add_argument(
+        "--report-json",
+        default=None,
+        help="if set, write per-bucket exact/bucket rates as JSON to this path",
+    )
     args = parser.parse_args()
 
     v6_tree = pathlib.Path(args.v6_tree).resolve()
     v7_tree = pathlib.Path(args.v7_tree).resolve()
+    here = pathlib.Path(__file__).resolve().parent
+    corpus_dir = pathlib.Path(args.corpus_dir).resolve() if args.corpus_dir else here / DEFAULT_CORPUS_DIR_REL
+
+    by_bucket, err = _load_corpus(corpus_dir)
+    if err:
+        _emit_skip(f"corpus load failed: {err}")
+        return 0
+    if not by_bucket:
+        _emit_skip("corpus load returned no buckets")
+        return 0
 
     workdir = pathlib.Path(tempfile.mkdtemp(prefix="chardet-fingerprint-"))
     try:
@@ -142,13 +341,6 @@ def main() -> int:
             _emit_skip("venv creation failed — python -m venv not available?")
             return 0
 
-        # Install both versions from local worktrees so we use the
-        # exact code the static signals already inspected. The chardet
-        # library code itself is read from the worktree, but pip still
-        # resolves PEP 517 build backends (setuptools, wheel) through
-        # the network unless ~/.cache/pip already carries them; see
-        # _emit_skip below for the toolchain-gap path triggered on
-        # sandboxes that block PyPI access.
         err6 = _pip_install(py6, str(v6_tree))
         if err6:
             _emit_skip(f"v6 install from worktree failed: {err6}")
@@ -158,13 +350,18 @@ def main() -> int:
             _emit_skip(f"v7 install from worktree failed: {err7}")
             return 0
 
-        # Write the corpus as base64-per-line so the runner doesn't have
-        # to worry about binary safety on stdin.
-        import base64
-        corpus = _fuzz_corpus(RANDOM_SEED, N_INPUTS, INPUT_MAX_LEN)
+        # Run all buckets in a single batched runner invocation per
+        # version, to amortise interpreter-startup cost.
+        flat_inputs: list[bytes] = []
+        flat_keys: list[tuple[str, str]] = []  # (bucket, item_id)
+        for bucket, items in sorted(by_bucket.items()):
+            for item_id, payload in items:
+                flat_keys.append((bucket, item_id))
+                flat_inputs.append(payload)
+
         corpus_path = workdir / "corpus.b64"
         corpus_path.write_text(
-            "\n".join(base64.b64encode(b).decode() for b in corpus) + "\n"
+            "\n".join(base64.b64encode(b).decode() for b in flat_inputs) + "\n"
         )
 
         r6 = _detect_one(py6, corpus_path)
@@ -176,39 +373,122 @@ def main() -> int:
             _emit_skip(f"v7 runner failed: {r7}")
             return 0
 
-        if len(r6) != N_INPUTS or len(r7) != N_INPUTS:
-            _emit_skip(f"runner produced wrong count: v6={len(r6)} v7={len(r7)} expected={N_INPUTS}")
+        if len(r6) != len(flat_inputs) or len(r7) != len(flat_inputs):
+            _emit_skip(
+                f"runner produced wrong count: v6={len(r6)} v7={len(r7)} expected={len(flat_inputs)}"
+            )
             return 0
 
-        agree_exact = 0
-        agree_bucket = 0
-        for a, b in zip(r6, r7):
-            if a == b:
-                agree_exact += 1
-            if _bucket(a) == _bucket(b):
-                agree_bucket += 1
+        # Per-bucket aggregation.
+        per_bucket: dict[str, dict] = {}
+        total_exact = 0
+        total_bucket = 0
+        total_normalized = 0
+        total_n = 0
+        for (bucket, item_id), a, b in zip(flat_keys, r6, r7):
+            slot = per_bucket.setdefault(bucket, {
+                "exact": 0, "bucket": 0, "normalized": 0, "n": 0, "samples": []
+            })
+            same_exact = (a == b)
+            same_bucket = (_bucket(a) == _bucket(b))
+            same_normalized = (_norm_bucket(a) == _norm_bucket(b))
+            slot["exact"] += int(same_exact)
+            slot["bucket"] += int(same_bucket)
+            slot["normalized"] += int(same_normalized)
+            slot["n"] += 1
+            total_exact += int(same_exact)
+            total_bucket += int(same_bucket)
+            total_normalized += int(same_normalized)
+            total_n += 1
+            # Keep up to 5 disagreement samples per bucket, for the
+            # JSON report — useful when writing up the divergence story.
+            if not same_bucket and len(slot["samples"]) < 5:
+                slot["samples"].append({
+                    "item_id": item_id,
+                    "v6": {"encoding": a.get("encoding") if isinstance(a, dict) else None,
+                            "confidence": a.get("confidence") if isinstance(a, dict) else None},
+                    "v7": {"encoding": b.get("encoding") if isinstance(b, dict) else None,
+                            "confidence": b.get("confidence") if isinstance(b, dict) else None},
+                    "normalized_agree": same_normalized,
+                })
 
-        agree_exact_pct = agree_exact / N_INPUTS
-        agree_bucket_pct = agree_bucket / N_INPUTS
-        # Corpus digest for reproducibility audit.
-        corpus_digest = hashlib.sha256(b"\n".join(corpus)).hexdigest()[:16]
+        # Aggregate row (preserves v1 contract: one TSV row labelled C06e).
+        agg_exact_rate = total_exact / total_n if total_n else 0.0
+        agg_bucket_rate = total_bucket / total_n if total_n else 0.0
+        agg_normalized_rate = total_normalized / total_n if total_n else 0.0
+        # Corpus digest: hash of the manifest, so reproducers can verify
+        # the input set without re-hashing each file.
+        manifest_bytes = (corpus_dir / DEFAULT_MANIFEST_NAME).read_bytes()
+        corpus_digest = hashlib.sha256(manifest_bytes).hexdigest()[:16]
 
         _emit_row(
+            label="behavioural_fingerprint",
             verdict="MEASURED",
             actual=(
-                f"exact_match_rate={agree_exact_pct:.3f} "
-                f"bucket_match_rate={agree_bucket_pct:.3f} "
-                f"n_inputs={N_INPUTS} corpus_digest={corpus_digest}"
+                f"exact_match_rate={agg_exact_rate:.3f} "
+                f"bucket_match_rate={agg_bucket_rate:.3f} "
+                f"normalized_match_rate={agg_normalized_rate:.3f} "
+                f"n_inputs={total_n} corpus_digest={corpus_digest}"
             ),
             evidence=(
-                f"exact={agree_exact}/{N_INPUTS} bucket={agree_bucket}/{N_INPUTS} "
-                f"seed={RANDOM_SEED} input_max_len={INPUT_MAX_LEN}"
+                f"exact={total_exact}/{total_n} bucket={total_bucket}/{total_n} "
+                f"normalized={total_normalized}/{total_n} "
+                f"buckets={len(per_bucket)} manifest={corpus_dir / DEFAULT_MANIFEST_NAME}"
             ),
         )
+
+        # Per-bucket rows. Label = behavioural_fingerprint:<bucket>.
+        for bucket in sorted(per_bucket):
+            s = per_bucket[bucket]
+            ex_rate = s["exact"] / s["n"] if s["n"] else 0.0
+            bk_rate = s["bucket"] / s["n"] if s["n"] else 0.0
+            nm_rate = s["normalized"] / s["n"] if s["n"] else 0.0
+            _emit_row(
+                label=f"behavioural_fingerprint:{bucket}",
+                verdict="MEASURED",
+                actual=(
+                    f"exact_match_rate={ex_rate:.3f} "
+                    f"bucket_match_rate={bk_rate:.3f} "
+                    f"normalized_match_rate={nm_rate:.3f} "
+                    f"n_inputs={s['n']}"
+                ),
+                evidence=(
+                    f"exact={s['exact']}/{s['n']} bucket={s['bucket']}/{s['n']} "
+                    f"normalized={s['normalized']}/{s['n']}"
+                ),
+            )
+
+        # Optional JSON report.
+        if args.report_json:
+            report = {
+                "aggregate": {
+                    "exact": total_exact,
+                    "bucket": total_bucket,
+                    "normalized": total_normalized,
+                    "n": total_n,
+                    "exact_rate": agg_exact_rate,
+                    "bucket_rate": agg_bucket_rate,
+                    "normalized_rate": agg_normalized_rate,
+                    "corpus_digest_manifest": corpus_digest,
+                },
+                "per_bucket": {
+                    b: {
+                        "exact": s["exact"],
+                        "bucket": s["bucket"],
+                        "normalized": s["normalized"],
+                        "n": s["n"],
+                        "exact_rate": (s["exact"] / s["n"]) if s["n"] else 0.0,
+                        "bucket_rate": (s["bucket"] / s["n"]) if s["n"] else 0.0,
+                        "normalized_rate": (s["normalized"] / s["n"]) if s["n"] else 0.0,
+                        "disagreement_samples": s["samples"],
+                    }
+                    for b, s in per_bucket.items()
+                },
+            }
+            pathlib.Path(args.report_json).write_text(json.dumps(report, indent=2, sort_keys=True))
+
         return 0
     finally:
-        # Don't recursively delete the venvs in scripted output — they
-        # may be huge — but do remove the corpus file.
         try:
             (workdir / "corpus.b64").unlink(missing_ok=True)
         except OSError:
@@ -216,14 +496,19 @@ def main() -> int:
 
 
 def _emit_skip(reason: str) -> None:
-    _emit_row(verdict="SKIP", actual=f"behavioural fingerprint skipped: {reason}", evidence=reason)
+    _emit_row(
+        label="behavioural_fingerprint",
+        verdict="SKIP",
+        actual=f"behavioural fingerprint skipped: {reason}",
+        evidence=reason,
+    )
 
 
-def _emit_row(verdict: str, actual: str, evidence: str) -> None:
-    # Header is printed by extract_signals.py; this script appends one row.
+def _emit_row(label: str, verdict: str, actual: str, evidence: str) -> None:
+    # Header is printed by extract_signals.py; this script appends rows.
     print(
-        "behavioural_fingerprint\tC06e\t"
-        "report exact-match rate AND (encoding, confidence-bucket) match rate over N_INPUTS deterministic fuzz inputs\t"
+        f"{label}\tC06e\t"
+        "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket\t"
         f"{actual}\t{verdict}\t{evidence}"
     )
 

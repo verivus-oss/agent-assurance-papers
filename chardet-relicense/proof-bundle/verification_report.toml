@@ -132,7 +132,7 @@ verified_by = [
 [[contracts]]
 id          = "V06"
 domain      = "detect_sh_emits_six_signal_rows"
-statement   = "When detect.sh runs against the actual chardet clone with tags 6.0.0 and 7.0.0, the combined output (extract_signals.py + fingerprint_behavior.py) contains exactly six data rows whose `contract` column values are exactly the set {AUX1, C06a, C06b, C06c, C06d, C06e}, plus a header row, plus a `# SUMMARY` block. The DELEGATED placeholder row from extract_signals.py for C06e MUST NOT appear in the final output (detect.sh filters it before printing); the real C06e row from fingerprint_behavior.py replaces it."
+statement   = "When detect.sh runs against the actual chardet clone with tags 6.0.0 and 7.0.0, the combined output (extract_signals.py + fingerprint_behavior.py) contains a header row, one data row each for AUX1, C06a, C06b, C06c, C06d (signal column values 'literal_source_carryover', 'call_graph_topology', 'import_edge_set', 'control_flow_histogram', 'public_api_signature_equivalence'), one aggregate data row for C06e (signal column 'behavioural_fingerprint'), one additional data row per corpus bucket present in `corpora/MANIFEST.tsv` (signal column 'behavioural_fingerprint:<bucket>'), and a final `# SUMMARY` block. The DELEGATED placeholder row from extract_signals.py for C06e MUST NOT appear in the final output (detect.sh filters it before printing); the real C06e rows from fingerprint_behavior.py replace it. The v1 paper emitted exactly six data rows (one per contract); the v2 paper emits 5 static rows plus 1 + N_buckets C06e rows in response to reviewer R3."
 applies_to  = [
   "chardet-relicense/proof-bundle/detect.sh",
   "chardet-relicense/proof-bundle/extract_signals.py",
@@ -160,7 +160,7 @@ verified_by = ["chardet-relicense/proof-bundle/extract_signals.py (_CONTROL_FLOW
 [[contracts]]
 id          = "V09"
 domain      = "c06e_runs_or_skips_cleanly"
-statement   = "C06e (behavioural fingerprint) MUST either (a) succeed and emit a TSV row with verdict=MEASURED reporting exact_match_rate and bucket_match_rate over a deterministic 1000-input fuzz corpus (seed 20260522), OR (b) emit a TSV row with verdict=SKIP and the literal failure reason (venv creation failed / pip install failed / runner crashed / wrong output shape). It MUST NOT silently exit nonzero; the reviewer MUST observe one of these two outcomes."
+statement   = "C06e (behavioural fingerprint) MUST either (a) succeed and emit an aggregate TSV row with verdict=MEASURED reporting exact_match_rate, bucket_match_rate and normalized_match_rate over the multi-bucket corpus described by `chardet-relicense/proof-bundle/corpora/MANIFEST.tsv` (which retains the legacy 1000-input random-bytes distribution as the `random_control` bucket) PLUS one additional MEASURED row per corpus bucket, OR (b) emit a single TSV row with verdict=SKIP and the literal failure reason (corpus load failed / venv creation failed / pip install failed / runner crashed / wrong output shape). It MUST NOT silently exit nonzero; the reviewer MUST observe one of these two outcomes."
 applies_to  = ["chardet-relicense/proof-bundle/fingerprint_behavior.py"]
 verified_by = [
   "chardet-relicense/proof-bundle/fingerprint_behavior.py (main function exit paths)",

@@ -1,0 +1,96 @@
+
+ 
+
+
+
+
+     RFC #  822
+
+     Obsoletes:  RFC #733  (NIC #41952)
+
+
+
+
+
+
+
+
+
+
+
+
+                        STANDARD FOR THE FORMAT OF
+
+                        ARPA INTERNET TEXT MESSAGES
+
+
+
+
+
+
+                              August 13, 1982
+
+
+
+
+
+
+                                Revised by
+
+                             David H. Crocker
+
+
+                      Dept. of Electrical Engineering
+                 University of Delaware, Newark, DE  19711
+                      Network:  DCrocker @ UDel-Relay
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+     Standard for ARPA Internet Text Messages
+
+
+                             TABLE OF CONTENTS
+
+
+     PREFACE ....................................................   ii
+
+     1.  INTRODUCTION ...........................................    1
+
+         1.1.  Scope ............................................    1
+         1.2.  Communication Framework ..........................    2
+
+     2.  NOTATIONAL CONVENTIONS .................................    3
+
+     3.  LEXICAL ANALYSIS OF MESSAGES ...........................    5
+
+         3.1.  General Description ..............................    5
+         3.2.  Header Field Definitions .........................    9
+         3.3.  Lexical Tokens ...................................   10
+         3.4.  Clarifications ...................................   11
+
+     4.  MESSAGE SPECIFICATION ..................................   17
+
+         4.1.  Syntax ...........................................   17
+         4.2.  Forwarding .......................................   19
+         4.3.  Trace Fields .....................................   20
+         4.4.  Originator Fields ................................   21
+         4.5.  Receiver Fields ..................................   23
+         4.6.  Reference Fields .................................   23
+         4.7.  Other Fields .....................................   24
+
+     5.  DATE AND TIME SPECIFICATION ............................   26
+
+         5.1.  Syntax ...........................................   26
+        
