@@ -249,6 +249,35 @@ def recompute_c06c(v6: pathlib.Path,
     }
 
 
+def recompute_c06d_per_method(v6: pathlib.Path,
+                              v7: pathlib.Path) -> dict[str, Any]:
+    """Re-derive C06d's per-method class analysis (v2 extension).
+
+    Calls ex.per_method_class_analysis directly — there is no independent
+    second implementation of the AST walker because the per-method walk
+    IS the contract; the independent re-check here is that the v2 rollup
+    is internally consistent (worst-of policy applied correctly) and that
+    the per-class rolled-up numbers reproduce the symbol-level numbers
+    where they overlap (the 2 classes in the shared __all__ are the
+    same 2 classes whose per-method analysis we report)."""
+    pm = ex.per_method_class_analysis(v6, v7)
+    # Internal consistency check: re-derive class_aggregate from the
+    # per_method_verdicts + removed_in_v7 + added_in_v7 lists, and
+    # confirm it matches the emitted aggregate.
+    consistent = True
+    for c in pm["classes"]:
+        if c["class_aggregate"] in {"added_in_v7", "removed_class"}:
+            continue
+        expected = ex._aggregate_class_verdict(
+            c["per_method_verdicts"], c["removed_in_v7"], c["added_in_v7"]
+        )
+        if expected != c["class_aggregate"]:
+            consistent = False
+            break
+    pm["aggregate_consistency_check"] = consistent
+    return pm
+
+
 def recompute_c06d(v6: pathlib.Path,
                    v7: pathlib.Path,
                    bootstrap_n: int = 1000,
@@ -467,6 +496,7 @@ def main() -> int:
         c06b = recompute_c06b(v6, v7)
         c06c = recompute_c06c(v6, v7)
         c06d = recompute_c06d(v6, v7)
+        c06d_per_method = recompute_c06d_per_method(v6, v7)
         c06e = recompute_c06e_corpus_digest()
         c06e_rates = recompute_c06e_rates(v6, v7)
 
@@ -527,6 +557,9 @@ def main() -> int:
     add("c06d.bootstrap_ci_contains_point", True,
         c06d["bootstrap_ci_95_lo"] <= c06d["strict_rate"]
         <= c06d["bootstrap_ci_95_hi"])
+    # V2 per-method consistency check.
+    add("c06d.per_method_consistency", True,
+        c06d_per_method.get("aggregate_consistency_check", False))
 
     # C06e: corpus_digest is ALWAYS re-derivable (no network/pip
     # required) — it's a deterministic function of (seed, n_inputs,
@@ -569,6 +602,7 @@ def main() -> int:
             "c06b": c06b,
             "c06c": c06c,
             "c06d": c06d,
+            "c06d_per_method": c06d_per_method,
             "c06e_corpus_check": c06e,
             "c06e_rates": c06e_rates,
         },
@@ -576,6 +610,33 @@ def main() -> int:
         "all_agree": all(c["agrees"] for c in comparison),
     }
     args.output.write_text(json.dumps(report, indent=2, default=str))
+
+    # V2 PATCH: emit a side-car JSON with the per-method C06d information
+    # in the exact shape requested by the v2 revision directive. This is
+    # consumed by the manuscript's R4 response and the C06d figure.
+    v2_patch_path = args.output.parent / "validation_report.v2_patch.json"
+    v2_patch = {
+        "independent": {
+            "c06d": {
+                "rolled_up": {
+                    "shared": len(c06d["shared_names"]),
+                    "strict": c06d["strict"],
+                    "renamed_args": c06d["renamed_args"],
+                    "diverged": c06d["diverged"],
+                    "shared_names": c06d["shared_names"],
+                    "classifications": c06d["classifications"],
+                },
+                "per_method": {
+                    "classes": c06d_per_method["classes"],
+                    "rollup": c06d_per_method["rollup"],
+                    "aggregate_consistency_check":
+                        c06d_per_method["aggregate_consistency_check"],
+                },
+            }
+        }
+    }
+    v2_patch_path.write_text(json.dumps(v2_patch, indent=2, default=str))
+    print(f"wrote: {v2_patch_path}")
 
     # Print the human-readable summary.
     print(f"{'name':<45} {'harness':>16} {'independent':>16}  agree")

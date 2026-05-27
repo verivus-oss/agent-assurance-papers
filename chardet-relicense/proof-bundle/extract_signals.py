@@ -497,10 +497,476 @@ def _signature_match(a: dict, b: dict) -> str:
     return "diverged"
 
 
+# ----------------------------------------------------------------------------
+# C06d (per-method extension) — walk class bodies and compare each method.
+#
+# Added in v2 in response to reviewer R4: "the class-level 'diverged' verdict
+# without per-method inspection is a blind spot — a class might be 90% strict
+# at the method level with a couple of signature shifts, and rolling that up
+# to one 'diverged' label hides what is actually going on." The extension
+# below walks every public class exported from `__all__` in both versions
+# AND emits, for each name-equal method pair, a strict / renamed_args /
+# diverged verdict computed from {signature, raised exception types,
+# return annotation, documented public attributes}.
+#
+# AST-only. No runtime import. Method matching is name-equal (a renamed-
+# method matcher is deferred to a future revision).
+# ----------------------------------------------------------------------------
+
+
+def _annotation_text(node: ast.AST | None) -> str | None:
+    """Render an annotation AST back to source-style text for comparison.
+
+    We use ast.unparse (py3.9+) which gives a stable textual form. The
+    text comparison is the equivalence relation we use — two annotations
+    are 'identical' iff their unparse strings match, modulo a small set
+    of normalisations (Optional[X] vs X | None, Union[X, Y] vs X | Y)."""
+    if node is None:
+        return None
+    try:
+        raw = ast.unparse(node)
+    except Exception:
+        return None
+    # Normalise the two common Optional / Union spellings so PEP-604 union
+    # syntax in v7 doesn't look like a divergence from typing.Optional in v6.
+    return _normalise_annotation(raw)
+
+
+def _normalise_annotation(text: str) -> str:
+    """Best-effort normalisation: Optional[X] -> X | None;
+    Union[A, B] -> A | B; collapse whitespace.
+
+    Done with string parsing because the goal is comparison stability for
+    a small, well-known set of annotations in the chardet public API, not
+    full type-theoretic equivalence."""
+    s = " ".join(text.split())
+    # Optional[X] -> X | None
+    while True:
+        i = s.find("Optional[")
+        if i < 0:
+            break
+        # find matching ]
+        depth = 0
+        j = i + len("Optional[")
+        start = j
+        while j < len(s):
+            if s[j] == "[":
+                depth += 1
+            elif s[j] == "]":
+                if depth == 0:
+                    break
+                depth -= 1
+            j += 1
+        if j >= len(s):
+            break
+        inner = s[start:j]
+        s = s[:i] + inner + " | None" + s[j + 1:]
+    # Union[A, B, ...] -> A | B | ...
+    while True:
+        i = s.find("Union[")
+        if i < 0:
+            break
+        depth = 0
+        j = i + len("Union[")
+        start = j
+        while j < len(s):
+            if s[j] == "[":
+                depth += 1
+            elif s[j] == "]":
+                if depth == 0:
+                    break
+                depth -= 1
+            j += 1
+        if j >= len(s):
+            break
+        inner = s[start:j]
+        # split inner on top-level commas
+        parts: list[str] = []
+        depth2 = 0
+        buf = ""
+        for ch in inner:
+            if ch == "," and depth2 == 0:
+                parts.append(buf.strip())
+                buf = ""
+            else:
+                if ch == "[":
+                    depth2 += 1
+                elif ch == "]":
+                    depth2 -= 1
+                buf += ch
+        if buf.strip():
+            parts.append(buf.strip())
+        s = s[:i] + " | ".join(parts) + s[j + 1:]
+    return " ".join(s.split())
+
+
+def _describe_method(node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict:
+    """Describe a single method for cross-version comparison.
+
+    Returns a dict with:
+      * positional arg names (excluding `self`),
+      * positional arg count,
+      * keyword-only arg names,
+      * keyword-only arg count,
+      * default counts (positional + kw-only),
+      * vararg / kwarg presence,
+      * normalised return annotation text (None if not annotated),
+      * sorted tuple of statically-visible raised exception type names
+        (best-effort: any `raise Foo(...)` or `raise Foo` in the body).
+    """
+    args = node.args
+    pos_args = [a.arg for a in args.args]
+    if pos_args and pos_args[0] in ("self", "cls"):
+        pos_args = pos_args[1:]
+    kw_only = [a.arg for a in args.kwonlyargs]
+    pos_defaults = len(args.defaults)
+    kw_defaults = len([d for d in args.kw_defaults if d is not None])
+    has_vararg = args.vararg is not None
+    has_kwarg = args.kwarg is not None
+    return_anno = _annotation_text(node.returns)
+
+    raised: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Raise) and child.exc is not None:
+            exc = child.exc
+            if isinstance(exc, ast.Call):
+                exc = exc.func
+            if isinstance(exc, ast.Name):
+                raised.add(exc.id)
+            elif isinstance(exc, ast.Attribute):
+                raised.add(exc.attr)
+        elif isinstance(child, ast.Raise) and child.exc is None:
+            # bare `raise` (re-raise inside except) — record a sentinel
+            raised.add("<bare-reraise>")
+
+    return {
+        "kind": "method",
+        "name": node.name,
+        "pos_args": pos_args,
+        "pos_arg_count": len(pos_args),
+        "kw_only_args": kw_only,
+        "kw_only_count": len(kw_only),
+        "pos_defaults": pos_defaults,
+        "kw_defaults": kw_defaults,
+        "has_vararg": has_vararg,
+        "has_kwarg": has_kwarg,
+        "return_annotation": return_anno,
+        "raised": sorted(raised),
+    }
+
+
+def _describe_class_attributes(node: ast.ClassDef) -> list[str]:
+    """Extract the names of attributes declared at class-body level or
+    assigned inside `__init__` via `self.<name> = ...`.
+
+    Public attributes only (not starting with underscore)."""
+    attrs: set[str] = set()
+    for child in node.body:
+        # Class-body assignments: `name = value` or `name: T = value`.
+        if isinstance(child, ast.Assign):
+            for tgt in child.targets:
+                if isinstance(tgt, ast.Name) and not tgt.id.startswith("_"):
+                    attrs.add(tgt.id)
+        elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+            if not child.target.id.startswith("_"):
+                attrs.add(child.target.id)
+        elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == "__init__":
+            for sub in ast.walk(child):
+                if isinstance(sub, ast.Assign):
+                    for tgt in sub.targets:
+                        if (isinstance(tgt, ast.Attribute)
+                                and isinstance(tgt.value, ast.Name)
+                                and tgt.value.id == "self"
+                                and not tgt.attr.startswith("_")):
+                            attrs.add(tgt.attr)
+                elif isinstance(sub, ast.AnnAssign):
+                    tgt = sub.target
+                    if (isinstance(tgt, ast.Attribute)
+                            and isinstance(tgt.value, ast.Name)
+                            and tgt.value.id == "self"
+                            and not tgt.attr.startswith("_")):
+                        attrs.add(tgt.attr)
+    return sorted(attrs)
+
+
+def _method_match(m6: dict, m7: dict) -> str:
+    """Classify a (v6, v7) method pair.
+
+    strict        — signature, return annotation, raised-exception set
+                    are all identical (or both absent).
+    renamed_args  — positional structure (count + defaults + vararg/kwarg
+                    presence) is identical, return annotation matches,
+                    raised-exception set matches, but positional or
+                    kw-only arg NAMES differ.
+    diverged      — anything else."""
+    raised_eq = set(m6.get("raised", [])) == set(m7.get("raised", []))
+    return_eq = (m6.get("return_annotation") == m7.get("return_annotation"))
+
+    if m6 == m7:
+        return "strict"
+
+    structure_eq = (
+        m6.get("pos_arg_count") == m7.get("pos_arg_count")
+        and m6.get("kw_only_count") == m7.get("kw_only_count")
+        and m6.get("pos_defaults") == m7.get("pos_defaults")
+        and m6.get("kw_defaults") == m7.get("kw_defaults")
+        and m6.get("has_vararg") == m7.get("has_vararg")
+        and m6.get("has_kwarg") == m7.get("has_kwarg")
+    )
+    if structure_eq and return_eq and raised_eq:
+        # Same shape but different identifier names — renamed_args.
+        return "renamed_args"
+    return "diverged"
+
+
+def _aggregate_class_verdict(per_method: dict[str, str], removed: list[str], added: list[str]) -> str:
+    """Roll up a per-method verdict map plus removed/added method lists
+    into a single class-level verdict.
+
+    Worst-of policy:
+      * If any method is `diverged`, OR any method was removed in v7,
+        OR any method was added in v7, the class is `diverged`.
+        (We treat added v7 methods conservatively: a NEW public method
+        in v7 IS a public-API contract change. However, see below: we
+        only count public methods, so v7-internal helpers don't count.)
+      * Else if any method is `renamed_args`, the class is `renamed_args`.
+      * Else the class is `strict`."""
+    if removed:
+        return "diverged"
+    if added:
+        return "diverged"
+    verdicts = set(per_method.values())
+    if "diverged" in verdicts:
+        return "diverged"
+    if "renamed_args" in verdicts:
+        return "renamed_args"
+    return "strict"
+
+
+def _resolve_module_path(root: pathlib.Path, dotted: str) -> pathlib.Path | None:
+    """Resolve `chardet.detector` to an actual .py file under either
+    `<root>/<module>.py` or `<root>/src/<module>.py`."""
+    rel = dotted.replace(".", "/") + ".py"
+    for base in (root, root / "src"):
+        candidate = base / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _collect_public_classes(root: pathlib.Path) -> dict[str, ast.ClassDef]:
+    """For each class name in `__all__`, return its AST ClassDef.
+
+    Looks under `<root>/chardet/__init__.py` and `<root>/src/chardet/__init__.py`,
+    parses the `__all__` list and follows `from chardet.<mod> import Name`
+    edges to the defining module. Names with no resolvable definition (e.g.
+    they refer to a re-export from a submodule that doesn't expose them as a
+    class, or to a non-class symbol) are simply skipped.
+    """
+    init_candidates = [
+        root / "chardet" / "__init__.py",
+        root / "src" / "chardet" / "__init__.py",
+    ]
+    init = next((p for p in init_candidates if p.is_file()), None)
+    if init is None:
+        return {}
+    try:
+        init_tree = ast.parse(init.read_text(encoding="utf-8", errors="replace"))
+    except (SyntaxError, UnicodeDecodeError):
+        return {}
+
+    all_names: set[str] = set()
+    import_origins: dict[str, str] = {}
+    for node in init_tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "__all__"
+            and isinstance(node.value, (ast.List, ast.Tuple))
+        ):
+            for elt in node.value.elts:
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    all_names.add(elt.value)
+        if isinstance(node, ast.ImportFrom) and node.module:
+            # Relative imports (`from .enums import EncodingEra`) carry
+            # node.level >= 1 and node.module == "enums"; we resolve them
+            # under the chardet/ package directory. Absolute imports
+            # (`from chardet.detector import UniversalDetector`) carry
+            # node.level == 0 and node.module == "chardet.detector".
+            level = node.level or 0
+            if level > 0:
+                # Resolve relative to the package containing __init__.py.
+                module = f"chardet.{node.module}"
+            else:
+                module = node.module
+            for alias in node.names:
+                local_name = alias.asname or alias.name
+                import_origins[local_name] = module
+
+    out: dict[str, ast.ClassDef] = {}
+
+    # Locally-defined classes in __init__.py.
+    for node in init_tree.body:
+        if isinstance(node, ast.ClassDef) and node.name in all_names:
+            out[node.name] = node
+
+    # Classes imported from submodules.
+    for name in all_names - set(out):
+        origin = import_origins.get(name)
+        if not origin:
+            continue
+        mod_path = _resolve_module_path(root, origin)
+        if mod_path is None:
+            continue
+        try:
+            sub_tree = ast.parse(mod_path.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in sub_tree.body:
+            if isinstance(node, ast.ClassDef) and node.name == name:
+                out[name] = node
+                break
+
+    return out
+
+
+def _enumerate_public_methods(cls: ast.ClassDef) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Return {method_name: FunctionDef} for every method defined directly
+    in the class body. Public = does not start with `_` EXCEPT for the
+    `__init__` / `__call__` / `__enter__` / `__exit__` / `__iter__` /
+    `__next__` / `__len__` / `__repr__` dunder methods which are part of
+    the documented public API."""
+    PUBLIC_DUNDERS = {
+        "__init__", "__call__", "__enter__", "__exit__",
+        "__iter__", "__next__", "__len__", "__repr__",
+        "__getitem__", "__setitem__", "__contains__",
+    }
+    out: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    for child in cls.body:
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if child.name.startswith("_") and child.name not in PUBLIC_DUNDERS:
+                continue
+            out[child.name] = child
+    return out
+
+
+def per_method_class_analysis(v6: pathlib.Path, v7: pathlib.Path) -> dict:
+    """Per-method analysis of every public-API class in v6 vs v7.
+
+    For each public class defined in v6's `__all__`:
+      * Resolve the v7 class with the same name (if missing, the class is
+        `removed` and skipped from the per-method comparison).
+      * Enumerate public methods on both sides.
+      * Classify every name-equal method pair as strict / renamed_args /
+        diverged.
+      * Roll up to a class-level verdict via worst-of.
+
+    Returns the structured result described in v2 contract C06d:
+        {
+          "classes": [
+            {
+              "class_name": ...,
+              "v6_methods": [...],
+              "v7_methods": [...],
+              "removed_in_v7": [...],
+              "added_in_v7": [...],
+              "per_method_verdicts": {name: verdict},
+              "v6_attributes": [...],
+              "v7_attributes": [...],
+              "removed_attributes": [...],
+              "added_attributes": [...],
+              "class_aggregate": verdict,
+            }, ...
+          ],
+          "rollup": {strict, renamed_args, diverged, removed_class}
+        }
+    """
+    v6_classes = _collect_public_classes(v6)
+    v7_classes = _collect_public_classes(v7)
+    # Per task: walk every public class in v6 AND v7 (union by name).
+    all_class_names = sorted(set(v6_classes) | set(v7_classes))
+
+    classes_out: list[dict] = []
+    rollup: Counter[str] = Counter()
+    for name in all_class_names:
+        c6 = v6_classes.get(name)
+        c7 = v7_classes.get(name)
+        if c6 is None:
+            classes_out.append({
+                "class_name": name,
+                "v6_methods": [],
+                "v7_methods": sorted(_enumerate_public_methods(c7) if c7 else {}),
+                "removed_in_v7": [],
+                "added_in_v7": sorted(_enumerate_public_methods(c7) if c7 else {}),
+                "per_method_verdicts": {},
+                "v6_attributes": [],
+                "v7_attributes": _describe_class_attributes(c7) if c7 else [],
+                "removed_attributes": [],
+                "added_attributes": _describe_class_attributes(c7) if c7 else [],
+                "class_aggregate": "added_in_v7",
+            })
+            rollup["added_in_v7"] += 1
+            continue
+        if c7 is None:
+            classes_out.append({
+                "class_name": name,
+                "v6_methods": sorted(_enumerate_public_methods(c6)),
+                "v7_methods": [],
+                "removed_in_v7": sorted(_enumerate_public_methods(c6)),
+                "added_in_v7": [],
+                "per_method_verdicts": {},
+                "v6_attributes": _describe_class_attributes(c6),
+                "v7_attributes": [],
+                "removed_attributes": _describe_class_attributes(c6),
+                "added_attributes": [],
+                "class_aggregate": "removed_class",
+            })
+            rollup["removed_class"] += 1
+            continue
+
+        m6 = _enumerate_public_methods(c6)
+        m7 = _enumerate_public_methods(c7)
+        removed = sorted(set(m6) - set(m7))
+        added = sorted(set(m7) - set(m6))
+        per_method_verdicts: dict[str, str] = {}
+        for meth_name in sorted(set(m6) & set(m7)):
+            d6 = _describe_method(m6[meth_name])
+            d7 = _describe_method(m7[meth_name])
+            per_method_verdicts[meth_name] = _method_match(d6, d7)
+
+        a6 = _describe_class_attributes(c6)
+        a7 = _describe_class_attributes(c7)
+        agg = _aggregate_class_verdict(per_method_verdicts, removed, added)
+        rollup[agg] += 1
+
+        classes_out.append({
+            "class_name": name,
+            "v6_methods": sorted(m6),
+            "v7_methods": sorted(m7),
+            "removed_in_v7": removed,
+            "added_in_v7": added,
+            "per_method_verdicts": per_method_verdicts,
+            "v6_attributes": a6,
+            "v7_attributes": a7,
+            "removed_attributes": sorted(set(a6) - set(a7)),
+            "added_attributes": sorted(set(a7) - set(a6)),
+            "class_aggregate": agg,
+        })
+
+    return {"classes": classes_out, "rollup": dict(rollup)}
+
+
 def signal_c06d_signature_equivalence(v6: pathlib.Path, v7: pathlib.Path) -> dict:
     s6 = _collect_public_signatures(v6)
     s7 = _collect_public_signatures(v7)
     common = sorted(set(s6) & set(s7))
+
+    # V2 extension: walk class bodies and classify per-method. The class-
+    # level rollup is computed via worst-of over the per-method verdicts.
+    # See per_method_class_analysis() docstring for the precise definition.
+    per_method = per_method_class_analysis(v6, v7)
+
     if not common:
         return {
             "signal": "public_api_signature_equivalence",
@@ -509,16 +975,31 @@ def signal_c06d_signature_equivalence(v6: pathlib.Path, v7: pathlib.Path) -> dic
             "actual": f"v6_public={len(s6)} v7_public={len(s7)} shared=0",
             "verdict": "INCONCLUSIVE",
             "evidence": "no public symbols are present in both versions' __all__",
+            "per_method": per_method,
         }
     breakdown = Counter(_signature_match(s6[name], s7[name]) for name in common)
     examples = [f"{name}={_signature_match(s6[name], s7[name])}" for name in common[:8]]
+    cls_rollup = per_method.get("rollup", {})
+    cls_summary = (
+        f"per_method_classes: strict={cls_rollup.get('strict', 0)} "
+        f"renamed_args={cls_rollup.get('renamed_args', 0)} "
+        f"diverged={cls_rollup.get('diverged', 0)}"
+    )
     return {
         "signal": "public_api_signature_equivalence",
         "contract": "C06d",
-        "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols",
-        "actual": f"shared={len(common)} strict={breakdown.get('strict', 0)} renamed_args={breakdown.get('renamed_args', 0)} diverged={breakdown.get('diverged', 0)}",
+        "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols PLUS per-method verdicts for every public class",
+        "actual": f"shared={len(common)} strict={breakdown.get('strict', 0)} renamed_args={breakdown.get('renamed_args', 0)} diverged={breakdown.get('diverged', 0)}; {cls_summary}",
         "verdict": "MEASURED",
-        "evidence": "; ".join(examples),
+        "evidence": "; ".join(examples + [
+            f"class[{c['class_name']}]={c['class_aggregate']} "
+            f"({sum(1 for v in c['per_method_verdicts'].values() if v == 'strict')}-strict/"
+            f"{sum(1 for v in c['per_method_verdicts'].values() if v == 'renamed_args')}-renamed/"
+            f"{sum(1 for v in c['per_method_verdicts'].values() if v == 'diverged')}-diverged"
+            f"; removed={len(c['removed_in_v7'])}; added={len(c['added_in_v7'])})"
+            for c in per_method["classes"]
+        ]),
+        "per_method": per_method,
     }
 
 

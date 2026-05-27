@@ -71,10 +71,12 @@ verified_by = ["TEST:chardet-relicense::structural-signals"]
 [[contracts]]
 id          = "C06d"
 domain      = "public_api_signature_equivalence"
-statement   = "For each public symbol exported by both versions (the intersection of the two `__all__` lists), the proof MUST extract the declared signature from the defining module (positional-arg count, keyword-only-arg count, default count, return-annotation presence) and classify the match as one of {strict — identical descriptor; renamed_args — same arity and default and return presence but different arg names; diverged — anything else}. The proof MUST report counts of each match category. This is the most direct test of preserved public-API contract."
+statement   = """For each public symbol exported by both versions (the intersection of the two `__all__` lists), the proof MUST extract the declared signature from the defining module (positional-arg count, keyword-only-arg count, default count, return-annotation presence) and classify the match as one of {strict — identical descriptor; renamed_args — same arity and default and return presence but different arg names; diverged — anything else}. The proof MUST report counts of each match category.
+
+V2 extension (reviewer R4): rolling a public class up to a single class-level verdict by signature stub alone is a blind spot — a class might be 90% strict at the method level with a couple of signature shifts. Therefore the proof MUST ALSO, for every public-API class declared in `__all__` on either side, walk its class body and emit a per-method verdict for every name-equal method pair (matched by name; renamed-method matching is deferred). Each method-pair verdict is computed from {positional + keyword-only signature, sorted set of statically-visible raised exception type names, normalised return annotation text}. Methods present in v6 but absent in v7 MUST be reported as `removed`; methods added in v7 MUST be reported as `added`. The class-level aggregate verdict is the worst-of over per-method verdicts, with any removed-or-added public method forcing `diverged`. Public attributes (class-body assignments or `self.<name> = ...` inside `__init__`) MUST be enumerated per class and the removed/added attribute sets reported."""
 applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
 depends_on  = ["AUX1"]
-must_name   = ["shared count", "strict count", "renamed_args count", "diverged count"]
+must_name   = ["shared count", "strict count", "renamed_args count", "diverged count", "per-class method-level verdicts", "per-class removed methods", "per-class added methods", "per-class removed attributes", "per-class added attributes"]
 verified_by = ["TEST:chardet-relicense::structural-signals"]
 
 [[contracts]]
