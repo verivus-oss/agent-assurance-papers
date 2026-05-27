@@ -14,10 +14,11 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{enumitem}
-\usepackage{url}
+\usepackage[hyphens]{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage[capitalise,noabbrev]{cleveref}
 \usepackage{titlesec}
@@ -25,6 +26,7 @@
 % Spacing -- slightly tighter than article default but still arXiv-conventional.
 \setlength{\parskip}{4pt}
 \setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
 \titlespacing*{\section}{0pt}{1.5ex plus .2ex}{0.8ex plus .2ex}
 \titlespacing*{\subsection}{0pt}{1.2ex plus .2ex}{0.5ex plus .2ex}
 
@@ -60,7 +62,7 @@ A Falsifiable Harness Applied to the chardet v6 to v7 Relicensing Dispute}
   \texttt{werner@verivus.com}
 }
 
-\date{May 22, 2026}
+\date{}
 
 \begin{document}
 \maketitle
@@ -439,7 +441,7 @@ running cost on a single workstation. \emph{Renaming-resistance} is
 qualitative: ``none'' means whole-program identifier renaming
 defeats the signal, ``high'' means renaming alone does not.}
 \label{tab:layers}
-\begin{tabular}{lllll}
+\begin{tabularx}{\linewidth}{@{}p{0.21\linewidth}Xp{0.10\linewidth}p{0.13\linewidth}p{0.13\linewidth}@{}}
 \toprule
 Layer & Example tool & Cost & Renaming-resist. & Used here \\
 \midrule
@@ -450,29 +452,25 @@ control-flow histogram & \texttt{ast.walk} & low & high & C06c \\
 import-edge set & \texttt{ast.Import} & low & high & C06b \\
 call-graph topology & \texttt{networkx} + \texttt{ast} & medium & high & C06a \\
 behavioural fuzz & venv install + RNG inputs & high & very high & C06e \\
-tree-edit distance & GumTree~\cite{falleri2014gumtree} & medium--high & medium--high & future \\
-graph kernels & Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler}
-  & medium & high & future \\
-symbolic execution & KLEE~\cite{cadar2008klee}, angr~\cite{shoshitaishvili2016sok}
-  & very high & high & future \\
-data-flow analysis & Soufflé~\cite{jordan2016souffle}
-  & high & high & future \\
-code embeddings & CodeBERT~\cite{feng2020codebert} & medium & statistical only
-  & not used \\
+tree-edit distance & GumTree~\cite{falleri2014gumtree} & med.--high & med.--high & future \\
+graph kernels & Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler} & medium & high & future \\
+symbolic execution & KLEE~\cite{cadar2008klee}, angr~\cite{shoshitaishvili2016sok} & very high & high & future \\
+data-flow analysis & Soufflé~\cite{jordan2016souffle} & high & high & future \\
+code embeddings & CodeBERT~\cite{feng2020codebert} & medium & statistical only & not used \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \section{The Six Signals}
 \label{sec:signals}
 
 The six signals are declared as TOML contracts in
-\texttt{CONTRACT\_DECLARATION.toml}~\cite{verivus2026dagtoml} and
+\texttt{contract\_declaration.toml}~\cite{verivus2026dagtoml} and
 implemented as Python in \texttt{extract\_signals.py} and
 \texttt{fingerprint\_behavior.py}. We summarise each below; the
-full implementations are in the bundle and are 589 plus 228
+full implementations are in the bundle and are 589 plus 232
 lines of code respectively (verified via \texttt{wc -l} at commit
-\texttt{220cff4}).
+\texttt{6acef08}).
 
 \subsection{AUX1 -- Literal source carryover (baseline)}
 \label{sec:aux1}
@@ -580,7 +578,7 @@ via \texttt{scipy.spatial.distance.cosine} and the formula form, of
 C06d's strict / renamed / diverged counts, and of C06e's input-corpus
 reproducibility from the same RNG seed appears in
 \cref{sec:numeric-validation} and is recorded in
-\texttt{chardet-relicense/manuscript/figures/scripts/validation\_report.json}.
+\path{chardet-relicense/manuscript/figures/scripts/validation_report.json}.
 
 \subsection{C06b -- Third-party import-edge set}
 \label{sec:c06b}
@@ -799,7 +797,7 @@ invocation and the bibliographic record of our run.
 \caption{Observed signal values on chardet v6.0.0 vs v7.0.0
 (harness run, May 22, 2026).}
 \label{tab:results}
-\begin{tabular}{lllc}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}p{0.09\linewidth}Xp{0.13\linewidth}@{}}
 \toprule
 Signal & Contract & Value & Verdict \\
 \midrule
@@ -828,7 +826,7 @@ behavioural fingerprint (1000 fuzz) &
   exact 0/1000; bucket 0/1000 &
   MEASURED \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{Interpretation}
@@ -882,7 +880,7 @@ does).
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.78\textwidth]{figures/fig1_implementation_dag.pdf}
-\caption{The six-unit \texttt{IMPLEMENTATION\_DAG.toml}: three
+\caption{The six-unit \texttt{implementation\_dag.toml}: three
 layer-0 units prepare the worktrees and verify prerequisites; two
 layer-1 units extract the static-AST and behavioural signals in
 parallel; one layer-2 unit emits the combined witness.}
@@ -1132,16 +1130,19 @@ longer cheap.
 \label{sec:repro}
 
 The full bundle lives in the public repository
-\texttt{verivus-oss/agent-assurance} under
-\texttt{chardet-relicense/proof-bundle/}~\cite{verivus2026dagtoml}.
+\texttt{verivus-oss/agent-assurance-papers} under
+\texttt{chardet-relicense/proof-bundle/}; the spec and its validators
+live in the sibling public repository
+\texttt{verivus-oss/agent-assurance}~\cite{verivus2026dagtoml}.
 Reproduction:
 
 \begin{lstlisting}[language=bash,caption={End-to-end reproduction.}]
+git clone https://github.com/verivus-oss/agent-assurance-papers.git
 git clone https://github.com/verivus-oss/agent-assurance.git
 git clone https://github.com/chardet/chardet.git \
     /srv/repos/public/spec-poc/chardet-relicense/chardet
 python3 -m pip install -r agent-assurance/requirements.txt
-bash agent-assurance/chardet-relicense/proof-bundle/detect.sh
+bash agent-assurance-papers/chardet-relicense/proof-bundle/detect.sh
 \end{lstlisting}
 
 The harness honours the \texttt{CHARDET\_REPO}, \texttt{CHARDET\_V6\_TAG},
@@ -1158,13 +1159,16 @@ treats AUX1 PASS plus C06a..C06e MEASURED as the success state.
 The spec ships three validators that confirm the bundle's TOML
 files conform to their declared schemas:
 
+Run from the \texttt{agent-assurance-papers} repository root, with the
+sibling \texttt{agent-assurance} repository cloned alongside it:
+
 \begin{lstlisting}[language=bash,caption={Running the spec validators.}]
-python3 validators/validate_implementation_dag.py \
+python3 ../agent-assurance/validators/validate_implementation_dag.py \
     chardet-relicense/proof-bundle/implementation_dag.toml
-python3 validators/validate_traceability.py \
+python3 ../agent-assurance/validators/validate_traceability.py \
     chardet-relicense/proof-bundle/traceability.toml \
     --repo-root . --check-paths-exist
-python3 validators/validate_review_readiness.py \
+python3 ../agent-assurance/validators/validate_review_readiness.py \
     chardet-relicense/proof-bundle/review_readiness.toml
 \end{lstlisting}
 
@@ -1235,7 +1239,7 @@ provenance of the training data --- would need different evidence.
 After authoring the bundle, we submitted it for review by three
 independent LLM reviewers: OpenAI's Codex CLI, Google's Gemini CLI,
 and xAI's Grok CLI. Each reviewer received the same input: the bundle
-files, the verification report \texttt{VERIFICATION\_REPORT.toml}
+files, the verification report \texttt{verification\_report.toml}
 listing fifteen explicit verification contracts (V01..V15), and a
 standing instruction to verify each contract by reading the cited
 artefact rather than by trusting prose. The verification report
@@ -1288,7 +1292,7 @@ that produces an immutable audit trail of which agent agreed to what
 at which time~\cite{verivus2025patent1}.
 
 DAG-TOML, the specification family that the
-\texttt{CONTRACT\_DECLARATION.toml} and the surrounding bundle files
+\texttt{contract\_declaration.toml} and the surrounding bundle files
 in this paper conform to~\cite{verivus2026dagtoml}, is the current
 open-source instantiation of the contract-declaration substrate that
 the broader thesis requires. The representation is expected to
@@ -1610,11 +1614,11 @@ the Python; the human authored the questions, the scoping, and
 the acceptance criteria.
 
 \paragraph{LLM authoring.}
-The manuscript was drafted by Claude Opus 4.7 (Anthropic), via the
-Claude Code agent harness, working from the bundle commit at HEAD
-\texttt{220cff4} in the \texttt{verivus-oss/agent-assurance}
-repository. The proof bundle itself was authored over several
-sessions of the same agent.
+The manuscript was drafted with the assistance of an LLM coding
+agent, working from the bundle commit at HEAD \texttt{6acef08} in
+the \texttt{verivus-oss/agent-assurance-papers} repository. The
+proof bundle itself was authored over several sessions of the same
+agent harness.
 
 \paragraph{LLM review.}
 Three independent LLM reviewers verified the bundle and the
@@ -1713,7 +1717,7 @@ it raised our confidence in C06a's numerical claims.
 \paragraph{Verbatim user-prompt record.}
 The verbatim user prompts that produced both the proof bundle and
 this manuscript are recorded at
-\texttt{chardet-relicense/manuscript/USER\_PROMPTS.md} in the same repository. The file is
+\texttt{chardet-relicense/manuscript/user-prompts.md} in the same repository. The file is
 referenced from the body of the manuscript rather than reproduced
 verbatim here because the prompts are a process artefact, not a
 research result; readers who want to trace any implementation or
