@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # detect.sh — the executable witness for chardet-relicense/proof-bundle/.
 #
-# Runs five static-AST signals + one behavioural-fingerprint signal
+# Runs seven static-AST signals + one behavioural-fingerprint signal
 # against checkouts of chardet at tags 6.0.0 (last LGPL-era) and 7.0.0
 # (Dan Blanchard's AI-rewritten MIT release):
 #
-#   AUX1  literal source carryover     (whitespace-normalised SHA-256)
-#   C06a  call-graph topology          (degree distribution + SCC + density)
-#   C06b  import-edge set              (third-party Jaccard)
-#   C06c  control-flow histogram       (cosine similarity of normalised hist)
-#   C06d  public-API signature equiv   (strict / renamed_args / diverged)
-#   C06e  behavioural fingerprint      (1000 deterministic fuzz inputs)
+#   AUX1   literal source carryover     (whitespace-normalised SHA-256)
+#   C06a   call-graph topology          (degree distribution + SCC + density)
+#   C06a'  call-graph WL kernel         (Weisfeiler-Lehman k=4, V2 R1 response)
+#   C06b   import-edge set              (third-party Jaccard)
+#   C06c   control-flow histogram       (cosine similarity of normalised hist)
+#   C06d   public-API signature equiv   (strict / renamed_args / diverged)
+#   C06e   behavioural fingerprint      (1000 deterministic fuzz inputs)
+#   C06f   per-function AST shape       (shape-matched pairs, V2 R16 response)
 #
 # Exit code:
 #   0  no FAIL verdicts
@@ -50,7 +52,7 @@ done
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-echo "proof-chardet-relicense: extracting AUX1 + C06a..C06e signals"
+echo "proof-chardet-relicense: extracting AUX1 + C06a, C06a', C06b..C06f signals"
 echo "  repo:   ${chardet_repo}"
 echo "  v6 tag: ${v6_tag}"
 echo "  v7 tag: ${v7_tag}"

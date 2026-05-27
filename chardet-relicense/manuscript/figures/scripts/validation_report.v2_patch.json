@@ -1,0 +1,131 @@
+{
+  "schema_version": "v2_patch.0.1",
+  "produced_by": "validate_numbers_v2.py",
+  "rfc6902_ops": [
+    {
+      "op": "add",
+      "path": "/independent/c06a_prime",
+      "value": {
+        "k_iterations": 4,
+        "v6_label_count": 1710,
+        "v7_label_count": 1790,
+        "wl_cosine": 0.5873578287111396,
+        "wl_cosine_scipy_crosscheck": 0.5873578287111396,
+        "agrees": true,
+        "per_iteration_cosine": [
+          0.8758434703110862,
+          0.2941840163616211,
+          0.10707086853645155,
+          0.10711874283731752,
+          0.10711874283731752
+        ]
+      }
+    },
+    {
+      "op": "add",
+      "path": "/independent/c06f",
+      "value": {
+        "n_v6_functions": 177,
+        "n_v7_functions": 136,
+        "n_matched_pairs": 31,
+        "n_unmatched_v6": 146,
+        "n_unmatched_v7": 105,
+        "mean_pair_distance": 0.08730255605266135,
+        "median_pair_distance": 0.06385332237547553,
+        "per_function_similarity": 0.9126974439473386,
+        "similarity_bootstrap_ci_95_lo": 0.8864929436206974,
+        "similarity_bootstrap_ci_95_hi": 0.935712776298492,
+        "same_name_overlap_among_matched": 0.12903225806451613,
+        "match_key_buckets_v6": 47,
+        "match_key_buckets_v7": 46,
+        "shared_match_key_buckets": 19,
+        "invariants": {
+          "match_key_consistent": true,
+          "v6_partition": true,
+          "v7_partition": true,
+          "v6_unique": true,
+          "v7_unique": true
+        },
+        "all_invariants_pass": true
+      }
+    }
+  ],
+  "additions": {
+    "independent.c06a_prime": {
+      "k_iterations": 4,
+      "v6_label_count": 1710,
+      "v7_label_count": 1790,
+      "wl_cosine": 0.5873578287111396,
+      "wl_cosine_scipy_crosscheck": 0.5873578287111396,
+      "agrees": true,
+      "per_iteration_cosine": [
+        0.8758434703110862,
+        0.2941840163616211,
+        0.10707086853645155,
+        0.10711874283731752,
+        0.10711874283731752
+      ]
+    },
+    "independent.c06f": {
+      "n_v6_functions": 177,
+      "n_v7_functions": 136,
+      "n_matched_pairs": 31,
+      "n_unmatched_v6": 146,
+      "n_unmatched_v7": 105,
+      "mean_pair_distance": 0.08730255605266135,
+      "median_pair_distance": 0.06385332237547553,
+      "per_function_similarity": 0.9126974439473386,
+      "similarity_bootstrap_ci_95_lo": 0.8864929436206974,
+      "similarity_bootstrap_ci_95_hi": 0.935712776298492,
+      "same_name_overlap_among_matched": 0.12903225806451613,
+      "match_key_buckets_v6": 47,
+      "match_key_buckets_v7": 46,
+      "shared_match_key_buckets": 19,
+      "invariants": {
+        "match_key_consistent": true,
+        "v6_partition": true,
+        "v7_partition": true,
+        "v6_unique": true,
+        "v7_unique": true
+      },
+      "all_invariants_pass": true
+    }
+  },
+  "comparison": [
+    {
+      "name": "c06a_prime.wl_cosine_self_crosscheck",
+      "harness_pure_stdlib": 0.587358,
+      "independent_scipy_cosine": 0.587358,
+      "agrees": true
+    },
+    {
+      "name": "c06f.invariants_pass",
+      "value": true,
+      "agrees": true
+    },
+    {
+      "name": "c06f.matched_pairs",
+      "value": 31,
+      "agrees": true
+    },
+    {
+      "name": "c06f.unmatched_v6",
+      "value": 146,
+      "agrees": true
+    },
+    {
+      "name": "c06f.unmatched_v7",
+      "value": 105,
+      "agrees": true
+    },
+    {
+      "name": "c06f.per_function_similarity",
+      "value": 0.913,
+      "ci95": [
+        0.886,
+        0.936
+      ],
+      "agrees": true
+    }
+  ]
+}
