@@ -17,6 +17,7 @@
 #   C06b  import-edge set              (third-party Jaccard)
 #   C06c  control-flow histogram       (cosine similarity of normalised hist)
 #   C06d  public-API signature equiv   (strict / renamed_args / diverged)
+<<<<<<< HEAD
 #   C06e  behavioural fingerprint      (1000 deterministic fuzz inputs)
 =======
 # Runs seven static-AST signals + one behavioural-fingerprint signal
@@ -32,6 +33,13 @@
 #   C06e   behavioural fingerprint      (1000 deterministic fuzz inputs)
 #   C06f   per-function AST shape       (shape-matched pairs, V2 R16 response)
 >>>>>>> v2-phase1a-bp
+=======
+#   C06e  behavioural fingerprint      (multi-bucket realistic corpus +
+#                                       1000-random-byte control; per-bucket
+#                                       exact / bucket / normalized match
+#                                       rates — one TSV row per bucket
+#                                       plus an aggregate row)
+>>>>>>> v2-phase1a-c
 #
 # Exit code:
 #   0  no FAIL verdicts
@@ -162,9 +170,17 @@ static_out="$(python3 "${here}/extract_signals.py" \
   --pkg-a  "${PKG_A}" --pkg-b  "${PKG_B}")"
 
 set +e
+fingerprint_report_json="${tmp}/c06e_report.json"
 fingerprint_out="$(python3 "${here}/fingerprint_behavior.py" \
+<<<<<<< HEAD
   --tree-a "${tmp}/A" --tree-b "${tmp}/B" \
   --module-a "${MODULE_A}" --module-b "${MODULE_B}" 2>&1)"
+=======
+  --v6-tree "${tmp}/v6" \
+  --v7-tree "${tmp}/v7" \
+  --corpus-dir "${here}/corpora" \
+  --report-json "${fingerprint_report_json}" 2>&1)"
+>>>>>>> v2-phase1a-c
 set -e
 
 # Assemble output: header + static rows (with C06e DELEGATED placeholder

@@ -1,0 +1,3 @@
+# The random-control packed corpus is 1.9 MB and fully deterministic
+# from seed=20260522. Regenerate with `python3 build_corpus.py`.
+items/random_control/random_fuzz_1k.packed

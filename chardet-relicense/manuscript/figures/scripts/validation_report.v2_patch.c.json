@@ -1,0 +1,151 @@
+{
+  "_meta": {
+    "produced_by": "agent-assurance-papers/.claude/worktrees/agent-a6f5de5da2067d912 (branch v2-phase1a-c)",
+    "produced_on": "2026-05-28",
+    "addresses_reviewer": "R3 (round 1, arXiv v1) — random bytes are the wrong workload for an encoding detector",
+    "harness": "chardet-relicense/proof-bundle/fingerprint_behavior.py (v2)",
+    "corpus_manifest": "chardet-relicense/proof-bundle/corpora/MANIFEST.tsv",
+    "corpus_digest_manifest": "c37637f0956d7a7e",
+    "v6_tag": "6.0.0",
+    "v7_tag": "7.0.0",
+    "v6_resolved_commit": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+    "v7_resolved_commit": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+    "metrics_glossary": {
+      "exact_match_rate": "fraction of inputs where v6.detect(x) == v7.detect(x) as Python dicts (exact equality, including the literal encoding label string and the floating-point confidence)",
+      "bucket_match_rate": "fraction where (encoding, confidence-bucket) matches; bucket = high>=0.9 / med>=0.5 / low<0.5 / none if missing",
+      "normalized_match_rate": "as bucket_match_rate but with the encoding label case-folded, common aliases collapsed (cp1252==windows-1252, cp932==shift_jis, gb2312==gb18030, ...) and ascii/windows-1252/iso-8859-1 collapsed at high confidence (ASCII bytes decode identically through all three). This isolates `different decoder picked` from `same decoder, different label`."
+    },
+    "note_on_exact_match_zero": "All buckets show exact_match_rate=0 because v7 reformats encoding labels (lowercase canonical names: 'windows-1252', 'cp932', 'gb18030') where v6 emitted uppercase aliases ('WINDOWS-1252', 'SHIFT_JIS', 'GB18030'). The exact_match metric is therefore a label-format probe more than a decoder probe in this dataset. The bucket and normalized rates are the operationally interesting metrics."
+  },
+  "independent": {
+    "c06e": {
+      "aggregate": {
+        "exact": 0,
+        "bucket": 17,
+        "normalized": 40,
+        "n": 1064,
+        "exact_rate": 0.0,
+        "bucket_rate": 0.015977443609022556,
+        "normalized_rate": 0.03759398496240601
+      },
+      "aggregate_excluding_random_control": {
+        "_comment": "the operationally interesting headline: realistic-input agreement on the 64 non-random items",
+        "exact": 0,
+        "bucket": 17,
+        "normalized": 40,
+        "n": 64,
+        "exact_rate": 0.0,
+        "bucket_rate": 0.265625,
+        "normalized_rate": 0.625
+      },
+      "per_corpus": {
+        "html_latin": {
+          "n": 4,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 2, "bucket_rate": 0.5,
+          "normalized": 2, "normalized_rate": 0.5,
+          "notes": "Disagreement on the 2/4 misses is v6 calling Wikipedia article bytes 'ascii' (high confidence) while v7 calls them 'utf-8' (high confidence). The Wikipedia pages are technically UTF-8 (declared in <meta charset>) but the leading 8 KiB are ASCII-only. v7 picks up the declaration; v6 picks up the byte distribution. Both are defensible reads."
+        },
+        "html_cjk": {
+          "n": 3,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 3, "bucket_rate": 1.0,
+          "normalized": 3, "normalized_rate": 1.0,
+          "notes": "Perfect bucket agreement: both v6 and v7 identify the Chinese, Japanese, and Korean Wikipedia HTML as UTF-8 at high confidence. The exact_match miss is the label-case mismatch."
+        },
+        "rfc_ascii": {
+          "n": 4,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 0, "normalized_rate": 0.0,
+          "notes": "Sharp divergence: v6 cleanly identifies all four RFC bodies as ASCII at confidence 1.0. v7 identifies them as 'cp864' (an obscure Arabic codepage) at confidence 0.22..0.55. This is a notable regression — v7's ML-assisted classifier picks an exotic Arabic-domain codepage over the obvious ASCII answer on pure 7-bit text. The RFCs are well below 100 KB so 'too little text' is not the explanation; v6 is right."
+        },
+        "email_mime": {
+          "n": 7,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 1, "bucket_rate": 0.14285714285714285,
+          "normalized": 5, "normalized_rate": 0.7142857142857143,
+          "notes": "After label normalisation v6 and v7 agree on 5/7 MIME messages. The two genuine disagreements are an ASCII English body (v6: ascii / v7: Windows-1252 — operationally equivalent on this content) and a GB18030 Chinese body (v6: 0.99 confidence GB18030 / v7: 0.70 confidence gb18030 — same decoder, lower v7 confidence drops it to a different bucket)."
+        },
+        "multilingual_utf8": {
+          "n": 9,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 7, "bucket_rate": 0.7777777777777778,
+          "normalized": 8, "normalized_rate": 0.8888888888888888,
+          "notes": "Strong agreement on multilingual UTF-8 — 8/9 normalised matches across en/fr/de/es/zh/ja/ko/ru/ar. The lone disagreement is the French UDHR text, where v6 reports utf-8 at 0.99 (high bucket) and v7 reports utf-8 at 0.83 (med bucket): same decoder, different confidence."
+        },
+        "multilingual_gb18030": {
+          "n": 5,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 1, "normalized_rate": 0.2,
+          "notes": "Sharp divergence on GB18030. Only the Chinese-language input is identified by both versions (and v7 with weaker confidence). v6 misidentifies the Russian-in-GB18030 text as Big5; v7 misidentifies the Korean and Russian variants as cp862 and cp720. Both detectors struggle here because GB18030 is variable-length and the inputs are short; the disagreement pattern shows the two classifiers' priors are different."
+        },
+        "multilingual_shiftjis": {
+          "n": 2,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 2, "normalized_rate": 1.0,
+          "notes": "After collapsing the cp932 / SHIFT_JIS alias and the ascii / Windows-1252 superset, both Shift_JIS samples agree."
+        },
+        "multilingual_windows1252": {
+          "n": 4,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 4, "normalized_rate": 1.0,
+          "notes": "Both versions correctly identify Windows-1252 (or ascii for the English variant). 0/4 strict bucket matches collapses to 4/4 once the case-fold and ascii/Windows-1252 collapse are applied — this bucket is the clearest illustration that v1's exact_match metric was a label-format probe."
+        },
+        "multilingual_iso88591": {
+          "n": 4,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 4, "normalized_rate": 1.0,
+          "notes": "Same story as multilingual_windows1252: both detectors converge on Windows-1252 (which is a strict superset of ISO-8859-1; chardet has historically not distinguished the two), and the strict bucket misses are entirely the v6 'WINDOWS-1252' vs v7 'windows-1252' label-case difference."
+        },
+        "short_snippets": {
+          "n": 16,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 3, "bucket_rate": 0.1875,
+          "normalized": 9, "normalized_rate": 0.5625,
+          "notes": "On the < 100-byte regime where the detector has minimal signal, v6 and v7 agree on the easy cases (BOMs, pure ASCII, longer CJK strings) and disagree on the short Latin-1 / Windows-1252 fragments. v7's confidences are markedly lower (0.07..0.14) on the short Latin-1 samples than v6's (0.59..0.71), suggesting v7 has been calibrated to be more cautious in the data-starved regime."
+        },
+        "malformed": {
+          "n": 6,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 1, "bucket_rate": 0.16666666666666666,
+          "normalized": 2, "normalized_rate": 0.3333333333333333,
+          "notes": "Mojibake / mixed-encoding inputs produce the most varied disagreement: v7 picks exotic codepages (cp874, iso-8859-4, Windows-1255) where v6 settles on Windows-1252. Neither is 'right' — these inputs are by construction undecidable — but the disagreement pattern shows the two classifiers' tie-breaking heuristics diverged."
+        },
+        "random_control": {
+          "n": 1000,
+          "exact": 0, "exact_rate": 0.0,
+          "bucket": 0, "bucket_rate": 0.0,
+          "normalized": 0, "normalized_rate": 0.0,
+          "notes": "Identical to the v1 number (the v1 corpus is preserved here as the random_control bucket). v6 returns {encoding: None, confidence: 0.0} on essentially every random byte string; v7 returns {encoding: None, confidence: 0.95} — the format of v7's 'I don't know' response changed (a high-confidence null encoding rather than a zero-confidence null encoding). This alone destroys the strict bucket-match metric in the random regime."
+        }
+      },
+      "headline_finding": "On random bytes (v1's only workload) v6 and v7 are fully diverged. On realistic input — Wikipedia HTML, RFC bodies, multilingual plain text, MIME messages — once encoding-label normalisation is applied the two versions agree on the decoder family 62.5% of the time (40/64 non-random items). The genuine behavioural divergences are concentrated in (a) ASCII vs Windows-1252 superset boundary, (b) v7's 'cp864' label on pure ASCII RFCs (a notable regression), (c) confidence calibration in the data-starved short-snippet regime, and (d) the random-input null-response format. Conclusion: the operational contract is partially preserved on realistic input (62.5% normalised agreement) but with a non-trivial set of edge-case regressions; the v1 paper's 'fully diverged on random fuzz' framing was correct in its narrow domain but understated the realistic-input agreement."
+    }
+  },
+  "comparison_appendix": {
+    "v1_paper_c06e_number": {
+      "exact_match_rate": 0.0,
+      "bucket_match_rate": 0.0,
+      "n_inputs": 1000,
+      "corpus": "random bytes only",
+      "source": "validation_report.json -> harness_headline.c06e_*"
+    },
+    "v2_paper_c06e_numbers": {
+      "exact_match_rate_aggregate": 0.0,
+      "bucket_match_rate_aggregate": 0.016,
+      "normalized_match_rate_aggregate": 0.038,
+      "exact_match_rate_realistic_only": 0.0,
+      "bucket_match_rate_realistic_only": 0.266,
+      "normalized_match_rate_realistic_only": 0.625,
+      "n_realistic": 64,
+      "n_random_control": 1000,
+      "corpus": "11 realistic-input buckets + 1 random-bytes control bucket; see corpora/MANIFEST.tsv"
+    },
+    "compatibility_note": "The v1 number (0/0 on 1000 random inputs) is exactly reproduced inside the v2 corpus as the random_control bucket. The v2 paper does not contradict the v1 paper — it just adds realistic-input rows the v1 paper omitted."
+  }
+}

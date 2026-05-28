@@ -1,0 +1,81 @@
+
+
+
+
+
+
+Network Working Group                                           J. Myers
+Request for Comments: 1939                               Carnegie Mellon
+STD: 53                                                          M. Rose
+Obsoletes: 1725                             Dover Beach Consulting, Inc.
+Category: Standards Track                                       May 1996
+
+
+                    Post Office Protocol - Version 3
+
+Status of this Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the "Internet
+   Official Protocol Standards" (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+Table of Contents
+
+   1. Introduction ................................................    2
+   2. A Short Digression ..........................................    2
+   3. Basic Operation .............................................    3
+   4. The AUTHORIZATION State .....................................    4
+      QUIT Command ................................................    5
+   5. The TRANSACTION State .......................................    5
+      STAT Command ................................................    6
+      LIST Command ................................................    6
+      RETR Command ................................................    8
+      DELE Command ................................................    8
+      NOOP Command ................................................    9
+      RSET Command ................................................    9
+   6. The UPDATE State ............................................   10
+      QUIT Command ................................................   10
+   7. Optional POP3 Commands ......................................   11
+      TOP Command .................................................   11
+      UIDL Command ................................................   12
+      USER Command ................................................   13
+      PASS Command ................................................   14
+      APOP Command ................................................   15
+   8. Scaling and Operational Considerations ......................   16
+   9. POP3 Command Summary ........................................   18
+   10. Example POP3 Session .......................................   19
+   11. Message Format .............................................   19
+   12. References .................................................   20
+   13. Security Considerations ....................................   20
+   14. Acknowledgements ...........................................   20
+   15. Authors' Addresses .........................................   21
+   Appendix A. Differences from RFC 1725 ..........................   22
+
+
+
+Myers & Rose                Standards Track                     [Page 1]
+
+RFC 1939                          POP3                          May 1996
+
+
+   Appendix B. Command Index ......................................   23
+
+1. Introduction
+
+   On certain types of smaller nodes in the Internet it is often
+   impractical to maintain a message transport system (MTS).  For
+   example, a workstation may not have sufficient resources (cycles,
+   disk space) in order to permit a SMTP server [RFC821] and associated
+   local mail delivery system to be kept resident and continuously
+   running.  Similarly, it may be expensive (or impossible) to keep a
+   personal computer interconnected to an IP-style network for long
+   amounts of time (the node is lacking the resource known as
+   "connectivity").
+
+   Despite this, it is often very useful to be able to manage mail on
+   these smaller nodes, and they often support a user agent (UA) to aid
+   the tasks of mail handling.  To solve this problem, a node which can
+   support an MTS entity offers a maildrop service to these less endowed
+   nodes.  The Post Office Protocol - Version 3 (POP3) is intended 
