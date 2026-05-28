@@ -96,14 +96,9 @@ inputs. The combined picture is internally consistent but legally
 ambiguous, with the honest summary being that v7 preserves the
 \emph{shape of v6's thinking} while replacing what v6 actually
 \emph{does}. The contribution is the methodology and the bundle,
-not a verdict on chardet specifically (a self-contained,
+not a verdict on chardet specifically: a self-contained,
 multi-LLM-reviewed artefact that any reviewer, lawyer, or court
-can re-run and inspect), sitting in a lineage of prior Verivus
-work on Verifiable AI Governance (the ``AI You Can Prove'' thesis,
-of which the DAG-TOML specification this proof bundle conforms to
-is the current open-source instantiation, and of which sqry, the
-AST-graph code-search tool used to corroborate the call-graph
-findings, is a sibling instantiation).
+can re-run and inspect.
 \end{abstract}
 
 \section{Introduction}
@@ -375,10 +370,9 @@ reviewer can quote in a contract-grade document.
 \label{sec:spec}
 
 The harness is an instance of a public specification family called
-DAG-TOML~\cite{verivus2026dagtoml}. DAG-TOML is the current
-working representation of the broader Verivus thesis on verifiable
-AI governance; the representation may change as the underlying
-research evolves. The contracts described in
+DAG-TOML~\cite{verivus2026dagtoml}, a contract-declaration substrate
+that the proof bundle uses. The representation may change as the
+underlying spec evolves. The contracts described in
 this paper depend on the shape of the substrate, not on the
 specific syntax: an equivalent JSON, CBOR, or relational encoding
 that preserved the same five aspects below would carry the same
@@ -1352,59 +1346,6 @@ bundle later.
 This paper sits at the intersection of three established but
 hitherto-unjoined research streams.
 
-\subsection{Verifiable AI governance and the Verivus thesis}
-\label{sec:related-vai}
-
-The detection harness is one instantiation of a broader thesis
-developed by Verivus Pty Ltd over several years: that the appropriate
-response to opaque AI in high-stakes decision-making is not to
-\emph{explain} the AI's outputs after the fact but to \emph{prove}
-the integrity of the process that produced them, replacing
-probabilistic explainability with cryptographic
-verifiability~\cite{verivus2025verifiable}. The thesis names a
-distinct category, ``Verifiable AI Governance,'' to distinguish it
-from the existing AI Governance vendors that monitor and explain
-black-box models, and from the AI Explainability literature that
-produces post-hoc rationales for individual model
-decisions~\cite{verivus2025verifiable}. The thesis is broader than
-this paper. It includes an Autonomous Secure Development Lifecycle
-(A-SDLC) framework that re-architects human-centric SDLC processes
-into algorithmic governance with verifiable cryptographic
-attestations; a multi-agent choreographed development engine
-(ADE / NEXUS) coordinating specialised agents via the SPADE
-workflow and the Model Context Protocol for tool
-interoperability~\cite{verivus2025verifiable}; and a foundational
-mechanism for cryptographically verifiable multi-agent consensus
-that produces an immutable audit trail of which agent agreed to what
-at which time~\cite{verivus2025patent1}.
-
-DAG-TOML, the specification family that the
-\texttt{contract\_declaration.toml} and the surrounding bundle files
-in this paper conform to~\cite{verivus2026dagtoml}, is the current
-open-source instantiation of the contract-declaration substrate that
-the broader thesis requires. The representation is expected to
-evolve as the underlying research advances; the present paper makes
-no claim that TOML in particular is load-bearing (the same six
-signal contracts would carry under JSON, CBOR, or a relational
-schema that preserved the substrate's five distinguishing aspects,
-\cref{sec:spec}). What is load-bearing is the separation of
-\emph{contract declaration} from \emph{verification report}, the
-closed verdict set, the role-specific kind discriminator, and the
-machine-readable kind descriptors that drive the validators. These
-are the spec features that made the multi-LLM review described in
-\cref{sec:llm-review} mechanical rather than narrative.
-
-The chardet proof bundle is, to our knowledge, the first
-application of the DAG-TOML spec to a real, publicly disputed,
-production code base. It does not advance the broader thesis on its
-own; it provides a falsifiable instantiation against which the
-thesis can be tested. If the harness's numbers are wrong, the
-re-runner will see them as wrong, and the thesis is weakened. If
-they are right, they corroborate the broader claim that AI-driven
-software decisions can be made auditable in a form courts and
-regulators can independently re-derive --- which is the proximate
-business case for verifiable AI governance.
-
 \subsection{AST-based clone detection and structural similarity}
 \label{sec:related-clone}
 
@@ -1609,8 +1550,7 @@ harness, agree on what the numbers mean, and disagree about the
 rest in public. The wider purpose, beyond chardet specifically, is
 to demonstrate that AI-driven software decisions can be made
 auditable in a form courts and regulators can independently
-re-derive: that is the proximate business case for verifiable AI
-governance, and chardet is one falsifiable application of it.
+re-derive.
 
 \section*{Acknowledgments}
 
