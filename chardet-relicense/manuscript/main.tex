@@ -184,11 +184,13 @@ to be unrelated.
 
 \paragraph{Contributions.}
 \begin{itemize}[leftmargin=*,nosep]
-  \item A specification of six signals (\cref{sec:signals}) addressing
-    file-byte carryover, call-graph topology, third-party dependency
+  \item A specification of eight signals (\cref{sec:signals}) addressing
+    file-byte carryover, call-graph topology (summary-feature and
+    Weisfeiler-Lehman kernel), third-party dependency
     boundary, AST control-flow shape, public-API signature
-    equivalence, and runtime behavioural equivalence under
-    deterministic fuzz. Five of the six are demonstrably invariant
+    equivalence, per-function shape, and runtime behavioural
+    equivalence under deterministic fuzz and a realistic corpus.
+    Seven of the eight are demonstrably invariant
     under whole-program identifier renaming.
   \item A reproducible witness harness (\cref{sec:methodology}) that
     materialises both versions via \texttt{git worktree}, runs the
@@ -234,10 +236,10 @@ than against the open web.
 
 I ran JPlag v6.3.0 on the chardet v6.0.0 and v7.0.0 pair, structured
 as two sibling submissions (84 v6 \texttt{.py} files plus 22 v7
-\texttt{.py} files; the v6 file count is higher than the extractor's
-87 because JPlag's submission layout includes some \texttt{.py} files
-that our extractor's test-filename regex excludes, and neither effect
-materially shifts the headline). The captured numbers are in
+\texttt{.py} files; these counts differ from the extractor's 87 v6 /
+33 v7 because JPlag's submission layout selects \texttt{.py} files by a
+different rule than our extractor's test-filename regex, and neither
+effect materially shifts the headline). The captured numbers are in
 \cref{tab:jplag-vs-c06}; the run configuration and the full numerics
 are recorded in \cref{sec:related-tools}.
 
@@ -395,7 +397,7 @@ unchanged. The clone-detection literature has known this for thirty
 years: tree-based detectors~\cite{baxter1998clone,jiang2007deckard} and
 tree-differencing tools~\cite{falleri2014gumtree} were designed
 precisely because file-hash and name-set approaches collapse under
-trivial paraphrase. The five C06 signals in this paper are in that
+trivial paraphrase. The seven C06 signals in this paper are in that
 tradition. They differ from prior work in that they are not designed
 to surface candidate clones for human review; they are designed to
 report invariants whose preservation is itself evidence that a
@@ -411,7 +413,7 @@ underlying spec evolves. The contracts described in
 this paper depend on the shape of the substrate, not on the
 specific syntax: an equivalent JSON, CBOR, or relational encoding
 that preserved the same five aspects below would carry the same
-six signal contracts unchanged. The bundle relies on five aspects
+eight signal contracts unchanged. The bundle relies on five aspects
 of the spec; the remainder is out of scope here.
 
 \begin{enumerate}[leftmargin=*,nosep]
@@ -431,7 +433,7 @@ of the spec; the remainder is out of scope here.
     DELEGATED / ABSENT / INCONCLUSIVE}. PASS and FAIL are gating;
     MEASURED reports a number without rendering judgement; SKIP
     distinguishes a toolchain gap from an actual FAIL. The harness
-    in this paper deliberately uses MEASURED for the five C06
+    in this paper deliberately uses MEASURED for the seven C06
     signals because the proof's job is to expose paraphrase-resistant
     numbers, not to render a legal verdict.
   \item The spec is enforced by three independent validator
@@ -480,7 +482,7 @@ differ from the proposing agent's (the conjunctive AND is load-
 bearing: same-provider/different-family and different-provider/same-
 family both fail). None of those surfaces are exercised by the
 harness reported here, which deliberately sits at the smallest
-substrate sufficient to carry the six signal contracts in
+substrate sufficient to carry the eight signal contracts in
 \S \ref{sec:signals}; the broader profile family is the next
 layer up for projects that need stronger assurance controls.
 
@@ -539,7 +541,7 @@ designed to preserve. We collect those defences in
 \subsection{Where the signals sit in the layered detection space}
 \label{sec:layers}
 
-The six signals are not the only conceivable evidence layers. Each
+The eight signals are not the only conceivable evidence layers. Each
 makes a different trade between computational cost and resistance to
 semantics-preserving paraphrase. \cref{tab:layers} situates the
 signals in the broader space and names the alternatives that this
@@ -961,8 +963,8 @@ exclusion rule.
 
 \subsection{Determinism}
 \label{sec:determinism}
-All static signals (AUX1, C06a, C06b, C06c, C06d) are deterministic
-functions of the input source bytes: the SHA-256 used for AUX1 is
+All static signals (AUX1, C06a, C06a$'$, C06b, C06c, C06d, C06f) are
+deterministic functions of the input source bytes: the SHA-256 used for AUX1 is
 the standard \texttt{hashlib} digest, and the graph and histogram
 features depend only on the sorted set of input files (the walker
 sorts \texttt{rglob} output) and on the AST. Two consecutive runs on
@@ -1096,9 +1098,10 @@ of \cref{tab:results}, deferring the calibration narrative to
 
 \textbf{Structural similarity is real but is domain-shaped, not
 derivation-shaped.} C06a's $0.881$ and C06c's $0.984$ are
-internally interpretable --- v7 doubles the absolute count of
-\texttt{Return}, \texttt{For}, \texttt{Try}, and
-\texttt{ExceptHandler} nodes relative to v6 but preserves the
+internally interpretable --- v7 roughly doubles (or more) the
+absolute count of \texttt{For}, \texttt{Try}, and
+\texttt{ExceptHandler} nodes relative to v6 and raises
+\texttt{Return} by about a third, but preserves the
 \emph{relative proportions} almost exactly
 (\cref{fig:cfhist}). On its own, that is the fingerprint of a
 larger codebase implementing the same control-flow shape rather
@@ -1152,13 +1155,17 @@ heavy structural reorganisation with a small minority of near-clones.
 \textbf{External boundary is largely the same, not different.}
 Under the R1--R5 audit rules introduced in v2, the v6/v7 C06b
 Jaccard rises to $0.667$ from the v1-filter value of $0.333$.
-The audited rules keep R5\_third\_party\_kept imports
-(\texttt{setuptools}, \texttt{sphinx\_rtd\_theme}) that the v1
-filter incorrectly excluded; the shared third-party set is in
-fact two ($\{$\texttt{cchardet}$\}$ on the v5/v6 baseline pair),
-not zero. The v1 ``external boundary is genuinely different''
+The audited rules correctly classify \texttt{datasets} as an
+R5\_third\_party\_kept import on both sides (the v1 filter dropped
+it); the shared third-party set is therefore
+$\{$\texttt{cchardet}, \texttt{datasets}$\}$ --- two imports, not
+one --- against a union of three, since v7 additionally imports
+\texttt{charset\_normalizer} as a benchmark comparator. The v1
+``external boundary is genuinely different''
 framing therefore inverts: v6/v7 share more third-party imports
-than v5/v6 do, and v6 and charset\_normalizer share none.\footnote{The
+than v5/v6 do (whose sole shared third-party import is
+\texttt{cchardet}, giving Jaccard $0.250$), and v6 and
+charset\_normalizer share none.\footnote{The
 v6/charset\_normalizer C06b = $0.000$ result reflects the fact that
 charset\_normalizer treats chardet as a benchmark-comparator import;
 under the R1--R5 classification, this appears as a v7-side
@@ -1478,8 +1485,11 @@ that are dead under sqry's reachability analysis, and a wider
 diversity of repeated signatures. This is the texture of a generated
 codebase: more decomposed, more bespoke per call site, less manually
 deduplicated than v6's hand-written form. It does not weaken C06a;
-it explains why v7 has \emph{more} call-graph edges (659) on a
-smaller node count (358) than v6 has on a comparable surface.
+it explains why v7 packs \emph{more} call-graph edges
+(659 vs.\ v6's 488) onto a comparable node count (358 vs.\ 342)
+--- a denser call graph on the implementation surface C06a
+measures, even as v7's overall sqry graph (which includes v6's
+data tables and embedded HTML) is the smaller of the two.
 
 The sqry findings are derived from running
 \texttt{sqry index} (release 13.0.3) in each worktree and then
@@ -1513,15 +1523,17 @@ of 3/5 = 0.6 sits inside a wide [0.2, 1.0] interval, reflecting the
 fact that only five public-API names are shared between v6 and v7,
 which is a small-sample reality the harness cannot conjure away and
 the paper should not paper over. For C06e the validation script
-deterministically re-derives the input corpus from the seed
-(\texttt{20260522}, length cap 4\,096) using the same
+deterministically re-derives the input corpus --- the
+seed-\texttt{20260522} random-byte fuzz (length cap 4\,096) plus the
+realistic-corpus rows enumerated in \texttt{MANIFEST.tsv} --- using
+the same
 \texttt{hashlib.sha256(b"\textbackslash{}n".join(corpus))[:16]}
 construction the harness writes (an earlier round-1 review by
 the first-round LLM reviewers caught that the validator and harness
 had been hashing the same corpus through different constructions and
 producing different 16-character digests, a defect now closed),
 so the corpus-digest agreement check always runs and pins the
-harness's \texttt{58e54831f84183c7} to the validator's
+harness's \texttt{c37637f0956d7a7e} to the validator's
 re-derivation. The C06e exact-match and bucket-match rates are
 recovered by subprocessing \texttt{fingerprint\_behavior.py} against
 the same v6/v7 worktrees and parsing its TSV row; when the runner
@@ -1586,7 +1598,7 @@ needs.
 \subsection{What the adversary would have to do}
 \label{sec:adversary}
 \cref{tab:adversary} summarised the per-signal defence; the
-combined defence against the full six-signal suite is the union of
+combined defence against the full eight-signal suite is the union of
 those defences. An adversary who wants to ship a true paraphrase
 without leaving structural fingerprints must (i) restructure the
 call graph, (ii) change branching/looping/exception handling, (iii)
@@ -1620,11 +1632,13 @@ bash agent-assurance-papers/chardet-relicense/proof-bundle/detect.sh
 The harness honours the \texttt{CHARDET\_REPO}, \texttt{CHARDET\_V6\_TAG},
 and \texttt{CHARDET\_V7\_TAG} environment variables for runs against
 different paths or chardet release pairs. Expected output is the
-seven-line TSV table reproduced in \cref{tab:results} (each row
-preceded by a tab-separated header) and a two-line \texttt{\#
+witness TSV table reproduced in \cref{tab:results} (each row
+preceded by a tab-separated header, plus the per-corpus C06e rows)
+and a two-line \texttt{\#
 SUMMARY} block recording the verdict-bucket counts. The exit code
 is 0 if no FAIL verdict landed and 1 otherwise; the gate definition
-treats AUX1 PASS plus C06a..C06e MEASURED as the success state.
+treats AUX1 PASS plus C06a, C06a$'$, C06b, C06c, C06d, C06e, and
+C06f MEASURED as the success state.
 
 \subsection{Verifier instructions}
 \label{sec:verifier}
@@ -1657,7 +1671,7 @@ trip first if a future release imports v6 source verbatim.
 \section{Threats to Validity}
 \label{sec:threats}
 
-\paragraph{Internal --- signal correctness.} The five C06 signals
+\paragraph{Internal --- signal correctness.} The seven C06 signals
 were implemented by the same author who wrote the contract
 declarations. We mitigated by submitting the bundle to three
 independent LLM reviewers using the same verification report as
@@ -1749,7 +1763,7 @@ characteristic vectors of tree fragments~\cite{jiang2007deckard};
 GumTree formalised fine-grained tree differencing between two
 versions of the same code~\cite{falleri2014gumtree}; and Roy and
 Cordy systematically catalogued the techniques and trade-offs in a
-qualitative survey~\cite{roy2009comparison}. The five C06 signals
+qualitative survey~\cite{roy2009comparison}. The seven C06 signals
 in this paper inherit the field's foundational insight that
 file-hash and name-set approaches collapse under trivial
 paraphrase, and that AST-derived structural features survive
@@ -2040,22 +2054,38 @@ the bundle I ship and is not in this paper; the answer requires a
 court, a legal theory, and the relevant evidence (and on the
 legal theory the paper is deliberately silent, because that is not
 my expertise to render). What the bundle ships is the evidence:
-six paraphrase-resistant, reproducible numbers any reviewer can
-re-derive from the cited source artefacts, every one of which has
-been independently cross-validated against a second reference
-implementation in \texttt{chardet-relicense/manuscript/figures/scripts/validate\_numbers.py}
-(AUX1 and C06a-d via scipy / numpy second-source primitives; C06e
+eight paraphrase-resistant, reproducible numbers any reviewer can
+re-derive from the cited source artefacts, with the four
+structural-similarity headlines (C06a, C06a$'$, C06c, C06f)
+reported under 95\% percentile-bootstrap confidence intervals and
+the static signals (AUX1 and C06a--d) independently cross-validated
+against a second reference implementation in \texttt{chardet-relicense/manuscript/figures/scripts/validate\_numbers.py}
+(scipy / numpy second-source primitives; C06e
 via a deterministic stdlib digest re-derivation plus a subprocess
 to the harness's behavioural-fingerprint script that recovers the
 exact-match and bucket-match rates, with explicit SKIP semantics
 when the runner cannot install chardet to re-execute it).
-On the actual disputed release pair, the numbers describe a
-rewrite whose internal structure is highly preserved relative to
-v6, whose third-party dependency boundary is genuinely different,
-whose public API is mostly preserved by signature, and whose
-runtime behaviour is operationally distinct. The combined picture
-is internally consistent and legally ambiguous: v7 preserves the
-shape of v6's thinking while replacing what v6 actually does. The
+Run across the three calibration pairs, the numbers describe a
+rewrite whose bulk structural-similarity signals (C06a call-graph
+topology, C06c control-flow shape) are \emph{not} distinctive ---
+an independent same-domain library and a routine release-to-release
+evolution both score at least as high --- so those signals measure
+domain shape, not derivation. What sets v6/v7 apart is its C06f
+profile: the lowest per-function match rate of the three pairs
+($31/177=17.5\%$) combined with high within-match similarity, a structural
+signature distinct from both conventional evolution and clean-room
+independent rewrite. Its third-party import boundary (C06b
+$0.667$) is, contrary to the v1 reading, \emph{more} shared than
+the conventional same-project pair's; its public API is mostly
+preserved by signature where signatures can be compared; and its
+behavioural agreement separates routine evolution from
+non-evolution but cannot, on realistic input, separate an AI
+rewrite from an independent same-domain reimplementation. The
+combined picture is internally consistent and legally ambiguous,
+but not because the structure ``proves'' derivation: structural
+signals do not discriminate derivation from convergence, and the
+v6/v7 pair sits in a middle ground matching neither a normal
+release evolution nor a clean-room independent rewrite. The
 right next step is for legal and technical reviewers to re-run the
 harness, agree on what the numbers mean, and disagree about the
 rest in public. The wider purpose, beyond chardet specifically, is
