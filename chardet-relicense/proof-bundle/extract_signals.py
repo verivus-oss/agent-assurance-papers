@@ -431,16 +431,24 @@ def _classify_import(root: pathlib.Path, name: str) -> tuple[str, str, pathlib.P
 
     resolved = _module_resolves_inside(root, name)
     if resolved is not None:
-        # R3 if the resolved path lives inside a chardet/ package dir;
-        # otherwise R4 (sibling helper script).
-        parts = resolved.resolve().parts
-        if "chardet" in parts:
-            # Find the segment named "chardet" that begins the package
-            # (i.e. is followed by __init__.py or is itself a .py file
-            # under chardet/).
-            for i, seg in enumerate(parts):
-                if seg == "chardet" and i + 1 < len(parts):
-                    return ("sibling_package", "R3_first_party_sibling", resolved)
+        # R3 if the resolved path lives inside the chardet/ package dir
+        # *within `root`*; otherwise R4 (sibling helper script). We use
+        # path-relative-to-root + a fixed package-dir prefix rather than
+        # an absolute-path segment scan, so a clone living under any
+        # parent directory (including one called "chardet/") is
+        # classified consistently. The package dir is either
+        # `<root>/chardet/...` (the legacy layout) or
+        # `<root>/src/chardet/...` (the src-layout used by v7).
+        try:
+            rel_parts = resolved.resolve().relative_to(root.resolve()).parts
+        except ValueError:
+            rel_parts = ()
+        is_sibling = (
+            (len(rel_parts) >= 1 and rel_parts[0] == "chardet")
+            or (len(rel_parts) >= 2 and rel_parts[0] == "src" and rel_parts[1] == "chardet")
+        )
+        if is_sibling:
+            return ("sibling_package", "R3_first_party_sibling", resolved)
         return ("internal_helper", "R4_internal_helper", resolved)
 
     return ("third_party", "R5_third_party_kept", None)
