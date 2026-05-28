@@ -768,8 +768,24 @@ _STDLIB_HINT: frozenset[str] = (
 )
 
 
+<<<<<<< ours
 def _collect_imports(root: pathlib.Path, pkg_name: str = "chardet") -> set[str]:
     pkg_name_candidates = {pkg_name}
+=======
+_PKG_SELF: frozenset[str] = frozenset({"chardet"})
+
+
+def _collect_raw_imports(root: pathlib.Path) -> set[str]:
+    """Return the *raw* set of top-level module names imported by every
+    implementation file under `root` (no filtering). Relative imports are
+    skipped because they are internal.
+
+    The audit trail (R5 reviewer complaint, v2 revision) classifies each
+    name with `_classify_import`; the pre-v2 implementation pre-filtered
+    against `_STDLIB_HINT` and `_PKG_SELF` here, which obscured the
+    classification rule.
+    """
+>>>>>>> theirs
     out: set[str] = set()
     for p in iter_impl_py_files(root):
         try:
@@ -779,32 +795,204 @@ def _collect_imports(root: pathlib.Path, pkg_name: str = "chardet") -> set[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    out.add(alias.name.split(".")[0])
+                    if alias.name:
+                        out.add(alias.name.split(".")[0])
             elif isinstance(node, ast.ImportFrom):
                 if node.level and node.level > 0:
                     continue  # relative import — internal, not an edge
                 if node.module:
                     out.add(node.module.split(".")[0])
-    return {m for m in out if m and m not in _STDLIB_HINT and m not in pkg_name_candidates}
+    return {m for m in out if m}
 
 
+def _module_resolves_inside(root: pathlib.Path, name: str) -> pathlib.Path | None:
+    """Return the first on-disk path under `root` that an absolute import
+    of `name` could resolve to as a Python module, or None.
+
+    Resolution candidates considered, in order:
+        1. Inside the chardet package directory itself (sibling submodule).
+        2. As a top-level `.py` file or package directory at the repo
+           root (sibling helper script).
+        3. As a `.py` file or package directory inside any sibling
+           top-level directory of the repo (e.g. `scripts/<name>.py`,
+           `tools/<name>/__init__.py`).
+
+    The check is a pure filesystem lookup; no import machinery is
+    invoked, so the rule is re-derivable from the cloned source tree
+    alone with no environment side-effects.
+    """
+    # Locate the chardet package directory if present, for R3 checks.
+    chardet_pkg_candidates = [root / "chardet", root / "src" / "chardet"]
+    chardet_pkg = next((d for d in chardet_pkg_candidates if d.is_dir()), None)
+
+    # R3 — chardet sibling submodule.
+    if chardet_pkg is not None:
+        for suffix in (f"{name}.py", name):
+            candidate = chardet_pkg / suffix
+            if candidate.exists():
+                if candidate.is_file() or (candidate / "__init__.py").is_file():
+                    return candidate
+
+    # R4a — top-level repo script/package.
+    for suffix in (f"{name}.py", name):
+        candidate = root / suffix
+        if candidate.is_file():
+            return candidate
+        if candidate.is_dir() and (candidate / "__init__.py").is_file():
+            return candidate / "__init__.py"
+
+    # R4b — file in any sibling top-level directory (e.g. scripts/).
+    # Bounded to depth-1 directories under root to keep the rule cheap
+    # and deterministic. Skips dot-directories and known non-source
+    # buckets so that worktree metadata cannot influence the result.
+    skip = {"__pycache__", "build", "dist", ".tox", ".venv", "tests", "test", "docs"}
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        if child.name.startswith(".") or child.name in skip:
+            continue
+        if chardet_pkg is not None and child == chardet_pkg.parent and child.name == "src":
+            # src/chardet already covered above; skip plain src/ helper
+            # files that aren't inside the chardet package.
+            for sub_suffix in (f"{name}.py", name):
+                sub_candidate = child / sub_suffix
+                if sub_candidate == chardet_pkg:
+                    continue
+                if sub_candidate.is_file():
+                    return sub_candidate
+                if sub_candidate.is_dir() and (sub_candidate / "__init__.py").is_file():
+                    return sub_candidate / "__init__.py"
+            continue
+        for sub_suffix in (f"{name}.py", name):
+            sub_candidate = child / sub_suffix
+            if sub_candidate.is_file():
+                return sub_candidate
+            if sub_candidate.is_dir() and (sub_candidate / "__init__.py").is_file():
+                return sub_candidate / "__init__.py"
+
+    return None
+
+
+def _classify_import(root: pathlib.Path, name: str) -> tuple[str, str, pathlib.Path | None]:
+    """Classify `name` against the source tree at `root`.
+
+    Returns (origin, rule_id, resolved_path):
+        origin     — one of stdlib / first_party_chardet / sibling_package /
+                     internal_helper / third_party
+        rule_id    — R1_stdlib / R2_first_party_self / R3_first_party_sibling /
+                     R4_internal_helper / R5_third_party_kept
+        resolved_path — filesystem path the name resolved to inside `root`
+                     for R3/R4, or None for R1/R2/R5.
+
+    Rule precedence (first match wins):
+        R1_stdlib              — `name in sys.stdlib_module_names`
+        R2_first_party_self    — name == "chardet"
+        R3_first_party_sibling — resolves inside `<root>/[src/]chardet/`
+        R4_internal_helper     — resolves elsewhere inside the cloned tree
+        R5_third_party_kept    — does not resolve anywhere in `root`
+
+    Only R5 imports are kept for the Jaccard computation. R3 and R4 are
+    re-derivable by re-running this filesystem check against any clone
+    of the chardet repo at the relevant tag.
+    """
+    if name in _STDLIB_HINT:
+        return ("stdlib", "R1_stdlib", None)
+    if name in _PKG_SELF:
+        return ("first_party_chardet", "R2_first_party_self", None)
+
+    resolved = _module_resolves_inside(root, name)
+    if resolved is not None:
+        # R3 if the resolved path lives inside the chardet/ package dir
+        # *within `root`*; otherwise R4 (sibling helper script). We use
+        # path-relative-to-root + a fixed package-dir prefix rather than
+        # an absolute-path segment scan, so a clone living under any
+        # parent directory (including one called "chardet/") is
+        # classified consistently. The package dir is either
+        # `<root>/chardet/...` (the legacy layout) or
+        # `<root>/src/chardet/...` (the src-layout used by v7).
+        try:
+            rel_parts = resolved.resolve().relative_to(root.resolve()).parts
+        except ValueError:
+            rel_parts = ()
+        is_sibling = (
+            (len(rel_parts) >= 1 and rel_parts[0] == "chardet")
+            or (len(rel_parts) >= 2 and rel_parts[0] == "src" and rel_parts[1] == "chardet")
+        )
+        if is_sibling:
+            return ("sibling_package", "R3_first_party_sibling", resolved)
+        return ("internal_helper", "R4_internal_helper", resolved)
+
+    return ("third_party", "R5_third_party_kept", None)
+
+
+def _audit_imports(root: pathlib.Path, version_label: str) -> list[dict]:
+    """Return one audit-row dict per imported module name in `root`.
+
+    Each row is {module, version, origin, kept_for_jaccard, rule_id,
+    resolved_path}. Sorted by module name (case-insensitive) so the
+    appendix table is reproducible.
+    """
+    names = _collect_raw_imports(root)
+    rows: list[dict] = []
+    for name in sorted(names, key=str.lower):
+        origin, rule_id, resolved = _classify_import(root, name)
+        kept = rule_id == "R5_third_party_kept"
+        rows.append({
+            "module": name,
+            "version": version_label,
+            "origin": origin,
+            "kept_for_jaccard": "yes" if kept else "no",
+            "rule_id": rule_id,
+            "resolved_path": resolved.relative_to(root).as_posix() if resolved else "",
+        })
+    return rows
+
+
+def _kept_set(audit_rows: list[dict]) -> set[str]:
+    return {r["module"] for r in audit_rows if r["kept_for_jaccard"] == "yes"}
+
+
+<<<<<<< ours
 def signal_c06b_import_edges(
     v6: pathlib.Path, v7: pathlib.Path,
     pkg_a: str = "chardet", pkg_b: str = "chardet",
 ) -> dict:
     i6 = _collect_imports(v6, pkg_a)
     i7 = _collect_imports(v7, pkg_b)
+=======
+def signal_c06b_import_edges(v6: pathlib.Path, v7: pathlib.Path) -> dict:
+    audit6 = _audit_imports(v6, "v6")
+    audit7 = _audit_imports(v7, "v7")
+    i6 = _kept_set(audit6)
+    i7 = _kept_set(audit7)
+>>>>>>> theirs
     inter = i6 & i7
     union = i6 | i7
     jaccard = len(inter) / len(union) if union else 0.0
     return {
         "signal": "import_edge_set",
         "contract": "C06b",
-        "expected": "report Jaccard overlap of third-party (non-stdlib, non-self) imports",
+        "expected": "report Jaccard overlap of third-party imports under audit rules R1..R5",
         "actual": f"jaccard={jaccard:.3f} shared={len(inter)} v6_only={len(i6 - i7)} v7_only={len(i7 - i6)}",
         "verdict": "MEASURED",
         "evidence": f"shared: {sorted(inter)}; v6_only: {sorted(i6 - i7)}; v7_only: {sorted(i7 - i6)}",
     }
+
+
+def _emit_debug_imports_tsv(v6: pathlib.Path, v7: pathlib.Path, out_path: pathlib.Path) -> None:
+    """Write the full per-module classification trace as TSV.
+
+    Columns: module | version | origin | kept_for_jaccard | rule_id |
+    resolved_path. Rows are sorted by (module lower-case, version).
+    """
+    rows = _audit_imports(v6, "v6") + _audit_imports(v7, "v7")
+    rows.sort(key=lambda r: (r["module"].lower(), r["version"]))
+    header = ["module", "version", "origin", "kept_for_jaccard", "rule_id", "resolved_path"]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        fh.write("\t".join(header) + "\n")
+        for r in rows:
+            fh.write("\t".join(r[k] for k in header) + "\n")
 
 
 # ----------------------------------------------------------------------------
@@ -1021,6 +1209,7 @@ def signal_c06e_behavioural_skip(v6: pathlib.Path, v7: pathlib.Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+<<<<<<< ours
     # New pair-agnostic flags (preferred).
     parser.add_argument("--root-a", dest="root_a", help="checkout of side A of the pair")
     parser.add_argument("--root-b", dest="root_b", help="checkout of side B of the pair")
@@ -1031,6 +1220,22 @@ def main() -> int:
     # Legacy aliases retained for v1-era invocations.
     parser.add_argument("--v6-root", dest="v6_root", help="alias for --root-a (legacy)")
     parser.add_argument("--v7-root", dest="v7_root", help="alias for --root-b (legacy)")
+=======
+    parser.add_argument("--v6-root", required=True, help="checkout of chardet 6.0.0")
+    parser.add_argument("--v7-root", required=True, help="checkout of chardet 7.0.0")
+    parser.add_argument(
+        "--debug-imports",
+        metavar="TSV_PATH",
+        help=(
+            "Write the full C06b import-classification trace to TSV at "
+            "TSV_PATH (columns: module, version, origin, kept_for_jaccard, "
+            "rule_id, resolved_path). Each row's rule_id is one of "
+            "R1_stdlib / R2_first_party_self / R3_first_party_sibling / "
+            "R4_internal_helper / R5_third_party_kept, defined in the "
+            "module-level _classify_import docstring."
+        ),
+    )
+>>>>>>> theirs
     args = parser.parse_args()
 
     root_a_str = args.root_a or args.v6_root
@@ -1047,7 +1252,12 @@ def main() -> int:
         print(f"error: --root-b {v7} is not a directory", file=sys.stderr)
         return 2
 
+<<<<<<< ours
     pkg_a, pkg_b = args.pkg_a, args.pkg_b
+=======
+    if args.debug_imports:
+        _emit_debug_imports_tsv(v6, v7, pathlib.Path(args.debug_imports))
+>>>>>>> theirs
 
     signals = [
         signal_aux1_literal_carry(v6, v7),
