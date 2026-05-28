@@ -358,8 +358,16 @@ def recompute_c06b(v6: pathlib.Path,
                    v7: pathlib.Path) -> dict[str, Any]:
     """Re-derive C06b jaccard via set arithmetic; cross-check against
     1 - scipy.spatial.distance.jaccard on the indicator vectors."""
-    i6 = ex._collect_imports(v6)
-    i7 = ex._collect_imports(v7)
+    # v2 (D-merge): _collect_imports replaced by _audit_imports +
+    # _kept_set, with classification via R1..R5 rules. For the v1
+    # anchor's "third-party Jaccard" the v2 audit's kept_set IS the
+    # equivalent — only R5_third_party_kept names participate. NB: the
+    # number IS expected to move from 0.333 to 0.667 between v1 and v2
+    # because the audit reclassifies create_language_model,
+    # confusion_training, and utils as internal helpers (R3/R4) — see
+    # v2-numeric-shifts.md.
+    i6 = ex._kept_set(ex._audit_imports(v6, "v6"))
+    i7 = ex._kept_set(ex._audit_imports(v7, "v7"))
     inter = i6 & i7
     union = i6 | i7
     j_sets = len(inter) / len(union) if union else 0.0
@@ -643,10 +651,15 @@ def main() -> int:
     parser.add_argument("--repo", type=pathlib.Path, default=DEFAULT_REPO)
     parser.add_argument("--v6-tag", default="6.0.0")
     parser.add_argument("--v7-tag", default="7.0.0")
+    # v2 integration note: the default output was originally
+    # validation_report.json (the v1 anchor). The Phase-1a integration
+    # changed it to validation_report.v2_running.json so the v1 anchor
+    # is preserved byte-for-byte. Pass --output explicitly if you want
+    # the legacy behaviour.
     parser.add_argument(
         "--output",
         type=pathlib.Path,
-        default=HERE.parent / "validation_report.json",
+        default=HERE.parent / "validation_report.v2_running.json",
     )
     args = parser.parse_args()
 
