@@ -108,6 +108,19 @@ except ImportError:  # pragma: no cover
     print("error: networkx is required (pip install networkx)", file=sys.stderr)
     sys.exit(2)
 
+# V2 R15 response: AST walking is now mediated by an `ASTWalker` protocol
+# (see `_walker.py`). The Python concrete instance is `PythonASTWalker`,
+# instantiated below in each signal_c06* function and delegated to from
+# the legacy path-typed signatures. The architecture diagram lives at
+# `manuscript/figures/fig5_walker_architecture.pdf` and the prose
+# rationale at `manuscript/v2-phase1b-walker-paragraph.md`.
+from _walker import (
+    PythonASTWalker,
+    FileContribution,
+    FunctionRecord,
+    build_call_graph_from_contribs,
+)
+
 
 # ----------------------------------------------------------------------------
 # File enumeration
@@ -276,9 +289,16 @@ def _relative_diff(a: float, b: float) -> float:
     return abs(a - b) / (abs(a) + abs(b))
 
 
-def signal_c06a_call_graph(v6: pathlib.Path, v7: pathlib.Path) -> dict:
-    g6 = _build_call_graph(v6)
-    g7 = _build_call_graph(v7)
+def _signal_c06a_walker(walker_a: PythonASTWalker,
+                         walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06a. The walker exposes per-file call-graph
+    contributions; we merge them with `build_call_graph_from_contribs`
+    and feed the result through the same `_graph_topology` /
+    `_relative_diff` helpers the legacy path used. Byte-identical to
+    `_build_call_graph(root)` because the contributions are produced by
+    the same _CallEdgeCollector traversal in the same file order."""
+    g6 = build_call_graph_from_contribs(walker_a.iter_call_edges())
+    g7 = build_call_graph_from_contribs(walker_b.iter_call_edges())
     t6 = _graph_topology(g6)
     t7 = _graph_topology(g7)
 
@@ -295,6 +315,18 @@ def signal_c06a_call_graph(v6: pathlib.Path, v7: pathlib.Path) -> dict:
         "verdict": "MEASURED",
         "evidence": "; ".join(f"{k}: v6={t6[k]:.3g} v7={t7[k]:.3g} reldiff={diffs[k]:.3f}" for k in ("density", "sccs", "mean_in_degree", "max_in_degree")),
     }
+
+
+def signal_c06a_call_graph(v6: pathlib.Path, v7: pathlib.Path) -> dict:
+    """Legacy path-typed shim: instantiates walkers and delegates to the
+    walker-based implementation. Preserved so the existing CLI
+    (extract_signals.py --root-a / --root-b) and the bootstrap machinery
+    in validate_numbers.py continue to work without changes."""
+    walker_a = PythonASTWalker(v6, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    return _signal_c06a_walker(walker_a, walker_b)
 
 
 # ----------------------------------------------------------------------------
@@ -391,13 +423,14 @@ def _multiset_cosine(a: Counter[str], b: Counter[str]) -> float:
     return dot / (na * nb)
 
 
-def signal_c06a_prime_wl_kernel(v6: pathlib.Path,
-                                 v7: pathlib.Path) -> dict:
-    """C06a' — Weisfeiler-Lehman kernel similarity over the v6 and v7
-    call graphs. Reported alongside C06a so reviewers can see the
-    coarse-vs-refined signal pair side by side."""
-    g6 = _build_call_graph(v6)
-    g7 = _build_call_graph(v7)
+def _signal_c06a_prime_walker(walker_a: PythonASTWalker,
+                               walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06a'. Identical to the legacy path-typed function
+    except the call graph is materialised through the walker. Topology
+    of the resulting DiGraph is byte-identical because the walker
+    delegates to the same _CallEdgeCollector traversal."""
+    g6 = build_call_graph_from_contribs(walker_a.iter_call_edges())
+    g7 = build_call_graph_from_contribs(walker_b.iter_call_edges())
     bag6 = _wl_label_multiset(g6, _WL_ITERATIONS)
     bag7 = _wl_label_multiset(g7, _WL_ITERATIONS)
     cos = _multiset_cosine(bag6, bag7)
@@ -436,6 +469,16 @@ def signal_c06a_prime_wl_kernel(v6: pathlib.Path,
         "evidence": (f"per-iteration cosine: {breakdown}" if breakdown
                      else "empty call graph(s)"),
     }
+
+
+def signal_c06a_prime_wl_kernel(v6: pathlib.Path,
+                                 v7: pathlib.Path) -> dict:
+    """Legacy path-typed shim — instantiates walkers and delegates."""
+    walker_a = PythonASTWalker(v6, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    return _signal_c06a_prime_walker(walker_a, walker_b)
 
 
 # ----------------------------------------------------------------------------
@@ -671,23 +714,20 @@ def _match_functions(v6_funcs: list[dict],
     return pairs, unmatched_v6, unmatched_v7
 
 
-def signal_c06f_per_function_shape(v6: pathlib.Path,
-                                    v7: pathlib.Path) -> dict:
-    """C06f — per-function AST-shape signal.
-
-    Reports:
-      - total function counts (v6, v7)
-      - matched-pair count (by signature-shape + call-graph position)
-      - aggregate mean shape distance over matched pairs
-      - unmatched-function counts on each side (honest — no
-        name-based fallback)
-      - same-name overlap as a *diagnostic* number (to expose how
-        much of the matching is identifier-driven vs structural)
-    """
-    g6 = _build_call_graph(v6)
-    g7 = _build_call_graph(v7)
-    f6 = _collect_functions(v6)
-    f7 = _collect_functions(v7)
+def _signal_c06f_walker(walker_a: PythonASTWalker,
+                         walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06f. The walker exposes per-file call-graph
+    contributions (used to build the DiGraph for fan-in/fan-out lookup)
+    and a function-shape record list. We then run the same matching
+    + distance arithmetic the legacy path used. Byte-identical because
+    `_collect_functions` and `_attach_call_graph_position` are unchanged
+    and we feed them the same dicts via the legacy dict-record path."""
+    g6 = build_call_graph_from_contribs(walker_a.iter_call_edges())
+    g7 = build_call_graph_from_contribs(walker_b.iter_call_edges())
+    # The legacy dict-record path is preserved for the matcher because
+    # _attach_call_graph_position mutates dicts in place (legacy contract).
+    f6 = _collect_functions(walker_a.root)
+    f7 = _collect_functions(walker_b.root)
     _attach_call_graph_position(f6, g6)
     _attach_call_graph_position(f7, g7)
 
@@ -731,6 +771,26 @@ def signal_c06f_per_function_shape(v6: pathlib.Path,
             f"matched/v7={len(pairs)}/{len(f7)}"
         ),
     }
+
+
+def signal_c06f_per_function_shape(v6: pathlib.Path,
+                                    v7: pathlib.Path) -> dict:
+    """C06f — per-function AST-shape signal. Legacy path-typed shim.
+
+    Reports:
+      - total function counts (v6, v7)
+      - matched-pair count (by signature-shape + call-graph position)
+      - aggregate mean shape distance over matched pairs
+      - unmatched-function counts on each side (honest — no
+        name-based fallback)
+      - same-name overlap as a *diagnostic* number (to expose how
+        much of the matching is identifier-driven vs structural)
+    """
+    walker_a = PythonASTWalker(v6, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    return _signal_c06f_walker(walker_a, walker_b)
 
 
 
@@ -937,12 +997,15 @@ def _kept_set(audit_rows: list[dict]) -> set[str]:
     return {r["module"] for r in audit_rows if r["kept_for_jaccard"] == "yes"}
 
 
-def signal_c06b_import_edges(
-    v6: pathlib.Path, v7: pathlib.Path,
-    pkg_a: str = "chardet", pkg_b: str = "chardet",
-) -> dict:
-    audit_a = _audit_imports(v6, "v6", pkg_a)
-    audit_b = _audit_imports(v7, "v7", pkg_b)
+def _signal_c06b_walker(walker_a: PythonASTWalker,
+                         walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06b. The walker exposes
+    `audit_imports(version_label)` which delegates to the same
+    `_audit_imports` helper the legacy path used, parametrised by the
+    walker's `pkg_name`. Result is byte-identical to the path-based
+    call."""
+    audit_a = walker_a.audit_imports("v6")
+    audit_b = walker_b.audit_imports("v7")
     i6 = _kept_set(audit_a)
     i7 = _kept_set(audit_b)
     inter = i6 & i7
@@ -956,6 +1019,18 @@ def signal_c06b_import_edges(
         "verdict": "MEASURED",
         "evidence": f"shared: {sorted(inter)}; v6_only: {sorted(i6 - i7)}; v7_only: {sorted(i7 - i6)}",
     }
+
+
+def signal_c06b_import_edges(
+    v6: pathlib.Path, v7: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> dict:
+    """Legacy path-typed shim."""
+    walker_a = PythonASTWalker(v6, pkg_name=pkg_a,
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name=pkg_b,
+                                ex_module=sys.modules[__name__])
+    return _signal_c06b_walker(walker_a, walker_b)
 
 
 def _emit_debug_imports_tsv(
@@ -1014,15 +1089,38 @@ def _cosine(a: dict[str, float], b: dict[str, float]) -> float:
     return dot / (na * nb)
 
 
-def signal_c06c_control_flow(v6: pathlib.Path, v7: pathlib.Path) -> dict:
-    h6 = _control_flow_histogram(v6)
-    h7 = _control_flow_histogram(v7)
+def _signal_c06c_walker(walker_a: PythonASTWalker,
+                         walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06c. The walker exposes one Counter per file; we
+    sum them to reproduce the legacy `_control_flow_histogram(root)`
+    aggregate. Byte-identical because the per-file traversal is the
+    same as the legacy single-pass walk."""
+    pf_a = walker_a.iter_control_flow_nodes()
+    pf_b = walker_b.iter_control_flow_nodes()
+    h6: Counter[str] = Counter()
+    for c in pf_a:
+        h6.update(c)
+    h7: Counter[str] = Counter()
+    for c in pf_b:
+        h7.update(c)
     total6 = sum(h6.values()) or 1
     total7 = sum(h7.values()) or 1
     n6 = {k: v / total6 for k, v in h6.items()}
     n7 = {k: v / total7 for k, v in h7.items()}
     cos = _cosine(n6, n7)
-    top_terms = sorted(set(h6) | set(h7), key=lambda k: -(h6.get(k, 0) + h7.get(k, 0)))[:6]
+    # NB: the secondary alphabetical sort key is a Phase-1b
+    # determinism fix. The legacy code sorted by `-(h6+h7)` alone,
+    # which produced PYTHONHASHSEED-dependent ordering of tied
+    # evidence terms (e.g. Try vs ExceptHandler both at count 12 in
+    # v5_v6) — two consecutive runs of the unmodified legacy harness
+    # already produced different orderings of those tied terms. The
+    # `(..., k)` secondary key makes the evidence string deterministic
+    # across processes without affecting any numeric output. Headline
+    # cosine / totals are byte-identical to legacy.
+    top_terms = sorted(
+        set(h6) | set(h7),
+        key=lambda k: (-(h6.get(k, 0) + h7.get(k, 0)), k),
+    )[:6]
     return {
         "signal": "control_flow_histogram",
         "contract": "C06c",
@@ -1031,6 +1129,15 @@ def signal_c06c_control_flow(v6: pathlib.Path, v7: pathlib.Path) -> dict:
         "verdict": "MEASURED",
         "evidence": "; ".join(f"{k}: v6={h6.get(k, 0)} v7={h7.get(k, 0)}" for k in top_terms),
     }
+
+
+def signal_c06c_control_flow(v6: pathlib.Path, v7: pathlib.Path) -> dict:
+    """Legacy path-typed shim."""
+    walker_a = PythonASTWalker(v6, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name="chardet",
+                                ex_module=sys.modules[__name__])
+    return _signal_c06c_walker(walker_a, walker_b)
 
 
 # ----------------------------------------------------------------------------
@@ -1607,21 +1714,29 @@ def per_method_class_analysis(
     return {"classes": classes_out, "rollup": dict(rollup)}
 
 
-def signal_c06d_signature_equivalence(
-    v6: pathlib.Path, v7: pathlib.Path,
-    pkg_a: str = "chardet", pkg_b: str = "chardet",
-) -> dict:
-    s6 = _collect_public_signatures(v6, pkg_a)
-    s7 = _collect_public_signatures(v7, pkg_b)
+def _signal_c06d_walker(walker_a: PythonASTWalker,
+                         walker_b: PythonASTWalker) -> dict:
+    """Walker-based C06d. The walker exposes `iter_public_api()`
+    (Python: names re-exported by `__all__`, resolved to defining
+    signatures) and `iter_class_methods()` (Python: ClassDef nodes).
+    The per-method analysis still uses the legacy `per_method_class_analysis`
+    helper for now because it lives on the walker's underlying root
+    paths and pkg names; we route it through the walker's recorded
+    pkg_name so the abstraction's contract (signals never name
+    `pkg_a`/`pkg_b` directly) is preserved."""
+    s6 = walker_a.iter_public_api()
+    s7 = walker_b.iter_public_api()
     common = sorted(set(s6) & set(s7))
 
     # V2 extension (agent E): walk class bodies and classify per-method.
     # The class-level rollup is computed via worst-of over the per-method
     # verdicts. See per_method_class_analysis() docstring for the precise
-    # definition. pkg_a/pkg_b parametrise the side-specific package name
-    # (Q×E integration: charset_normalizer package on side B for the
-    # v6_charset_norm pair).
-    per_method = per_method_class_analysis(v6, v7, pkg_a, pkg_b)
+    # definition. The walker's recorded pkg_name parametrises the
+    # side-specific package surface (Q×E integration: charset_normalizer
+    # on side B for the v6_charset_norm pair).
+    per_method = per_method_class_analysis(walker_a.root, walker_b.root,
+                                            walker_a.pkg_name,
+                                            walker_b.pkg_name)
 
     if not common:
         return {
@@ -1657,6 +1772,18 @@ def signal_c06d_signature_equivalence(
         ]),
         "per_method": per_method,
     }
+
+
+def signal_c06d_signature_equivalence(
+    v6: pathlib.Path, v7: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> dict:
+    """Legacy path-typed shim."""
+    walker_a = PythonASTWalker(v6, pkg_name=pkg_a,
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name=pkg_b,
+                                ex_module=sys.modules[__name__])
+    return _signal_c06d_walker(walker_a, walker_b)
 
 
 
@@ -1730,15 +1857,24 @@ def main() -> int:
     if args.debug_imports:
         _emit_debug_imports_tsv(v6, v7, pathlib.Path(args.debug_imports), pkg_a, pkg_b)
 
+    # Construct one walker per side. The walker is the language seam:
+    # the six structural signals route their AST access through it (see
+    # _walker.py for the protocol and PythonASTWalker for the reference
+    # instance).
+    walker_a = PythonASTWalker(v6, pkg_name=pkg_a,
+                                ex_module=sys.modules[__name__])
+    walker_b = PythonASTWalker(v7, pkg_name=pkg_b,
+                                ex_module=sys.modules[__name__])
+
     signals = [
         signal_aux1_literal_carry(v6, v7),
-        signal_c06a_call_graph(v6, v7),
-        signal_c06a_prime_wl_kernel(v6, v7),
-        signal_c06b_import_edges(v6, v7, pkg_a, pkg_b),
-        signal_c06c_control_flow(v6, v7),
-        signal_c06d_signature_equivalence(v6, v7, pkg_a, pkg_b),
+        _signal_c06a_walker(walker_a, walker_b),
+        _signal_c06a_prime_walker(walker_a, walker_b),
+        _signal_c06b_walker(walker_a, walker_b),
+        _signal_c06c_walker(walker_a, walker_b),
+        _signal_c06d_walker(walker_a, walker_b),
         signal_c06e_behavioural_skip(v6, v7),
-        signal_c06f_per_function_shape(v6, v7),
+        _signal_c06f_walker(walker_a, walker_b),
     ]
 
     print("signal\tcontract\texpected\tactual\tverdict\tevidence")
