@@ -1,0 +1,490 @@
+{
+  "aggregate": {
+    "bucket": 1008,
+    "bucket_rate": 0.9473684210526315,
+    "corpus_digest_manifest": "c37637f0956d7a7e",
+    "exact": 1008,
+    "exact_rate": 0.9473684210526315,
+    "n": 1064,
+    "normalized": 1012,
+    "normalized_rate": 0.9511278195488722
+  },
+  "per_bucket": {
+    "email_mime": {
+      "bucket": 4,
+      "bucket_rate": 0.5714285714285714,
+      "disagreement_samples": [
+        {
+          "item_id": "email_gb18030_zh",
+          "normalized_agree": true,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.99,
+            "encoding": "GB18030"
+          }
+        },
+        {
+          "item_id": "email_iso88591_de",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.6630775569758431,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "email_windows1252_es",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.6686072876710749,
+            "encoding": "WINDOWS-1252"
+          }
+        }
+      ],
+      "exact": 4,
+      "exact_rate": 0.5714285714285714,
+      "n": 7,
+      "normalized": 5,
+      "normalized_rate": 0.7142857142857143
+    },
+    "html_cjk": {
+      "bucket": 3,
+      "bucket_rate": 1.0,
+      "disagreement_samples": [],
+      "exact": 3,
+      "exact_rate": 1.0,
+      "n": 3,
+      "normalized": 3,
+      "normalized_rate": 1.0
+    },
+    "html_latin": {
+      "bucket": 4,
+      "bucket_rate": 1.0,
+      "disagreement_samples": [],
+      "exact": 4,
+      "exact_rate": 1.0,
+      "n": 4,
+      "normalized": 4,
+      "normalized_rate": 1.0
+    },
+    "malformed": {
+      "bucket": 1,
+      "bucket_rate": 0.16666666666666666,
+      "disagreement_samples": [
+        {
+          "item_id": "ascii_with_random_high_byte",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.6276075660194252,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "latin1_then_utf8_then_latin1",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.3091859134897814,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.3755936869544064,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "mixed_gb18030_then_shiftjis",
+          "normalized_agree": true,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.99,
+            "encoding": "GB18030"
+          }
+        },
+        {
+          "item_id": "utf8_truncated_midcodepoint",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.3604337902582529,
+            "encoding": "windows-1251"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "w1252_smartquotes_plus_utf8",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.48115105855575196,
+            "encoding": "Windows-1254"
+          },
+          "v7": {
+            "confidence": 0.39219450222171115,
+            "encoding": "WINDOWS-1252"
+          }
+        }
+      ],
+      "exact": 1,
+      "exact_rate": 0.16666666666666666,
+      "n": 6,
+      "normalized": 2,
+      "normalized_rate": 0.3333333333333333
+    },
+    "multilingual_gb18030": {
+      "bucket": 1,
+      "bucket_rate": 0.2,
+      "disagreement_samples": [
+        {
+          "item_id": "udhr_art1_ja_gb18030",
+          "normalized_agree": true,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.99,
+            "encoding": "GB18030"
+          }
+        },
+        {
+          "item_id": "udhr_art1_ko_gb18030",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "udhr_art1_ru_gb18030",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.46511627906976744,
+            "encoding": "Big5"
+          }
+        },
+        {
+          "item_id": "udhr_art1_zh_gb18030",
+          "normalized_agree": true,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.99,
+            "encoding": "GB18030"
+          }
+        }
+      ],
+      "exact": 1,
+      "exact_rate": 0.2,
+      "n": 5,
+      "normalized": 3,
+      "normalized_rate": 0.6
+    },
+    "multilingual_iso88591": {
+      "bucket": 1,
+      "bucket_rate": 0.25,
+      "disagreement_samples": [
+        {
+          "item_id": "udhr_art1_de_iso88591",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.7637628220134481,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.6634049135670966,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "udhr_art1_es_iso88591",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.6634337531470006,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "udhr_art1_fr_iso88591",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.7361481527155626,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.6194013345890971,
+            "encoding": "WINDOWS-1252"
+          }
+        }
+      ],
+      "exact": 1,
+      "exact_rate": 0.25,
+      "n": 4,
+      "normalized": 1,
+      "normalized_rate": 0.25
+    },
+    "multilingual_shiftjis": {
+      "bucket": 2,
+      "bucket_rate": 1.0,
+      "disagreement_samples": [],
+      "exact": 2,
+      "exact_rate": 1.0,
+      "n": 2,
+      "normalized": 2,
+      "normalized_rate": 1.0
+    },
+    "multilingual_utf8": {
+      "bucket": 8,
+      "bucket_rate": 0.8888888888888888,
+      "disagreement_samples": [
+        {
+          "item_id": "udhr_art1_de_utf8",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.7578326689108003,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.7525,
+            "encoding": "utf-8"
+          }
+        }
+      ],
+      "exact": 8,
+      "exact_rate": 0.8888888888888888,
+      "n": 9,
+      "normalized": 8,
+      "normalized_rate": 0.8888888888888888
+    },
+    "multilingual_windows1252": {
+      "bucket": 1,
+      "bucket_rate": 0.25,
+      "disagreement_samples": [
+        {
+          "item_id": "udhr_art1_de_windows1252",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.7637628220134481,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.6634049135670966,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "udhr_art1_es_windows1252",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.6634337531470006,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "udhr_art1_fr_windows1252",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.7361481527155626,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.6194013345890971,
+            "encoding": "WINDOWS-1252"
+          }
+        }
+      ],
+      "exact": 1,
+      "exact_rate": 0.25,
+      "n": 4,
+      "normalized": 1,
+      "normalized_rate": 0.25
+    },
+    "random_control": {
+      "bucket": 968,
+      "bucket_rate": 0.968,
+      "disagreement_samples": [
+        {
+          "item_id": "random_0008",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "random_0089",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "Windows-1252"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "random_0095",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.3956743075897454,
+            "encoding": "Windows-1253"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "random_0113",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.99,
+            "encoding": "GB2312"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "random_0124",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.30700565231058446,
+            "encoding": "Windows-1253"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        }
+      ],
+      "exact": 968,
+      "exact_rate": 0.968,
+      "n": 1000,
+      "normalized": 968,
+      "normalized_rate": 0.968
+    },
+    "rfc_ascii": {
+      "bucket": 4,
+      "bucket_rate": 1.0,
+      "disagreement_samples": [],
+      "exact": 4,
+      "exact_rate": 1.0,
+      "n": 4,
+      "normalized": 4,
+      "normalized_rate": 1.0
+    },
+    "short_snippets": {
+      "bucket": 11,
+      "bucket_rate": 0.6875,
+      "disagreement_samples": [
+        {
+          "item_id": "chinese_gb18030",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.2698659090271226,
+            "encoding": "TIS-620"
+          },
+          "v7": {
+            "confidence": 0.0,
+            "encoding": null
+          }
+        },
+        {
+          "item_id": "french_iso88591",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.7092514666649594,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "german_iso88591",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.6645861235726122,
+            "encoding": "ISO-8859-9"
+          },
+          "v7": {
+            "confidence": 0.5877299570047215,
+            "encoding": "WINDOWS-1252"
+          }
+        },
+        {
+          "item_id": "japanese_sjis",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "Windows-1252"
+          },
+          "v7": {
+            "confidence": 0.99,
+            "encoding": "SHIFT_JIS"
+          }
+        },
+        {
+          "item_id": "spanish_w1252",
+          "normalized_agree": false,
+          "v6": {
+            "confidence": 0.73,
+            "encoding": "ISO-8859-1"
+          },
+          "v7": {
+            "confidence": 0.7821367396230674,
+            "encoding": "WINDOWS-1252"
+          }
+        }
+      ],
+      "exact": 11,
+      "exact_rate": 0.6875,
+      "n": 16,
+      "normalized": 11,
+      "normalized_rate": 0.6875
+    }
+  }
+}

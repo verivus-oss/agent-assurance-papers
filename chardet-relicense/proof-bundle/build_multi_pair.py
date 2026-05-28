@@ -153,8 +153,8 @@ def _emit_latex(summaries: dict[str, dict], manifests: dict[str, dict]) -> str:
                  "Each column is the same six signals run against a different pair. "
                  "The v1 paper reported only the leftmost column; the other two columns "
                  "answer the reviewer's external-validity question (R17). "
-                 "Resolved commit SHAs: chardet 5.0.0=21bc6be, 6.0.0=8a4636b, 7.0.0=4b89d62; "
-                 "charset-normalizer 3.4.7=0f07891.}")
+                 "Resolved commit SHAs: chardet 5.0.0=21bc6be (tag object; peeled commit fbb2ec6 via 5.0.0\\^{}\\{\\}), "
+                 "6.0.0=8a4636b, 7.0.0=4b89d62; charset-normalizer 3.4.7=0f07891.}")
     lines.append("\\label{tab:multi-pair-calibration}")
     lines.append("\\small")
     lines.append("\\begin{tabular}{lrrr}")

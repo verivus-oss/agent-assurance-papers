@@ -1,0 +1,1255 @@
+{
+  "_meta": {
+    "produced_by": "v2-phase1a-merged integration agent",
+    "produced_on": "2026-05-28",
+    "description": "Consolidated v2 numeric appendix. Patches from five Phase-1a agents merged into a single document keyed by independent.<signal>.<...>.\nSource patches retained at validation_report.v2_patch.{bp,c,d,e,q}.json.",
+    "consolidates_patches": [
+      "validation_report.v2_patch.q.json",
+      "validation_report.v2_patch.bp.json",
+      "validation_report.v2_patch.d.json",
+      "validation_report.v2_patch.e.json",
+      "validation_report.v2_patch.c.json"
+    ],
+    "tag_sha_provenance": {
+      "note": "chardet 5.0.0 in the upstream chardet/chardet repo is an annotated tag object, not a lightweight tag. `git rev-parse 5.0.0` yields the tag-object SHA 21bc6be...; the commit it points to (the actual source state) is fbb2ec6..., obtainable via `git rev-parse 5.0.0^{}` (or equivalently `git rev-parse 5.0.0^{commit}`).",
+      "tags": {
+        "chardet_5.0.0": {
+          "tag_object_sha": "21bc6befb1795b9de4a1f8f707982ec627ba9683",
+          "commit_sha": "fbb2ec6fc1cdf3bec4435ace8b5d7f2f1298afaa",
+          "tag_kind": "annotated"
+        },
+        "chardet_6.0.0": {
+          "commit_sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+          "tag_kind": "lightweight"
+        },
+        "chardet_7.0.0": {
+          "commit_sha": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+          "tag_kind": "lightweight"
+        },
+        "charset_normalizer_3.4.7": {
+          "commit_sha": "0f07891bf516b5d5231f1bd4dd2d8da7d4d09a9a",
+          "tag_kind": "lightweight (confirm)"
+        }
+      },
+      "witness_tsv_sha_field_records": "tag-object SHA (matches `git rev-parse <tag>`)"
+    }
+  },
+  "independent": {
+    "calibration": {
+      "harness_invocation": "chardet-relicense/proof-bundle/detect.sh <pair_name>",
+      "pairs_defined_in": "chardet-relicense/proof-bundle/detect.sh case statement",
+      "pair": {
+        "v6_v7": {
+          "manifest": {
+            "pair": "v6_v7",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "7.0.0",
+              "sha": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+              "pkg": "chardet",
+              "module": "chardet"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 87 v6 / 33 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.881,
+              "nodes_a": 342,
+              "nodes_b": 358,
+              "edges_a": 488,
+              "edges_b": 659,
+              "actual": "similarity=0.881 v6_nodes=342 v7_nodes=358 v6_edges=488 v7_edges=659",
+              "evidence": "density: v6=0.00418 v7=0.00516 reldiff=0.104; sccs: v6=342 v7=358 reldiff=0.023; mean_in_degree: v6=1.43 v7=1.84 reldiff=0.127; max_in_degree: v6=34 v7=44 reldiff=0.128"
+            },
+            "c06b": {
+              "jaccard": 0.333,
+              "shared": 2,
+              "a_only": 1,
+              "b_only": 3,
+              "evidence": "shared: ['cchardet', 'datasets']; v6_only: ['create_language_model']; v7_only: ['charset_normalizer', 'confusion_training', 'utils']"
+            },
+            "c06c": {
+              "cosine": 0.984,
+              "total_a": 652,
+              "total_b": 848,
+              "evidence": "If: v6=346 v7=355; Return: v6=191 v7=253; For: v6=72 v7=135; Try: v6=12 v7=33; ExceptHandler: v6=12 v7=32; Raise: v6=10 v7=12"
+            },
+            "c06d": {
+              "shared": 5,
+              "strict": 3,
+              "renamed_args": 0,
+              "diverged": 2,
+              "evidence": "EncodingEra=diverged; UniversalDetector=diverged; __version__=strict; detect=strict; detect_all=strict"
+            },
+            "c06e": {
+              "exact_rate": 0.0,
+              "bucket_rate": 0.0,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        },
+        "v5_v6": {
+          "manifest": {
+            "pair": "v5_v6",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "5.0.0",
+              "sha": "21bc6befb1795b9de4a1f8f707982ec627ba9683",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 47 v6 / 87 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.93,
+              "nodes_a": 288,
+              "nodes_b": 342,
+              "edges_a": 348,
+              "edges_b": 488,
+              "actual": "similarity=0.930 v6_nodes=288 v7_nodes=342 v6_edges=348 v7_edges=488",
+              "evidence": "density: v6=0.00421 v7=0.00418 reldiff=0.003; sccs: v6=288 v7=342 reldiff=0.086; mean_in_degree: v6=1.21 v7=1.43 reldiff=0.083; max_in_degree: v6=36 v7=34 reldiff=0.029"
+            },
+            "c06b": {
+              "jaccard": 0.2,
+              "shared": 1,
+              "a_only": 2,
+              "b_only": 2,
+              "evidence": "shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['create_language_model', 'datasets']"
+            },
+            "c06c": {
+              "cosine": 0.995,
+              "total_a": 421,
+              "total_b": 652,
+              "evidence": "If: v6=216 v7=346; Return: v6=147 v7=191; For: v6=40 v7=72; Raise: v6=8 v7=10; Try: v6=3 v7=12; ExceptHandler: v6=3 v7=12"
+            },
+            "c06d": {
+              "shared": 5,
+              "strict": 3,
+              "renamed_args": 0,
+              "diverged": 2,
+              "evidence": "UniversalDetector=strict; VERSION=strict; __version__=strict; detect=diverged; detect_all=diverged"
+            },
+            "c06e": {
+              "exact_rate": 0.968,
+              "bucket_rate": 0.968,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        },
+        "v6_charset_norm": {
+          "manifest": {
+            "pair": "v6_charset_norm",
+            "side_a": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+              "tag": "6.0.0",
+              "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+              "pkg": "chardet",
+              "module": "chardet"
+            },
+            "side_b": {
+              "repo": "/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer",
+              "tag": "3.4.7",
+              "sha": "0f07891bf516b5d5231f1bd4dd2d8da7d4d09a9a",
+              "pkg": "charset_normalizer",
+              "module": "charset_normalizer"
+            }
+          },
+          "signals": {
+            "aux1": {
+              "matches": 0,
+              "actual": "0 matches across 87 v6 / 19 v7 files",
+              "verdict": "PASS"
+            },
+            "c06a": {
+              "similarity": 0.922,
+              "nodes_a": 342,
+              "nodes_b": 330,
+              "edges_a": 488,
+              "edges_b": 437,
+              "actual": "similarity=0.922 v6_nodes=342 v7_nodes=330 v6_edges=488 v7_edges=437",
+              "evidence": "density: v6=0.00418 v7=0.00403 reldiff=0.019; sccs: v6=342 v7=330 reldiff=0.018; mean_in_degree: v6=1.43 v7=1.32 reldiff=0.037; max_in_degree: v6=34 v7=23 reldiff=0.193"
+            },
+            "c06b": {
+              "jaccard": 0.0,
+              "shared": 0,
+              "a_only": 3,
+              "b_only": 5,
+              "evidence": "shared: []; v6_only: ['cchardet', 'create_language_model', 'datasets']; v7_only: ['chardet', 'mypyc', 'nox', 'setuptools', 'typing_extensions']"
+            },
+            "c06c": {
+              "cosine": 0.999,
+              "total_a": 652,
+              "total_b": 583,
+              "evidence": "If: v6=346 v7=320; Return: v6=191 v7=170; For: v6=72 v7=48; Raise: v6=10 v7=15; Try: v6=12 v7=11; ExceptHandler: v6=12 v7=11"
+            },
+            "c06d": {
+              "shared": 3,
+              "strict": 2,
+              "renamed_args": 0,
+              "diverged": 1,
+              "evidence": "VERSION=strict; __version__=strict; detect=diverged"
+            },
+            "c06e": {
+              "exact_rate": 0.0,
+              "bucket_rate": 0.0,
+              "n_inputs": 1000,
+              "verdict": "MEASURED"
+            }
+          }
+        }
+      },
+      "interpretation_summary": "If v6/v7 (the v1 headline) shows similarity in line with or BELOW the calibration pairs (v5/v6 conventional rewrite; v6/charset-normalizer independent same-domain detector), then the v1 'notably high' framing does not survive. See per-signal values: C06a is 0.881 for v6/v7, 0.930 for v5/v6, 0.922 for v6/charset-normalizer \u2014 v6/v7 is the LOWEST of the three. C06c is 0.984/0.995/0.999 in the same order \u2014 again v6/v7 is the lowest. C06e is the dramatic outlier in the OPPOSITE direction: v5/v6 (a conventional release-to-release evolution) preserves behaviour at 0.968 exact-match; v6/v7 (AI rewrite) collapses to 0.000; v6/charset-normalizer (independent codebases) is also 0.000. Net: the v1 paper's structural-similarity numbers are domain baselines, not evidence of derivation. The signal that actually separates 'evolutionary rewrite' from 'replacement' is C06e, and it goes the OPPOSITE way to the v1 narrative."
+    },
+    "c06a_prime": {
+      "k_iterations": 4,
+      "v6_label_count": 1710,
+      "v7_label_count": 1790,
+      "wl_cosine": 0.5873578287111396,
+      "wl_cosine_scipy_crosscheck": 0.5873578287111396,
+      "agrees": true,
+      "per_iteration_cosine": [
+        0.8758434703110862,
+        0.2941840163616211,
+        0.10707086853645155,
+        0.10711874283731752,
+        0.10711874283731752
+      ]
+    },
+    "c06f": {
+      "n_v6_functions": 177,
+      "n_v7_functions": 136,
+      "n_matched_pairs": 31,
+      "n_unmatched_v6": 146,
+      "n_unmatched_v7": 105,
+      "mean_pair_distance": 0.08730255605266135,
+      "median_pair_distance": 0.06385332237547553,
+      "per_function_similarity": 0.9126974439473386,
+      "similarity_bootstrap_ci_95_lo": 0.8864929436206974,
+      "similarity_bootstrap_ci_95_hi": 0.935712776298492,
+      "same_name_overlap_among_matched": 0.12903225806451613,
+      "match_key_buckets_v6": 47,
+      "match_key_buckets_v7": 46,
+      "shared_match_key_buckets": 19,
+      "invariants": {
+        "match_key_consistent": true,
+        "v6_partition": true,
+        "v7_partition": true,
+        "v6_unique": true,
+        "v7_unique": true
+      },
+      "all_invariants_pass": true
+    },
+    "c06b": {
+      "audit": {
+        "rule_definitions": {
+          "R1_stdlib": "name in sys.stdlib_module_names -> DROP",
+          "R2_first_party_self": "name == \"chardet\" (top-level package self-name) -> DROP",
+          "R3_first_party_sibling": "name resolves to a path inside <root>/[src/]chardet/ -> DROP",
+          "R4_internal_helper": "name resolves to a .py file or package elsewhere in the cloned source tree (e.g. top-level scripts, scripts/, tools/) -> DROP. Verified by filesystem lookup, not by hand-curated lookup table.",
+          "R5_third_party_kept": "name does not resolve anywhere in the source tree -> KEEP for Jaccard."
+        },
+        "rule_table_path": "chardet-relicense/manuscript/figures/scripts/c06b_imports_audit.tex",
+        "debug_imports_tsv_command": "python3 chardet-relicense/proof-bundle/extract_signals.py --v6-root <v6> --v7-root <v7> --debug-imports <out.tsv>",
+        "v6_imports_all": [
+          "argparse",
+          "cchardet",
+          "chardet",
+          "codecs",
+          "collections",
+          "create_language_model",
+          "dataclasses",
+          "datasets",
+          "enum",
+          "functools",
+          "logging",
+          "multiprocessing",
+          "operator",
+          "os",
+          "re",
+          "string",
+          "sys",
+          "time",
+          "typing",
+          "unicodedata"
+        ],
+        "v7_imports_all": [
+          "__future__",
+          "argparse",
+          "atexit",
+          "cProfile",
+          "cchardet",
+          "chardet",
+          "charset_normalizer",
+          "codecs",
+          "collections",
+          "concurrent",
+          "confusion_training",
+          "contextlib",
+          "dataclasses",
+          "datasets",
+          "datetime",
+          "enum",
+          "functools",
+          "importlib",
+          "itertools",
+          "json",
+          "math",
+          "os",
+          "pathlib",
+          "platform",
+          "pstats",
+          "re",
+          "resource",
+          "shutil",
+          "signal",
+          "statistics",
+          "struct",
+          "subprocess",
+          "sys",
+          "tempfile",
+          "threading",
+          "time",
+          "tracemalloc",
+          "types",
+          "typing",
+          "unicodedata",
+          "utils",
+          "warnings"
+        ],
+        "kept_v6": [
+          "cchardet",
+          "datasets"
+        ],
+        "kept_v7": [
+          "cchardet",
+          "charset_normalizer",
+          "datasets"
+        ],
+        "intersection": [
+          "cchardet",
+          "datasets"
+        ],
+        "union": [
+          "cchardet",
+          "charset_normalizer",
+          "datasets"
+        ],
+        "jaccard_old": 0.333,
+        "jaccard_new": 0.666667,
+        "reclassified_from_third_party_to_internal_helper": {
+          "v6_only_was": [
+            "create_language_model"
+          ],
+          "v7_only_was": [
+            "confusion_training",
+            "utils"
+          ],
+          "note": "These three names appeared as \"shared third-party imports\" diagnostic in the v1 paper. Reviewer R5 flagged them as suspicious. The filesystem check confirms they resolve to repo-internal helper scripts (v6/create_language_model.py, v7/scripts/confusion_training.py, v7/scripts/utils.py) and are therefore reclassified under R4."
+        },
+        "survived_as_third_party": [
+          "cchardet",
+          "datasets",
+          "charset_normalizer"
+        ],
+        "survival_check": {
+          "cchardet": "PyPI binding to ICU; does not resolve in tree.",
+          "datasets": "HuggingFace datasets PyPI package; does not resolve in tree.",
+          "charset_normalizer": "PyPI competitor library; does not resolve in tree (v7 benchmarks compare against it)."
+        }
+      }
+    },
+    "c06d": {
+      "rolled_up": {
+        "_note": "Preserved verbatim from the v1 symbol-level analysis for traceability. These verdicts mix classes with non-class symbols and inherit a v6-side resolver bug that misclassified EncodingEra as 'diverged'. The corrected class-level analysis lives in `per_method` below; see `per_method.classes[*].class_aggregate` for the verdict the v2 paper text uses. Specifically, EncodingEra is `strict` under per-method analysis (see line ~53 of this file) despite being recorded as `diverged` here.",
+        "shared": 5,
+        "strict": 3,
+        "renamed_args": 0,
+        "diverged": 2,
+        "shared_names": [
+          "EncodingEra",
+          "UniversalDetector",
+          "__version__",
+          "detect",
+          "detect_all"
+        ],
+        "classifications_v1_legacy": {
+          "EncodingEra": "diverged",
+          "UniversalDetector": "diverged",
+          "__version__": "strict",
+          "detect": "strict",
+          "detect_all": "strict"
+        }
+      },
+      "per_method": {
+        "classes": [
+          {
+            "class_name": "EncodingEra",
+            "v6_methods": [],
+            "v7_methods": [],
+            "removed_in_v7": [],
+            "added_in_v7": [],
+            "per_method_verdicts": {},
+            "v6_attributes": [
+              "ALL",
+              "DOS",
+              "LEGACY_ISO",
+              "LEGACY_MAC",
+              "LEGACY_REGIONAL",
+              "MAINFRAME",
+              "MODERN_WEB"
+            ],
+            "v7_attributes": [
+              "ALL",
+              "DOS",
+              "LEGACY_ISO",
+              "LEGACY_MAC",
+              "LEGACY_REGIONAL",
+              "MAINFRAME",
+              "MODERN_WEB"
+            ],
+            "removed_attributes": [],
+            "added_attributes": [],
+            "class_aggregate": "strict"
+          },
+          {
+            "class_name": "LanguageFilter",
+            "v6_methods": [],
+            "v7_methods": [],
+            "removed_in_v7": [],
+            "added_in_v7": [],
+            "per_method_verdicts": {},
+            "v6_attributes": [],
+            "v7_attributes": [
+              "ALL",
+              "CHINESE",
+              "CHINESE_SIMPLIFIED",
+              "CHINESE_TRADITIONAL",
+              "CJK",
+              "JAPANESE",
+              "KOREAN",
+              "NON_CJK"
+            ],
+            "removed_attributes": [],
+            "added_attributes": [
+              "ALL",
+              "CHINESE",
+              "CHINESE_SIMPLIFIED",
+              "CHINESE_TRADITIONAL",
+              "CJK",
+              "JAPANESE",
+              "KOREAN",
+              "NON_CJK"
+            ],
+            "class_aggregate": "added_in_v7"
+          },
+          {
+            "class_name": "UniversalDetector",
+            "v6_methods": [
+              "__init__",
+              "active_probers",
+              "charset_probers",
+              "close",
+              "feed",
+              "has_win_bytes",
+              "input_state",
+              "nested_probers",
+              "reset"
+            ],
+            "v7_methods": [
+              "__init__",
+              "close",
+              "done",
+              "feed",
+              "reset",
+              "result"
+            ],
+            "removed_in_v7": [
+              "active_probers",
+              "charset_probers",
+              "has_win_bytes",
+              "input_state",
+              "nested_probers"
+            ],
+            "added_in_v7": [
+              "done",
+              "result"
+            ],
+            "per_method_verdicts": {
+              "__init__": "strict",
+              "close": "diverged",
+              "feed": "diverged",
+              "reset": "strict"
+            },
+            "v6_attributes": [
+              "ESC_DETECTOR",
+              "HIGH_BYTE_DETECTOR",
+              "ISO_WIN_MAP",
+              "LEGACY_MAP",
+              "MINIMUM_THRESHOLD",
+              "VERY_CLOSE_THRESHOLD",
+              "done",
+              "encoding_era",
+              "lang_filter",
+              "logger",
+              "max_bytes",
+              "result",
+              "should_rename_legacy"
+            ],
+            "v7_attributes": [
+              "LEGACY_MAP",
+              "MINIMUM_THRESHOLD"
+            ],
+            "removed_attributes": [
+              "ESC_DETECTOR",
+              "HIGH_BYTE_DETECTOR",
+              "ISO_WIN_MAP",
+              "VERY_CLOSE_THRESHOLD",
+              "done",
+              "encoding_era",
+              "lang_filter",
+              "logger",
+              "max_bytes",
+              "result",
+              "should_rename_legacy"
+            ],
+            "added_attributes": [],
+            "class_aggregate": "diverged"
+          }
+        ],
+        "rollup": {
+          "strict": 1,
+          "added_in_v7": 1,
+          "diverged": 1
+        },
+        "aggregate_consistency_check": true
+      }
+    },
+    "c06e": {
+      "aggregate": {
+        "exact": 0,
+        "bucket": 17,
+        "normalized": 40,
+        "n": 1064,
+        "exact_rate": 0.0,
+        "bucket_rate": 0.015977443609022556,
+        "normalized_rate": 0.03759398496240601
+      },
+      "aggregate_excluding_random_control": {
+        "_comment": "the operationally interesting headline: realistic-input agreement on the 64 non-random items",
+        "exact": 0,
+        "bucket": 17,
+        "normalized": 40,
+        "n": 64,
+        "exact_rate": 0.0,
+        "bucket_rate": 0.265625,
+        "normalized_rate": 0.625
+      },
+      "per_corpus": {
+        "html_latin": {
+          "n": 4,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 2,
+          "bucket_rate": 0.5,
+          "normalized": 2,
+          "normalized_rate": 0.5,
+          "notes": "Disagreement on the 2/4 misses is v6 calling Wikipedia article bytes 'ascii' (high confidence) while v7 calls them 'utf-8' (high confidence). The Wikipedia pages are technically UTF-8 (declared in <meta charset>) but the leading 8 KiB are ASCII-only. v7 picks up the declaration; v6 picks up the byte distribution. Both are defensible reads."
+        },
+        "html_cjk": {
+          "n": 3,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 3,
+          "bucket_rate": 1.0,
+          "normalized": 3,
+          "normalized_rate": 1.0,
+          "notes": "Perfect bucket agreement: both v6 and v7 identify the Chinese, Japanese, and Korean Wikipedia HTML as UTF-8 at high confidence. The exact_match miss is the label-case mismatch."
+        },
+        "rfc_ascii": {
+          "n": 4,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 0,
+          "normalized_rate": 0.0,
+          "notes": "Sharp divergence: v6 cleanly identifies all four RFC bodies as ASCII at confidence 1.0. v7 identifies them as 'cp864' (an obscure Arabic codepage) at confidence 0.22..0.55. This is a notable regression \u2014 v7's ML-assisted classifier picks an exotic Arabic-domain codepage over the obvious ASCII answer on pure 7-bit text. The RFCs are well below 100 KB so 'too little text' is not the explanation; v6 is right."
+        },
+        "email_mime": {
+          "n": 7,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 1,
+          "bucket_rate": 0.14285714285714285,
+          "normalized": 5,
+          "normalized_rate": 0.7142857142857143,
+          "notes": "After label normalisation v6 and v7 agree on 5/7 MIME messages. The two genuine disagreements are an ASCII English body (v6: ascii / v7: Windows-1252 \u2014 operationally equivalent on this content) and a GB18030 Chinese body (v6: 0.99 confidence GB18030 / v7: 0.70 confidence gb18030 \u2014 same decoder, lower v7 confidence drops it to a different bucket)."
+        },
+        "multilingual_utf8": {
+          "n": 9,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 7,
+          "bucket_rate": 0.7777777777777778,
+          "normalized": 8,
+          "normalized_rate": 0.8888888888888888,
+          "notes": "Strong agreement on multilingual UTF-8 \u2014 8/9 normalised matches across en/fr/de/es/zh/ja/ko/ru/ar. The lone disagreement is the French UDHR text, where v6 reports utf-8 at 0.99 (high bucket) and v7 reports utf-8 at 0.83 (med bucket): same decoder, different confidence."
+        },
+        "multilingual_gb18030": {
+          "n": 5,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 1,
+          "normalized_rate": 0.2,
+          "notes": "Sharp divergence on GB18030. Only the Chinese-language input is identified by both versions (and v7 with weaker confidence). v6 misidentifies the Russian-in-GB18030 text as Big5; v7 misidentifies the Korean and Russian variants as cp862 and cp720. Both detectors struggle here because GB18030 is variable-length and the inputs are short; the disagreement pattern shows the two classifiers' priors are different."
+        },
+        "multilingual_shiftjis": {
+          "n": 2,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 2,
+          "normalized_rate": 1.0,
+          "notes": "After collapsing the cp932 / SHIFT_JIS alias and the ascii / Windows-1252 superset, both Shift_JIS samples agree."
+        },
+        "multilingual_windows1252": {
+          "n": 4,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 4,
+          "normalized_rate": 1.0,
+          "notes": "Both versions correctly identify Windows-1252 (or ascii for the English variant). 0/4 strict bucket matches collapses to 4/4 once the case-fold and ascii/Windows-1252 collapse are applied \u2014 this bucket is the clearest illustration that v1's exact_match metric was a label-format probe."
+        },
+        "multilingual_iso88591": {
+          "n": 4,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 4,
+          "normalized_rate": 1.0,
+          "notes": "Same story as multilingual_windows1252: both detectors converge on Windows-1252 (which is a strict superset of ISO-8859-1; chardet has historically not distinguished the two), and the strict bucket misses are entirely the v6 'WINDOWS-1252' vs v7 'windows-1252' label-case difference."
+        },
+        "short_snippets": {
+          "n": 16,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 3,
+          "bucket_rate": 0.1875,
+          "normalized": 9,
+          "normalized_rate": 0.5625,
+          "notes": "On the < 100-byte regime where the detector has minimal signal, v6 and v7 agree on the easy cases (BOMs, pure ASCII, longer CJK strings) and disagree on the short Latin-1 / Windows-1252 fragments. v7's confidences are markedly lower (0.07..0.14) on the short Latin-1 samples than v6's (0.59..0.71), suggesting v7 has been calibrated to be more cautious in the data-starved regime."
+        },
+        "malformed": {
+          "n": 6,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 1,
+          "bucket_rate": 0.16666666666666666,
+          "normalized": 2,
+          "normalized_rate": 0.3333333333333333,
+          "notes": "Mojibake / mixed-encoding inputs produce the most varied disagreement: v7 picks exotic codepages (cp874, iso-8859-4, Windows-1255) where v6 settles on Windows-1252. Neither is 'right' \u2014 these inputs are by construction undecidable \u2014 but the disagreement pattern shows the two classifiers' tie-breaking heuristics diverged."
+        },
+        "random_control": {
+          "n": 1000,
+          "exact": 0,
+          "exact_rate": 0.0,
+          "bucket": 0,
+          "bucket_rate": 0.0,
+          "normalized": 0,
+          "normalized_rate": 0.0,
+          "notes": "Identical to the v1 number (the v1 corpus is preserved here as the random_control bucket). v6 returns {encoding: None, confidence: 0.0} on essentially every random byte string; v7 returns {encoding: None, confidence: 0.95} \u2014 the format of v7's 'I don't know' response changed (a high-confidence null encoding rather than a zero-confidence null encoding). This alone destroys the strict bucket-match metric in the random regime."
+        }
+      },
+      "headline_finding": "On random bytes (v1's only workload) v6 and v7 are fully diverged. On realistic input \u2014 Wikipedia HTML, RFC bodies, multilingual plain text, MIME messages \u2014 once encoding-label normalisation is applied the two versions agree on the decoder family 62.5% of the time (40/64 non-random items). The genuine behavioural divergences are concentrated in (a) ASCII vs Windows-1252 superset boundary, (b) v7's 'cp864' label on pure ASCII RFCs (a notable regression), (c) confidence calibration in the data-starved short-snippet regime, and (d) the random-input null-response format. Conclusion: the operational contract is partially preserved on realistic input (62.5% normalised agreement) but with a non-trivial set of edge-case regressions; the v1 paper's 'fully diverged on random fuzz' framing was correct in its narrow domain but understated the realistic-input agreement."
+    }
+  },
+  "comparison_bp": [
+    {
+      "name": "c06a_prime.wl_cosine_self_crosscheck",
+      "harness_pure_stdlib": 0.587358,
+      "independent_scipy_cosine": 0.587358,
+      "agrees": true
+    },
+    {
+      "name": "c06f.invariants_pass",
+      "value": true,
+      "agrees": true
+    },
+    {
+      "name": "c06f.matched_pairs",
+      "value": 31,
+      "agrees": true
+    },
+    {
+      "name": "c06f.unmatched_v6",
+      "value": 146,
+      "agrees": true
+    },
+    {
+      "name": "c06f.unmatched_v7",
+      "value": 105,
+      "agrees": true
+    },
+    {
+      "name": "c06f.per_function_similarity",
+      "value": 0.913,
+      "ci95": [
+        0.886,
+        0.936
+      ],
+      "agrees": true
+    }
+  ],
+  "comparison_appendix_c06e": {
+    "v1_paper_c06e_number": {
+      "exact_match_rate": 0.0,
+      "bucket_match_rate": 0.0,
+      "n_inputs": 1000,
+      "corpus": "random bytes only",
+      "source": "validation_report.json -> harness_headline.c06e_*"
+    },
+    "v2_paper_c06e_numbers": {
+      "exact_match_rate_aggregate": 0.0,
+      "bucket_match_rate_aggregate": 0.016,
+      "normalized_match_rate_aggregate": 0.038,
+      "exact_match_rate_realistic_only": 0.0,
+      "bucket_match_rate_realistic_only": 0.266,
+      "normalized_match_rate_realistic_only": 0.625,
+      "n_realistic": 64,
+      "n_random_control": 1000,
+      "corpus": "11 realistic-input buckets + 1 random-bytes control bucket; see corpora/MANIFEST.tsv"
+    },
+    "compatibility_note": "The v1 number (0/0 on 1000 random inputs) is exactly reproduced inside the v2 corpus as the random_control bucket. The v2 paper does not contradict the v1 paper \u2014 it just adds realistic-input rows the v1 paper omitted."
+  },
+  "_meta_c06e": {
+    "produced_by": "agent-assurance-papers/.claude/worktrees/agent-a6f5de5da2067d912 (branch v2-phase1a-c)",
+    "produced_on": "2026-05-28",
+    "addresses_reviewer": "R3 (round 1, arXiv v1) \u2014 random bytes are the wrong workload for an encoding detector",
+    "harness": "chardet-relicense/proof-bundle/fingerprint_behavior.py (v2)",
+    "corpus_manifest": "chardet-relicense/proof-bundle/corpora/MANIFEST.tsv",
+    "corpus_digest_manifest": "c37637f0956d7a7e",
+    "v6_tag": "6.0.0",
+    "v7_tag": "7.0.0",
+    "v6_resolved_commit": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+    "v7_resolved_commit": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+    "metrics_glossary": {
+      "exact_match_rate": "fraction of inputs where v6.detect(x) == v7.detect(x) as Python dicts (exact equality, including the literal encoding label string and the floating-point confidence)",
+      "bucket_match_rate": "fraction where (encoding, confidence-bucket) matches; bucket = high>=0.9 / med>=0.5 / low<0.5 / none if missing",
+      "normalized_match_rate": "as bucket_match_rate but with the encoding label case-folded, common aliases collapsed (cp1252==windows-1252, cp932==shift_jis, gb2312==gb18030, ...) and ascii/windows-1252/iso-8859-1 collapsed at high confidence (ASCII bytes decode identically through all three). This isolates `different decoder picked` from `same decoder, different label`."
+    },
+    "note_on_exact_match_zero": "All buckets show exact_match_rate=0 because v7 reformats encoding labels (lowercase canonical names: 'windows-1252', 'cp932', 'gb18030') where v6 emitted uppercase aliases ('WINDOWS-1252', 'SHIFT_JIS', 'GB18030'). The exact_match metric is therefore a label-format probe more than a decoder probe in this dataset. The bucket and normalized rates are the operationally interesting metrics."
+  },
+  "multi_pair_witness_post_integration": {
+    "_meta": {
+      "description": "Fresh witness.tsv data from running the integrated detect.sh on all three pairs after Phase-1a merge. Source: chardet-relicense/proof-bundle/results/<pair>/witness.tsv",
+      "integration_branch": "v2-phase1a-merged"
+    },
+    "pairs": {
+      "v6_v7": {
+        "side_a": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+          "tag": "6.0.0",
+          "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+          "pkg": "chardet",
+          "module": "chardet"
+        },
+        "side_b": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+          "tag": "7.0.0",
+          "sha": "4b89d62f8e19e5f67f055ecee105926e6b9a7536",
+          "pkg": "chardet",
+          "module": "chardet"
+        },
+        "rows": {
+          "literal_source_carryover": {
+            "contract": "AUX1",
+            "expected": "0 matching pairs",
+            "actual": "0 matches across 87 v6 / 33 v7 files",
+            "verdict": "PASS",
+            "evidence": "no whitespace-normalised SHA-256 overlap"
+          },
+          "call_graph_topology": {
+            "contract": "C06a",
+            "expected": "report topology-feature similarity in [0,1] \u2014 higher = more isomorphic",
+            "actual": "similarity=0.881 v6_nodes=342 v7_nodes=358 v6_edges=488 v7_edges=659",
+            "verdict": "MEASURED",
+            "evidence": "density: v6=0.00418 v7=0.00516 reldiff=0.104; sccs: v6=342 v7=358 reldiff=0.023; mean_in_degree: v6=1.43 v7=1.84 reldiff=0.127; max_in_degree: v6=34 v7=44 reldiff=0.128"
+          },
+          "call_graph_wl_kernel": {
+            "contract": "C06a'",
+            "expected": "report WL-subtree kernel cosine similarity over the v6/v7 call graphs, k=4 refinement iterations",
+            "actual": "wl_cosine=0.587 k=4 v6_labels=1710 v7_labels=1790",
+            "verdict": "MEASURED",
+            "evidence": "per-iteration cosine: iter0=0.876, iter1=0.294, iter2=0.107, iter3=0.107, iter4=0.107"
+          },
+          "import_edge_set": {
+            "contract": "C06b",
+            "expected": "report Jaccard overlap of third-party (non-stdlib, non-self) imports",
+            "actual": "jaccard=0.667 shared=2 v6_only=0 v7_only=1",
+            "verdict": "MEASURED",
+            "evidence": "shared: ['cchardet', 'datasets']; v6_only: []; v7_only: ['charset_normalizer']"
+          },
+          "control_flow_histogram": {
+            "contract": "C06c",
+            "expected": "report cosine similarity of normalised AST control-flow histograms",
+            "actual": "cosine=0.984 v6_total=652 v7_total=848",
+            "verdict": "MEASURED",
+            "evidence": "If: v6=346 v7=355; Return: v6=191 v7=253; For: v6=72 v7=135; Try: v6=12 v7=33; ExceptHandler: v6=12 v7=32; Raise: v6=10 v7=12"
+          },
+          "public_api_signature_equivalence": {
+            "contract": "C06d",
+            "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols PLUS per-method verdicts for every public class",
+            "actual": "shared=5 strict=3 renamed_args=0 diverged=2; per_method_classes: strict=1 renamed_args=0 diverged=1",
+            "verdict": "MEASURED",
+            "evidence": "EncodingEra=diverged; UniversalDetector=diverged; __version__=strict; detect=strict; detect_all=strict; class[EncodingEra]=strict (0-strict/0-renamed/0-diverged; removed=0; added=0); class[LanguageFilter]=added_in_v7 (0-strict/0-renamed/0-diverged; removed=0; added=0); class[UniversalDetector]=diverged (2-strict/0-renamed/2-diverged; removed=5; added=2)"
+          },
+          "per_function_ast_shape": {
+            "contract": "C06f",
+            "expected": "report per-function shape similarity over functions matched by (signature-shape, fan-in-bucket, fan-out-bucket) and honest unmatched-function counts on both sides",
+            "actual": "per_function_similarity=0.913 matched_pairs=31 v6_functions=177 v7_functions=136 unmatched_v6=146 unmatched_v7=105",
+            "verdict": "MEASURED",
+            "evidence": "mean_pair_distance=0.087; same_name_overlap_among_matched=0.129; matched/v6=31/177 matched/v7=31/136"
+          },
+          "behavioural_fingerprint": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.016 normalized_match_rate=0.038 n_inputs=1064 corpus_digest=c37637f0956d7a7e",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/1064 bucket=17/1064 normalized=40/1064 buckets=12 manifest=/srv/repos/external/verivus-oss/agent-assurance-papers/.claude/worktrees/agent-a76a296f07d6f56a9/chardet-relicense/proof-bundle/corpora/MANIFEST.tsv"
+          },
+          "behavioural_fingerprint:email_mime": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.143 normalized_match_rate=0.714 n_inputs=7",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/7 bucket=1/7 normalized=5/7"
+          },
+          "behavioural_fingerprint:html_cjk": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=1.000 normalized_match_rate=1.000 n_inputs=3",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/3 bucket=3/3 normalized=3/3"
+          },
+          "behavioural_fingerprint:html_latin": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.500 normalized_match_rate=0.500 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=2/4 normalized=2/4"
+          },
+          "behavioural_fingerprint:malformed": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.167 normalized_match_rate=0.333 n_inputs=6",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/6 bucket=1/6 normalized=2/6"
+          },
+          "behavioural_fingerprint:multilingual_gb18030": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=0.200 n_inputs=5",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/5 bucket=0/5 normalized=1/5"
+          },
+          "behavioural_fingerprint:multilingual_iso88591": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=1.000 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=0/4 normalized=4/4"
+          },
+          "behavioural_fingerprint:multilingual_shiftjis": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=1.000 n_inputs=2",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/2 bucket=0/2 normalized=2/2"
+          },
+          "behavioural_fingerprint:multilingual_utf8": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.778 normalized_match_rate=0.889 n_inputs=9",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/9 bucket=7/9 normalized=8/9"
+          },
+          "behavioural_fingerprint:multilingual_windows1252": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=1.000 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=0/4 normalized=4/4"
+          },
+          "behavioural_fingerprint:random_control": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=0.000 n_inputs=1000",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/1000 bucket=0/1000 normalized=0/1000"
+          },
+          "behavioural_fingerprint:rfc_ascii": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=0.000 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=0/4 normalized=0/4"
+          },
+          "behavioural_fingerprint:short_snippets": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.188 normalized_match_rate=0.562 n_inputs=16",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/16 bucket=3/16 normalized=9/16"
+          }
+        }
+      },
+      "v5_v6": {
+        "side_a": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+          "tag": "5.0.0",
+          "sha": "21bc6befb1795b9de4a1f8f707982ec627ba9683",
+          "pkg": "chardet",
+          "module": "chardet"
+        },
+        "side_b": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+          "tag": "6.0.0",
+          "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+          "pkg": "chardet",
+          "module": "chardet"
+        },
+        "rows": {
+          "literal_source_carryover": {
+            "contract": "AUX1",
+            "expected": "0 matching pairs",
+            "actual": "0 matches across 47 v6 / 87 v7 files",
+            "verdict": "PASS",
+            "evidence": "no whitespace-normalised SHA-256 overlap"
+          },
+          "call_graph_topology": {
+            "contract": "C06a",
+            "expected": "report topology-feature similarity in [0,1] \u2014 higher = more isomorphic",
+            "actual": "similarity=0.930 v6_nodes=288 v7_nodes=342 v6_edges=348 v7_edges=488",
+            "verdict": "MEASURED",
+            "evidence": "density: v6=0.00421 v7=0.00418 reldiff=0.003; sccs: v6=288 v7=342 reldiff=0.086; mean_in_degree: v6=1.21 v7=1.43 reldiff=0.083; max_in_degree: v6=36 v7=34 reldiff=0.029"
+          },
+          "call_graph_wl_kernel": {
+            "contract": "C06a'",
+            "expected": "report WL-subtree kernel cosine similarity over the v6/v7 call graphs, k=4 refinement iterations",
+            "actual": "wl_cosine=0.902 k=4 v6_labels=1440 v7_labels=1710",
+            "verdict": "MEASURED",
+            "evidence": "per-iteration cosine: iter0=0.981, iter1=0.891, iter2=0.842, iter3=0.842, iter4=0.842"
+          },
+          "import_edge_set": {
+            "contract": "C06b",
+            "expected": "report Jaccard overlap of third-party (non-stdlib, non-self) imports",
+            "actual": "jaccard=0.250 shared=1 v6_only=2 v7_only=1",
+            "verdict": "MEASURED",
+            "evidence": "shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['datasets']"
+          },
+          "control_flow_histogram": {
+            "contract": "C06c",
+            "expected": "report cosine similarity of normalised AST control-flow histograms",
+            "actual": "cosine=0.995 v6_total=421 v7_total=652",
+            "verdict": "MEASURED",
+            "evidence": "If: v6=216 v7=346; Return: v6=147 v7=191; For: v6=40 v7=72; Raise: v6=8 v7=10; Try: v6=3 v7=12; ExceptHandler: v6=3 v7=12"
+          },
+          "public_api_signature_equivalence": {
+            "contract": "C06d",
+            "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols PLUS per-method verdicts for every public class",
+            "actual": "shared=5 strict=3 renamed_args=0 diverged=2; per_method_classes: strict=0 renamed_args=0 diverged=1",
+            "verdict": "MEASURED",
+            "evidence": "UniversalDetector=strict; VERSION=strict; __version__=strict; detect=diverged; detect_all=diverged; class[EncodingEra]=added_in_v7 (0-strict/0-renamed/0-diverged; removed=0; added=0); class[UniversalDetector]=diverged (0-strict/0-renamed/7-diverged; removed=0; added=2)"
+          },
+          "per_function_ast_shape": {
+            "contract": "C06f",
+            "expected": "report per-function shape similarity over functions matched by (signature-shape, fan-in-bucket, fan-out-bucket) and honest unmatched-function counts on both sides",
+            "actual": "per_function_similarity=0.982 matched_pairs=103 v6_functions=161 v7_functions=177 unmatched_v6=58 unmatched_v7=74",
+            "verdict": "MEASURED",
+            "evidence": "mean_pair_distance=0.018; same_name_overlap_among_matched=0.845; matched/v6=103/161 matched/v7=103/177"
+          },
+          "behavioural_fingerprint": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.947 bucket_match_rate=0.947 normalized_match_rate=0.951 n_inputs=1064 corpus_digest=c37637f0956d7a7e",
+            "verdict": "MEASURED",
+            "evidence": "exact=1008/1064 bucket=1008/1064 normalized=1012/1064 buckets=12 manifest=/srv/repos/external/verivus-oss/agent-assurance-papers/.claude/worktrees/agent-a76a296f07d6f56a9/chardet-relicense/proof-bundle/corpora/MANIFEST.tsv"
+          },
+          "behavioural_fingerprint:email_mime": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.571 bucket_match_rate=0.571 normalized_match_rate=0.714 n_inputs=7",
+            "verdict": "MEASURED",
+            "evidence": "exact=4/7 bucket=4/7 normalized=5/7"
+          },
+          "behavioural_fingerprint:html_cjk": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=1.000 bucket_match_rate=1.000 normalized_match_rate=1.000 n_inputs=3",
+            "verdict": "MEASURED",
+            "evidence": "exact=3/3 bucket=3/3 normalized=3/3"
+          },
+          "behavioural_fingerprint:html_latin": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=1.000 bucket_match_rate=1.000 normalized_match_rate=1.000 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=4/4 bucket=4/4 normalized=4/4"
+          },
+          "behavioural_fingerprint:malformed": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.167 bucket_match_rate=0.167 normalized_match_rate=0.333 n_inputs=6",
+            "verdict": "MEASURED",
+            "evidence": "exact=1/6 bucket=1/6 normalized=2/6"
+          },
+          "behavioural_fingerprint:multilingual_gb18030": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.200 bucket_match_rate=0.200 normalized_match_rate=0.600 n_inputs=5",
+            "verdict": "MEASURED",
+            "evidence": "exact=1/5 bucket=1/5 normalized=3/5"
+          },
+          "behavioural_fingerprint:multilingual_iso88591": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.250 bucket_match_rate=0.250 normalized_match_rate=0.250 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=1/4 bucket=1/4 normalized=1/4"
+          },
+          "behavioural_fingerprint:multilingual_shiftjis": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=1.000 bucket_match_rate=1.000 normalized_match_rate=1.000 n_inputs=2",
+            "verdict": "MEASURED",
+            "evidence": "exact=2/2 bucket=2/2 normalized=2/2"
+          },
+          "behavioural_fingerprint:multilingual_utf8": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.889 bucket_match_rate=0.889 normalized_match_rate=0.889 n_inputs=9",
+            "verdict": "MEASURED",
+            "evidence": "exact=8/9 bucket=8/9 normalized=8/9"
+          },
+          "behavioural_fingerprint:multilingual_windows1252": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.250 bucket_match_rate=0.250 normalized_match_rate=0.250 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=1/4 bucket=1/4 normalized=1/4"
+          },
+          "behavioural_fingerprint:random_control": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.968 bucket_match_rate=0.968 normalized_match_rate=0.968 n_inputs=1000",
+            "verdict": "MEASURED",
+            "evidence": "exact=968/1000 bucket=968/1000 normalized=968/1000"
+          },
+          "behavioural_fingerprint:rfc_ascii": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=1.000 bucket_match_rate=1.000 normalized_match_rate=1.000 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=4/4 bucket=4/4 normalized=4/4"
+          },
+          "behavioural_fingerprint:short_snippets": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.688 bucket_match_rate=0.688 normalized_match_rate=0.688 n_inputs=16",
+            "verdict": "MEASURED",
+            "evidence": "exact=11/16 bucket=11/16 normalized=11/16"
+          }
+        }
+      },
+      "v6_charset_norm": {
+        "side_a": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet",
+          "tag": "6.0.0",
+          "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee",
+          "pkg": "chardet",
+          "module": "chardet"
+        },
+        "side_b": {
+          "repo": "/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer",
+          "tag": "3.4.7",
+          "sha": "0f07891bf516b5d5231f1bd4dd2d8da7d4d09a9a",
+          "pkg": "charset_normalizer",
+          "module": "charset_normalizer"
+        },
+        "rows": {
+          "literal_source_carryover": {
+            "contract": "AUX1",
+            "expected": "0 matching pairs",
+            "actual": "0 matches across 87 v6 / 19 v7 files",
+            "verdict": "PASS",
+            "evidence": "no whitespace-normalised SHA-256 overlap"
+          },
+          "call_graph_topology": {
+            "contract": "C06a",
+            "expected": "report topology-feature similarity in [0,1] \u2014 higher = more isomorphic",
+            "actual": "similarity=0.922 v6_nodes=342 v7_nodes=330 v6_edges=488 v7_edges=437",
+            "verdict": "MEASURED",
+            "evidence": "density: v6=0.00418 v7=0.00403 reldiff=0.019; sccs: v6=342 v7=330 reldiff=0.018; mean_in_degree: v6=1.43 v7=1.32 reldiff=0.037; max_in_degree: v6=34 v7=23 reldiff=0.193"
+          },
+          "call_graph_wl_kernel": {
+            "contract": "C06a'",
+            "expected": "report WL-subtree kernel cosine similarity over the v6/v7 call graphs, k=4 refinement iterations",
+            "actual": "wl_cosine=0.872 k=4 v6_labels=1710 v7_labels=1650",
+            "verdict": "MEASURED",
+            "evidence": "per-iteration cosine: iter0=0.985, iter1=0.792, iter2=0.758, iter3=0.759, iter4=0.759"
+          },
+          "import_edge_set": {
+            "contract": "C06b",
+            "expected": "report Jaccard overlap of third-party (non-stdlib, non-self) imports",
+            "actual": "jaccard=0.000 shared=0 v6_only=2 v7_only=5",
+            "verdict": "MEASURED",
+            "evidence": "shared: []; v6_only: ['cchardet', 'datasets']; v7_only: ['chardet', 'mypyc', 'nox', 'setuptools', 'typing_extensions']"
+          },
+          "control_flow_histogram": {
+            "contract": "C06c",
+            "expected": "report cosine similarity of normalised AST control-flow histograms",
+            "actual": "cosine=0.999 v6_total=652 v7_total=583",
+            "verdict": "MEASURED",
+            "evidence": "If: v6=346 v7=320; Return: v6=191 v7=170; For: v6=72 v7=48; Raise: v6=10 v7=15; Try: v6=12 v7=11; ExceptHandler: v6=12 v7=11"
+          },
+          "public_api_signature_equivalence": {
+            "contract": "C06d",
+            "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols PLUS per-method verdicts for every public class",
+            "actual": "shared=3 strict=2 renamed_args=0 diverged=1; per_method_classes: strict=0 renamed_args=0 diverged=0",
+            "verdict": "MEASURED",
+            "evidence": "VERSION=strict; __version__=strict; detect=diverged; class[CharsetMatch]=added_in_v7 (0-strict/0-renamed/0-diverged; removed=0; added=21); class[CharsetMatches]=added_in_v7 (0-strict/0-renamed/0-diverged; removed=0; added=7); class[EncodingEra]=removed_class (0-strict/0-renamed/0-diverged; removed=0; added=0); class[UniversalDetector]=removed_class (0-strict/0-renamed/0-diverged; removed=9; added=0)"
+          },
+          "per_function_ast_shape": {
+            "contract": "C06f",
+            "expected": "report per-function shape similarity over functions matched by (signature-shape, fan-in-bucket, fan-out-bucket) and honest unmatched-function counts on both sides",
+            "actual": "per_function_similarity=0.796 matched_pairs=77 v6_functions=177 v7_functions=148 unmatched_v6=100 unmatched_v7=71",
+            "verdict": "MEASURED",
+            "evidence": "mean_pair_distance=0.204; same_name_overlap_among_matched=0.052; matched/v6=77/177 matched/v7=77/148"
+          },
+          "behavioural_fingerprint": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.003 bucket_match_rate=0.035 normalized_match_rate=0.036 n_inputs=1064 corpus_digest=c37637f0956d7a7e",
+            "verdict": "MEASURED",
+            "evidence": "exact=3/1064 bucket=37/1064 normalized=38/1064 buckets=12 manifest=/srv/repos/external/verivus-oss/agent-assurance-papers/.claude/worktrees/agent-a76a296f07d6f56a9/chardet-relicense/proof-bundle/corpora/MANIFEST.tsv"
+          },
+          "behavioural_fingerprint:email_mime": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.714 normalized_match_rate=0.714 n_inputs=7",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/7 bucket=5/7 normalized=5/7"
+          },
+          "behavioural_fingerprint:html_cjk": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.667 normalized_match_rate=0.667 n_inputs=3",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/3 bucket=2/3 normalized=2/3"
+          },
+          "behavioural_fingerprint:html_latin": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.500 normalized_match_rate=0.500 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=2/4 normalized=2/4"
+          },
+          "behavioural_fingerprint:malformed": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.167 normalized_match_rate=0.167 n_inputs=6",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/6 bucket=1/6 normalized=1/6"
+          },
+          "behavioural_fingerprint:multilingual_gb18030": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.600 normalized_match_rate=0.600 n_inputs=5",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/5 bucket=3/5 normalized=3/5"
+          },
+          "behavioural_fingerprint:multilingual_iso88591": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.250 normalized_match_rate=0.250 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=1/4 normalized=1/4"
+          },
+          "behavioural_fingerprint:multilingual_shiftjis": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.500 normalized_match_rate=1.000 n_inputs=2",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/2 bucket=1/2 normalized=2/2"
+          },
+          "behavioural_fingerprint:multilingual_utf8": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.778 normalized_match_rate=0.778 n_inputs=9",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/9 bucket=7/9 normalized=7/9"
+          },
+          "behavioural_fingerprint:multilingual_windows1252": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.250 normalized_match_rate=0.250 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=1/4 normalized=1/4"
+          },
+          "behavioural_fingerprint:random_control": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.000 normalized_match_rate=0.000 n_inputs=1000",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/1000 bucket=0/1000 normalized=0/1000"
+          },
+          "behavioural_fingerprint:rfc_ascii": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.000 bucket_match_rate=0.750 normalized_match_rate=0.750 n_inputs=4",
+            "verdict": "MEASURED",
+            "evidence": "exact=0/4 bucket=3/4 normalized=3/4"
+          },
+          "behavioural_fingerprint:short_snippets": {
+            "contract": "C06e",
+            "expected": "report exact-match rate AND (encoding, confidence-bucket) match rate per corpus bucket",
+            "actual": "exact_match_rate=0.188 bucket_match_rate=0.688 normalized_match_rate=0.688 n_inputs=16",
+            "verdict": "MEASURED",
+            "evidence": "exact=3/16 bucket=11/16 normalized=11/16"
+          }
+        }
+      }
+    }
+  }
+}
