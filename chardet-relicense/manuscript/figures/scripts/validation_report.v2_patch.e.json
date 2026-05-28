@@ -1,0 +1,170 @@
+{
+  "independent": {
+    "c06d": {
+      "rolled_up": {
+        "_note": "Preserved verbatim from the v1 symbol-level analysis for traceability. These verdicts mix classes with non-class symbols and inherit a v6-side resolver bug that misclassified EncodingEra as 'diverged'. The corrected class-level analysis lives in `per_method` below; see `per_method.classes[*].class_aggregate` for the verdict the v2 paper text uses. Specifically, EncodingEra is `strict` under per-method analysis (see line ~53 of this file) despite being recorded as `diverged` here.",
+        "shared": 5,
+        "strict": 3,
+        "renamed_args": 0,
+        "diverged": 2,
+        "shared_names": [
+          "EncodingEra",
+          "UniversalDetector",
+          "__version__",
+          "detect",
+          "detect_all"
+        ],
+        "classifications_v1_legacy": {
+          "EncodingEra": "diverged",
+          "UniversalDetector": "diverged",
+          "__version__": "strict",
+          "detect": "strict",
+          "detect_all": "strict"
+        }
+      },
+      "per_method": {
+        "classes": [
+          {
+            "class_name": "EncodingEra",
+            "v6_methods": [],
+            "v7_methods": [],
+            "removed_in_v7": [],
+            "added_in_v7": [],
+            "per_method_verdicts": {},
+            "v6_attributes": [
+              "ALL",
+              "DOS",
+              "LEGACY_ISO",
+              "LEGACY_MAC",
+              "LEGACY_REGIONAL",
+              "MAINFRAME",
+              "MODERN_WEB"
+            ],
+            "v7_attributes": [
+              "ALL",
+              "DOS",
+              "LEGACY_ISO",
+              "LEGACY_MAC",
+              "LEGACY_REGIONAL",
+              "MAINFRAME",
+              "MODERN_WEB"
+            ],
+            "removed_attributes": [],
+            "added_attributes": [],
+            "class_aggregate": "strict"
+          },
+          {
+            "class_name": "LanguageFilter",
+            "v6_methods": [],
+            "v7_methods": [],
+            "removed_in_v7": [],
+            "added_in_v7": [],
+            "per_method_verdicts": {},
+            "v6_attributes": [],
+            "v7_attributes": [
+              "ALL",
+              "CHINESE",
+              "CHINESE_SIMPLIFIED",
+              "CHINESE_TRADITIONAL",
+              "CJK",
+              "JAPANESE",
+              "KOREAN",
+              "NON_CJK"
+            ],
+            "removed_attributes": [],
+            "added_attributes": [
+              "ALL",
+              "CHINESE",
+              "CHINESE_SIMPLIFIED",
+              "CHINESE_TRADITIONAL",
+              "CJK",
+              "JAPANESE",
+              "KOREAN",
+              "NON_CJK"
+            ],
+            "class_aggregate": "added_in_v7"
+          },
+          {
+            "class_name": "UniversalDetector",
+            "v6_methods": [
+              "__init__",
+              "active_probers",
+              "charset_probers",
+              "close",
+              "feed",
+              "has_win_bytes",
+              "input_state",
+              "nested_probers",
+              "reset"
+            ],
+            "v7_methods": [
+              "__init__",
+              "close",
+              "done",
+              "feed",
+              "reset",
+              "result"
+            ],
+            "removed_in_v7": [
+              "active_probers",
+              "charset_probers",
+              "has_win_bytes",
+              "input_state",
+              "nested_probers"
+            ],
+            "added_in_v7": [
+              "done",
+              "result"
+            ],
+            "per_method_verdicts": {
+              "__init__": "strict",
+              "close": "diverged",
+              "feed": "diverged",
+              "reset": "strict"
+            },
+            "v6_attributes": [
+              "ESC_DETECTOR",
+              "HIGH_BYTE_DETECTOR",
+              "ISO_WIN_MAP",
+              "LEGACY_MAP",
+              "MINIMUM_THRESHOLD",
+              "VERY_CLOSE_THRESHOLD",
+              "done",
+              "encoding_era",
+              "lang_filter",
+              "logger",
+              "max_bytes",
+              "result",
+              "should_rename_legacy"
+            ],
+            "v7_attributes": [
+              "LEGACY_MAP",
+              "MINIMUM_THRESHOLD"
+            ],
+            "removed_attributes": [
+              "ESC_DETECTOR",
+              "HIGH_BYTE_DETECTOR",
+              "ISO_WIN_MAP",
+              "VERY_CLOSE_THRESHOLD",
+              "done",
+              "encoding_era",
+              "lang_filter",
+              "logger",
+              "max_bytes",
+              "result",
+              "should_rename_legacy"
+            ],
+            "added_attributes": [],
+            "class_aggregate": "diverged"
+          }
+        ],
+        "rollup": {
+          "strict": 1,
+          "added_in_v7": 1,
+          "diverged": 1
+        },
+        "aggregate_consistency_check": true
+      }
+    }
+  }
+}
