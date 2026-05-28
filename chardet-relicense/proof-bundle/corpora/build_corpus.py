@@ -40,10 +40,22 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import os
 import pathlib
 import random
 import sys
 import urllib.request
+
+# Pinned accession date for the corpus. The MANIFEST.tsv `accession_date`
+# column is part of the bytes that `fingerprint_behavior.py` hashes into
+# `corpus_digest`, so using `dt.date.today()` here would make the digest
+# unstable across rebuilds even when the corpus content is byte-identical.
+# Override via the `--accession-date YYYY-MM-DD` CLI flag or the
+# `CHARDET_CORPUS_ACCESSION_DATE` environment variable only when fetching
+# a genuinely fresh corpus; otherwise leave the pin in place.
+_DEFAULT_ACCESSION_DATE = "2026-05-28"
+_ACCESSION_DATE = os.environ.get(
+    "CHARDET_CORPUS_ACCESSION_DATE", _DEFAULT_ACCESSION_DATE)
 
 # ---------------------------------------------------------------------
 # UDHR Article 1 — public-domain text published by the UN. Used by
@@ -178,7 +190,7 @@ def _build_html_corpus(items_dir: pathlib.Path) -> list[tuple[str, str, str, str
     """Fetch a small set of Wikipedia articles and store truncated HTML.
     Returns rows for the manifest."""
     rows: list[tuple[str, str, str, str, str, str, int, str]] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     for bucket, item_id, lang, title in WIKIPEDIA_ARTICLES:
         url = f"https://{lang}.wikipedia.org/wiki/{title}"
         try:
@@ -207,7 +219,7 @@ def _build_email_corpus(items_dir: pathlib.Path) -> list[tuple]:
     """Synthesize a handful of RFC 822 / MIME messages, each carrying
     a UDHR Article 1 body in a different charset."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     mime_specs = [
         ("email_utf8_fr",       "fr", "utf-8",        "8bit"),
         ("email_utf8_zh",       "zh", "utf-8",        "8bit"),
@@ -240,7 +252,7 @@ def _build_multilingual_corpus(items_dir: pathlib.Path) -> list[tuple]:
     """Encode UDHR Article 1 in each target encoding. One file per
     (encoding, language) pair where the language is representable."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     plan = [
         # (bucket, encoding, [lang_codes...])
         ("multilingual_utf8",       "utf-8",        ["en", "fr", "de", "es", "zh", "ja", "ko", "ru", "ar"]),
@@ -274,7 +286,7 @@ def _build_rfc_corpus(items_dir: pathlib.Path) -> list[tuple]:
     """Fetch a few small RFC bodies — pure ASCII, line-folded, plenty
     of structure for an encoding detector to chew on. Cap file size."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     for name, num, cap in RFC_FILES:
         url = f"https://www.rfc-editor.org/rfc/rfc{num}.txt"
         try:
@@ -298,7 +310,7 @@ def _build_short_snippets(items_dir: pathlib.Path) -> list[tuple]:
     """Hand-curated short fragments under 100 bytes each. These probe
     the regime where the detector has very little signal."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     snippets: list[tuple[str, bytes]] = [
         ("hi_ascii",         b"hi"),
         ("hello_world",      b"hello, world!"),
@@ -335,7 +347,7 @@ def _build_malformed(items_dir: pathlib.Path) -> list[tuple]:
     """Concatenated mojibake / mixed-encoding inputs. Realistic for the
     'mailing-list archive ate someone's resume' scenario."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     en = UDHR_TEXTS["en"]
     fr = UDHR_TEXTS["fr"]
     zh = UDHR_TEXTS["zh"]
@@ -380,7 +392,7 @@ def _build_random_control(items_dir: pathlib.Path, n: int = 1000, seed: int = 20
     """The original 1000-input random-bytes corpus — preserved as a
     robustness control bucket so v1 vs v2 numbers stay comparable."""
     rows: list[tuple] = []
-    today = dt.date.today().isoformat()
+    today = _ACCESSION_DATE
     rng = random.Random(seed)
     bucket_dir = items_dir / "random_control"
     bucket_dir.mkdir(parents=True, exist_ok=True)
@@ -411,7 +423,15 @@ def main() -> int:
     parser.add_argument("--items-dir", default=None, help="where to materialise items (default: ./items)")
     parser.add_argument("--manifest", default=None, help="manifest tsv path (default: ./MANIFEST.tsv)")
     parser.add_argument("--skip-network", action="store_true", help="skip http-fetched buckets (html_*, rfc_ascii)")
+    parser.add_argument("--accession-date", default=None,
+                        help=(
+                            "override the pinned manifest accession_date "
+                            f"(default: {_DEFAULT_ACCESSION_DATE}; also "
+                            "settable via CHARDET_CORPUS_ACCESSION_DATE)"))
     args = parser.parse_args()
+    if args.accession_date:
+        global _ACCESSION_DATE
+        _ACCESSION_DATE = args.accession_date
 
     base = pathlib.Path(__file__).resolve().parent
     items_dir = pathlib.Path(args.items_dir) if args.items_dir else base / "items"
