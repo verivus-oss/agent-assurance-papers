@@ -1,0 +1,5 @@
+{
+  "pair": "v6_v7",
+  "side_a": {"repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet", "tag": "6.0.0", "sha": "8a4636b1d4ef21d11cc8190f6ff271670b9d20ee", "pkg": "chardet", "module": "chardet"},
+  "side_b": {"repo": "/srv/repos/public/spec-poc/chardet-relicense/chardet", "tag": "7.0.0", "sha": "4b89d62f8e19e5f67f055ecee105926e6b9a7536", "pkg": "chardet", "module": "chardet"}
+}
