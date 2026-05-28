@@ -17,7 +17,7 @@ The script:
      stdlib primitives. (cosine via scipy.spatial.distance.cosine,
      jaccard via set arithmetic, density via nx.density, SCC via
      nx.number_strongly_connected_components.)
-  3. For C06d, computes a 95% bootstrap confidence interval (1000
+  3. For C06d, computes a 95%% bootstrap confidence interval (1000
      resamples) on the strict-match rate. The sample size is tiny (5
      shared public-API names) so the CI is wide; the paper says so.
   4. For C06e, re-derives the corpus digest deterministically from the
@@ -1146,7 +1146,7 @@ def main() -> int:
         "--bootstrap-all-pairs",
         action="store_true",
         help=("Phase-1b mode: skip the v6/v7 point-estimate re-check and "
-              "instead compute 95% bootstrap CIs for C06a / C06a' / C06c / "
+              "instead compute 95%% bootstrap CIs for C06a / C06a' / C06c / "
               "C06f across all three calibration pairs (v6_v7, v5_v6, "
               "v6_charset_norm). Writes the CIs to a side-car JSON "
               "(validation_report.v2_patch.n.json) for the orchestrator to "

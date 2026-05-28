@@ -99,7 +99,9 @@ discriminate: v6/v7 sits at $0.913\,[0.89,\,0.94]$ over only
 $31/177=17.5\%$ of v6 functions matched, between conventional
 evolution ($0.982\,[0.97,\,0.99]$ at $64.0\%$ match) and
 independent same-domain rewrite ($0.796\,[0.75,\,0.84]$ at
-$43.5\%$); the v6/v7 match \emph{rate} is the lowest of the three,
+$77/177=43.5\%$ of v6 functions / $77/148=52.0\%$ of
+\texttt{charset\_normalizer} functions); the v6/v7 match \emph{rate}
+is the lowest of the three,
 which is the signature this paper labels ``AI-driven rewrite.'' On
 the v1 random-byte workload C06e behavioural agreement is $0.000$
 for v6/v7 (matching the $0.000$ on v6/charset\_normalizer) versus
@@ -758,6 +760,15 @@ keep the same third-party package set. An adversary doing a
 replatform (replacing one ML dependency with another) will be
 clearly visible.
 
+\paragraph{Cross-pair comparability.} The R1--R5 classification is
+evaluated relative to each side's own source tree (the
+\texttt{pkg\_name} parameter changes per pair), which means a given
+import name can be classified differently depending on which
+codebase is the reference. C06b Jaccard values across the
+calibration table should therefore be read as ``how much does each
+pair's third-party boundary overlap given its own classification''
+rather than as a single universally-comparable scalar.
+
 \subsection{C06c -- Control-flow histogram cosine}
 \label{sec:c06c}
 For each version we walk every implementation AST and count
@@ -1109,13 +1120,26 @@ $0.872$ point estimate is in the same band as v6/v7's --- C06a$'$
 does \emph{not} separate v6/v7 from an independent same-domain
 library, only from a conventional release evolution.
 
-\textbf{Per-function shape similarity ranks the three pairs and
-is the cleanest single-signal calibration result.} C06f gives
+\textbf{Per-function shape similarity, under the published
+matching rule, separates v6/v7 from both calibration baselines.}
+Under this matching rule the C06f point estimates and match rates
+rank the three pairs (the match-rate ranking is sensitive to the
+matching-key granularity; with a single coarse shape bucket,
+v6/v7 and v6/charset\_normalizer collapse to similar within-match
+similarity, so the ``ranks the pairs'' phrasing should be read
+relative to the published \texttt{(signature\_shape, fan\_in\_bucket,
+fan\_out\_bucket)} matcher, not as a universal property of the
+signal --- see \cref{sec:limits-future} for the matcher-ablation
+caveat). C06f gives
 v6/v7 a within-match similarity of $0.913\,[0.89,\,0.94]$ over
 only $31/177=17.5\%$ of v6 functions, v5/v6 a within-match
 similarity of $0.982\,[0.97,\,0.99]$ over $103/161=64.0\%$, and
 v6/charset\_normalizer a within-match similarity of
-$0.796\,[0.75,\,0.84]$ over $77/177=43.5\%$. The three CIs are
+$0.796\,[0.75,\,0.84]$ over $77/177=43.5\%$ of v6 functions
+(equivalently $77/148=52.0\%$ of \texttt{charset\_normalizer}
+functions; we report the v6-denominator value alongside its
+calibration neighbours and flag the asymmetry to make the
+non-symmetric matching explicit). The three CIs are
 disjoint and the ranking is well-supported at 95\%
 ($v6/cn < v6/v7 < v5/v6$). The v6/v7 picture is high
 within-match similarity (when a function survives, it survives
@@ -1134,7 +1158,14 @@ filter incorrectly excluded; the shared third-party set is in
 fact two ($\{$\texttt{cchardet}$\}$ on the v5/v6 baseline pair),
 not zero. The v1 ``external boundary is genuinely different''
 framing therefore inverts: v6/v7 share more third-party imports
-than v5/v6 do, and v6 and charset\_normalizer share none. C06b
+than v5/v6 do, and v6 and charset\_normalizer share none.\footnote{The
+v6/charset\_normalizer C06b = $0.000$ result reflects the fact that
+charset\_normalizer treats chardet as a benchmark-comparator import;
+under the R1--R5 classification, this appears as a v7-side
+third-party import that v6 cannot have. The ``independent
+same-domain'' framing of v6/charset\_normalizer as a calibration
+baseline is sound for structural signals but should be read with
+this artefact in mind for C06b specifically.} C06b
 becomes the strongest retained \emph{structural-similarity}
 claim, with the calibration making it sharp rather than diluting
 it.
@@ -1214,7 +1245,9 @@ high within-match similarity ($0.913\,[0.89,\,0.94]$), the
 v5/v6 pair shows a high match rate ($64.0\%$) with very high
 within-match similarity ($0.982\,[0.97,\,0.99]$), and the
 v6/charset\_normalizer pair shows an intermediate match rate
-($43.5\%$) with the lowest within-match similarity
+($43.5\%$ on the v6 denominator; equivalently $52.0\%$ on the
+\texttt{charset\_normalizer} denominator) with the lowest
+within-match similarity
 ($0.796\,[0.75,\,0.84]$). The v6/v7 CI on within-match similarity
 overlaps with neither calibration baseline; the bootstrap places
 its rank between v6/cn (below) and v5/v6 (above) at 95\%. The
@@ -1282,7 +1315,16 @@ CI's upper tail slightly below the point estimate. We retain the
 wider CI rather than tighten by switching to a subsample-without-
 replacement scheme; the qualitative ranking of pairs (v6/v7
 lowest, v5/v6 highest) is preserved across point estimates, lower
-bounds, and upper bounds. The full reproduction artefact is in
+bounds, and upper bounds. The percentile-bootstrap procedure
+inherits known small-sample limitations: for C06f the resampling
+unit is the matched function pair ($n{=}31$ for v6/v7), and for
+C06d the resampling unit is the shared-symbol set ($n{=}5$), both
+regimes where percentile CIs are known to under-cover the true
+confidence level near the $[0,1]$ boundary; we use the percentile
+interval throughout for consistency rather than switching to BCa,
+and treat overlapping CIs as ``not separated at $95\%$'' rather
+than as a precise inference about the underlying signal. The
+full reproduction artefact is in
 \path{chardet-relicense/manuscript/figures/scripts/validate_numbers.py}
 and the per-pair CI metadata is recorded under
 \path{independent.<signal>.bootstrap_ci_95.<pair>} in
@@ -1475,8 +1517,8 @@ deterministically re-derives the input corpus from the seed
 (\texttt{20260522}, length cap 4\,096) using the same
 \texttt{hashlib.sha256(b"\textbackslash{}n".join(corpus))[:16]}
 construction the harness writes (an earlier round-1 review by
-gemini and codex caught that the validator and harness had been
-hashing the same corpus through different constructions and
+the first-round LLM reviewers caught that the validator and harness
+had been hashing the same corpus through different constructions and
 producing different 16-character digests, a defect now closed),
 so the corpus-digest agreement check always runs and pins the
 harness's \texttt{58e54831f84183c7} to the validator's
@@ -1667,8 +1709,8 @@ provenance of the training data --- would need different evidence.
 \label{sec:llm-review}
 
 After authoring the bundle, we submitted it for review by three
-independent LLM reviewers: OpenAI's Codex CLI, Google's Gemini CLI,
-and xAI's Grok CLI. Each reviewer received the same input: the bundle
+independent LLM CLI reviewers (each running a different commercial
+coding-agent CLI). Each reviewer received the same input: the bundle
 files, the verification report \texttt{verification\_report.toml}
 listing fifteen explicit verification contracts (V01..V15), and a
 standing instruction to verify each contract by reading the cited
@@ -1677,7 +1719,7 @@ covers (a) bundle structural completeness, (b) per-signal correctness
 properties, (c) cross-validator parity, and (d) honest non-claims.
 
 Two of the three reviewers returned unconditional approval after one
-or two iteration rounds. The first round of Codex review surfaced a
+or two iteration rounds. The first round of LLM review surfaced a
 small but real bug in our test-file exclusion rule (root-level
 \texttt{test*.py} was missed) and an under-counting issue in the
 combined \texttt{\# SUMMARY} block (the \texttt{C06e} row was being
@@ -1883,6 +1925,49 @@ deployment context for closed models does not currently permit ---
 would address the question the FSF position
 raises~\cite{theregister2026chardet}.
 
+\paragraph{C06f matcher dependence.}
+C06f's discriminative power depends on the
+\texttt{(signature\_shape, fan\_in\_bucket, fan\_out\_bucket)}
+matching key. The signature-shape hash incorporates an
+annotation-count dimension, which is dominated by v7's systematic
+addition of type hints --- functions that v7 annotated and v6
+did not are mechanically unmatched. A signature-blind or
+annotation-blind matcher would yield different match rates: an
+ablation that collapses every function into a single coarse
+shape bucket brings v6/v7 and v6/charset\_normalizer to similar
+within-match similarities (in the $0.89$--$0.90$ band) and
+removes the cross-pair separation reported in
+\cref{tab:multi-pair-calibration}. We report the specific
+matcher's result here and flag the design choice as an open
+ablation; the matcher key, including the annotation-count
+dimension, is the load-bearing assumption behind the v6/v7
+``low match rate, high within-match similarity'' framing.
+
+\paragraph{Training-data contamination of the prior.}
+If the LLM coding agent that produced v7 had encountered v6 or
+chardet-derived material during pre-training, every
+structural-similarity signal in this paper is potentially
+confounded by memorisation rather than informed by independent
+derivation or convergent design. The harness cannot measure
+training-data exposure; the most we can do is to flag the risk
+and to interpret the calibration baselines (v5/v6,
+v6/charset\_normalizer) in light of it. v6/charset\_normalizer in
+particular may not be a true ``independent'' baseline if the same
+training corpus saw both libraries. We treat this as a current
+threat to validity of the v6/v7 interpretation, not only as
+future work.
+
+\paragraph{Realistic-corpus independence.}
+The 64-item realistic corpus contains pairs of items that are
+byte-identical across encodings that the harness's
+label-aliasing rule treats as equivalent (e.g.\ the UDHR Article 1
+English text is byte-identical when serialised as ISO-8859-1 vs
+Windows-1252, and the aliasing rule treats those labels as a
+family match). The 64 rows are therefore not 64 independent
+observations; the normalised-rate band of $0.594$--$0.688$ may be
+partly shaped by the corpus's encoding-equivalence structure. A
+deduplicated-by-SHA sensitivity analysis is future work.
+
 \subsection{Toward language-neutral extraction}
 \label{sec:walker-seam}
 
@@ -1986,7 +2071,8 @@ provided the direction, scoping, and judgment calls throughout:
 the initial framing of the problem (``write a proof that shows the
 spec applied to code''), the narrowing of scope to \texttt{chardet}
 specifically (against an initial agent recommendation that included
-Claude Code rewrites and the Quake III Copilot incident), the
+another LLM-driven rewrite incident and the Quake III Copilot
+incident), the
 push-back when the v0.1 of the proof tested only file hashes
 (``I don't know how this really tests the spec, semantic ast
 framing''), the decision to do the full rewrite to AST-level
@@ -2017,22 +2103,22 @@ agent harness.
 Three independent LLM reviewers verified the bundle and the
 paper across multiple iterations using a shared
 \texttt{contract-declaration} ``verification report'' as the
-corrective-program spec (\cref{sec:llm-review}). Codex (OpenAI
-Codex v0.132.0, GPT-5-class, \texttt{workspace-write} sandbox,
-\texttt{on-request} approvals) iterated three rounds on the
-bundle and two rounds on the paper, reaching UNCONDITIONAL
-APPROVAL on all 15 bundle contracts and on the manuscript after
-all blockers were addressed. Grok (Grok Build, model
-\texttt{grok-build}, \texttt{bypassPermissions},
+corrective-program spec (\cref{sec:llm-review}). The first
+reviewer (\texttt{workspace-write} sandbox, \texttt{on-request}
+approvals) iterated three rounds on the bundle and two rounds on
+the paper, reaching UNCONDITIONAL APPROVAL on all 15 bundle
+contracts and on the manuscript after all blockers were
+addressed. The second reviewer (\texttt{bypassPermissions},
 \texttt{alwaysApprove}) reached UNCONDITIONAL APPROVAL on all 15
-bundle contracts in one round and on all 20 paper contracts after
-a second round. Gemini (Gemini 3.1 Pro Preview, \texttt{yolo})
-reached UNCONDITIONAL APPROVAL on the first-round bundle review;
-its second-round bundle review and both paper-review rounds
-failed before completion with an upstream \texttt{TerminalQuotaError},
-so Gemini's verdict on the final paper version is not part of the
-record at submission time. We note the gap explicitly rather than
-silently omitting it. All three reviewers shared the same MCP set
+bundle contracts in one round and on all 20 paper contracts
+after a second round. The third reviewer (\texttt{yolo} access
+posture) reached UNCONDITIONAL APPROVAL on the first-round
+bundle review; its second-round bundle review and both
+paper-review rounds failed before completion with an upstream
+\texttt{TerminalQuotaError}, so the third reviewer's verdict on
+the final paper version is not part of the record at submission
+time. We note the gap explicitly rather than silently omitting
+it. All three reviewers shared the same MCP set
 (\texttt{sqry}, \texttt{ref\_tools}, \texttt{exa}); the itemised
 list of issues each reviewer caught is preserved in the v2 review
 packet at

@@ -45,7 +45,15 @@ the published CIs byte-for-byte.
 > rather than tighten by switching to a subsample-without-replacement
 > scheme; the qualitative ranking of pairs (v6/v7 lowest, v5/v6
 > highest) is preserved across point estimates, lower bounds, and
-> upper bounds.
+> upper bounds. The percentile-bootstrap procedure inherits known
+> small-sample limitations: for C06f the resampling unit is the
+> matched function pair (n=31 for v6/v7), and for C06d the
+> resampling unit is the shared-symbol set (n=5), both regimes
+> where percentile CIs are known to under-cover the true
+> confidence level near the [0,1] boundary; we use the percentile
+> interval throughout for consistency rather than switching to BCa,
+> and treat overlapping CIs as "not separated at 95%" rather than
+> as a precise inference about the underlying signal.
 
 ---
 

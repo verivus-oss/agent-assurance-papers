@@ -11,11 +11,20 @@ arXiv preview).
 v2 work tip (Phase 4): `bc30f6b v2 Phase 4 (agent L): editor pass integrating
 Phase 1a/1b/2/3 changes`.
 
-v2 bundle commit (Phase 5, this report): branch `v2-phase5-m`.
+v2 bundle commit (Phase 5, original): `5d6a522 v2 Phase 5 (agent M):
+refresh arXiv bundle + v2 audit-trail pair`.
 
-This report is the v2 analogue of `verification-report-2026-05-28.md` (the v1
-audit anchor, which is preserved verbatim and is NOT superseded by this file;
-v2 supersedes only for the v2 arXiv version replacement).
+v2.1 round-1 red-team patch (Phase 6, this report): branch
+`v2-phase6-n`. The v2.1 commit applies twelve fixes (F1--F12)
+returned by four independent round-1 LLM reviewers (Codex, Grok,
+Gemini, Mistral). The full fix list is recorded in the
+`v2-phase6-n` commit message and is enumerated below in
+``What v2.1 (Phase 6) changes''.
+
+This report is the v2.1 analogue of `verification-report-2026-05-28.md`
+(the v1 audit anchor, which is preserved verbatim and is NOT
+superseded by this file; v2.1 supersedes only for the v2 arXiv
+version replacement).
 
 ## What the v2 revision adds
 
@@ -96,6 +105,59 @@ A tool-cwd mistake during the d/e/c merge phase was caught by
   list. `\input{figures/scripts/multi_pair_comparison.tex}` added at
   the table-rendering point.
 
+### Phase 6 — round-1 red-team patch (v2.1)
+
+- **N** (this commit, branch `v2-phase6-n`): twelve fixes returned
+  by four independent round-1 LLM reviewers (Codex, Grok, Gemini,
+  Mistral), applied as a single atomic commit:
+
+  - **F1 [BLOCK]** Tarball byte-reproducibility: the Phase 5 recipe
+    omitted `--format=ustar`, so GNU tar's default `pax` format
+    emitted volatile PAX extended headers (atime/ctime) and the
+    documented SHA `25f757e6...` did not reproduce. v2.1 corrects
+    the recipe and ships a fresh tarball at SHA
+    `f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb`.
+    Verified bit-reproducible across two independent runs.
+  - **F2 [MAJOR]** Vendor LLM attribution scrubbed from non-empirical
+    paragraphs in main.tex; the CodeSpy paragraph (empirical content)
+    and the CodEx academic citation (paper, not the OpenAI CLI) are
+    kept unchanged.
+  - **F3 [MAJOR]** `validation_report.v2.json` calibration subtree
+    re-synced with the R1--R5 audit values reported in the witness
+    TSVs and `multi_pair_comparison.tex`. Each pair's `c06b` block
+    now carries a `_note` field flagging the supersede.
+  - **F4 [MINOR]** `validate_numbers.py --help` no longer crashes:
+    `%` characters in the docstring and `help=` strings escaped to
+    `%%`. `validate_numbers_v2.py` already worked.
+  - **F5 [MAJOR]** §5 C06f narrative softened to flag matcher-key
+    dependence; §11 Limitations gains a ``C06f matcher dependence''
+    paragraph describing the annotation-count dimension and the
+    coarse-bucket ablation result.
+  - **F6 [MAJOR]** §11 Limitations gains a ``Training-data
+    contamination of the prior'' paragraph.
+  - **F7 [MAJOR]** Bootstrap caveat broadened in both main.tex and
+    `v2-phase1b-bootstrap-methodology.md` to cover small-n,
+    [0,1]-boundary, and percentile-vs-BCa concerns.
+  - **F8 [BLOCK]** v6/charset\_normalizer match-rate denominator
+    asymmetry: abstract and §5 now report both $77/177=43.5\%$
+    (v6 denominator) and $77/148=52.0\%$
+    (charset\_normalizer denominator).
+  - **F9 [MAJOR]** §5 narrative gains a footnote on the
+    C06b v6/charset\_normalizer = 0.000 circular-import artefact
+    (charset\_normalizer imports chardet for benchmarking).
+  - **F10 [MAJOR]** §4 C06b subsection gains a
+    ``Cross-pair comparability'' paragraph noting that R1--R5 is
+    pair-parameterised.
+  - **F11 [MAJOR]** Orphan bib entries (`verivus2025verifiable`,
+    `verivus2025patent1`) removed from `references.bib`.
+  - **F12 [MAJOR]** §11 Limitations gains a
+    ``Realistic-corpus independence'' paragraph noting the
+    byte-duplicate UDHR rows and label-aliasing collapse.
+
+  v2.1 page count is 33 (was 32 in v2.0); the additional page
+  accommodates the five new paragraphs in §11 and the matcher
+  hedge in §5.
+
 ## v2 bundle inventory
 
 The v2 bundle is two entries larger than v1. The new entries are
@@ -127,30 +189,48 @@ Eight entries vs v1's six: 1 metadata + 1 main + 1 bib + 4 figure PDFs +
 the tarball is reproducible bit-for-bit (see reproducibility witness
 below).
 
-### Tarball reproducibility witness
+### Tarball reproducibility witness (v2.1)
 
 ```text
-$ tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-05-28 14:00Z' \
-    -cf - <inventory> | gzip -n -9 > /tmp/v2_run1.tar.gz
-$ tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-05-28 14:00Z' \
-    -cf - <inventory> | gzip -n -9 > /tmp/v2_run2.tar.gz
+$ tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mtime='2026-05-28 14:00Z' -cf - <inventory> | gzip -n -9 > /tmp/v2_run1.tar.gz
+$ tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mtime='2026-05-28 14:00Z' -cf - <inventory> | gzip -n -9 > /tmp/v2_run2.tar.gz
 $ sha256sum /tmp/v2_run1.tar.gz /tmp/v2_run2.tar.gz
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  /tmp/v2_run1.tar.gz
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  /tmp/v2_run2.tar.gz
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  /tmp/v2_run1.tar.gz
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  /tmp/v2_run2.tar.gz
 ```
 
-NOTE: gzip must be invoked explicitly with `-n -9` (suppress timestamp +
-maximum compression). The v1 bundle used `tar -czf` (gzip default), which
-embeds the gzip-creation timestamp and is therefore NOT bit-reproducible
-across re-runs. The v2 recipe is upgraded to deterministic gzip. The v1
-bundle SHA256 `4c882da2...` remains the v1 anchor; the v1 build command
-documented in `publication-evidence-2026-05-28.md` should be read with
-this caveat (the v1 tarball is byte-stable as-shipped, but a fresh run of
-the documented v1 command would produce a different SHA).
+NOTE: two flags are load-bearing for bit-reproducibility:
+
+- `--format=ustar` — GNU tar's default `pax` format emits PAX
+  extended headers (with volatile atime/ctime), and the same
+  recipe rerun produces different bytes. The `ustar` format
+  does not emit those headers. Round-1 red-team finding F1
+  identified the Phase 5 v2.0 recipe as missing this flag; the
+  documented v2.0 SHA `25f757e6...` did not reproduce. v2.1
+  ships the corrected recipe and a fresh tarball SHA
+  `f21d9143...`.
+- `gzip -n -9` — gzip without `-n` embeds its run timestamp,
+  which is the v1-recipe gap the Phase 5 documentation already
+  called out. v2.1 retains the `gzip -n -9` invocation.
+
+The v1 bundle SHA256 `4c882da2...` remains the v1 anchor; the v1
+build command documented in `publication-evidence-2026-05-28.md`
+should be read with the historical caveat (the v1 tarball is
+byte-stable as-shipped, but a fresh run of the documented v1
+command would produce a different SHA).
 
 For comparison preservation, the v1 tarball is retained side-by-side at
 `chardet-relicense/manuscript/arxiv_submission_bundle.v1.tar.gz`
 (SHA256 `4c882da2bc1d731cc1f199adc5be3f41f128cd01292b130d7fa23a1451411ce6`).
+
+The v2.1 bundle ships at SHA256
+`f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb`
+under `chardet-relicense/manuscript/arxiv_submission_bundle.tar.gz`.
+The Phase 5 v2.0 SHA `25f757e6...` is superseded; the v2.0 tarball
+was not preserved on disk because the v2.0 recipe was not
+bit-reproducible (the whole point of round-1 finding F1).
 
 ## Build environment (unchanged from v1)
 
@@ -162,17 +242,22 @@ For comparison preservation, the v1 tarball is retained side-by-side at
 - Build host: Linux 6.12 / podman 5.4.2
 - `pdflatex` path inside image: `/opt/texlive/texdir/bin/x86_64-linuxmusl/pdflatex`
 
-Build result:
+Build result (v2.1):
 
 ```text
-Output written on main.pdf (32 pages, 511532 bytes).
+Output written on main.pdf (33 pages, 533932 bytes).
 $ grep -c '^Overfull' main.log
-0
+1
 $ grep -c '^!' main.log
 0
 ```
 
-Cleveref settled in 4 passes. BibTeX produced no warnings.
+Cleveref settled in 4 passes. BibTeX produced no warnings. The
+single Overfull is in `figures/scripts/multi_pair_comparison.tex`
+(table-row width, pre-existing — the table content was last
+edited in Phase 1a integration and is not touched by v2.1). The
+table renders cleanly in the PDF; the warning is cosmetic and
+does not affect the typeset output.
 
 ## v2 headline numbers (cross-check against v2-numeric-shifts.md)
 
@@ -210,7 +295,7 @@ consolidated re-derivation) or `figures/scripts/jplag_chardet_results.json`
 | C06f mean v5/v6 | 0.982 | §7 |
 | C06f match rate v5/v6 | 103/161 = 64.0% | §7 |
 | C06f mean v6/charset-normalizer | 0.796 | §7 |
-| C06f match rate v6/charset-normalizer | 77/177 = 43.5% | §7 |
+| C06f match rate v6/charset-normalizer | 77/177 = 43.5% (v6 denom); 77/148 = 52.0% (csn denom) | §7 (F8 v2.1 disambiguation) |
 
 The discriminating-signal claim (§5 of v2-numeric-shifts.md) — "C06f
 match rate is the LOWEST on v6/v7 of the three pairs" — is the central
@@ -334,11 +419,11 @@ the v2 equivalent of v1's "multi-LLM-reviewed artefact" claim.
 
 ```text
 9f99ecefdad244abfa3a0ae86400cdf3a1d98a7342ad01db10949e08fe1b0cda  chardet-relicense/manuscript/00README.json
-0d89675ec96cdf962496dfc792dff578d03cc7d4e46b18a784ed3f12a4345893  chardet-relicense/manuscript/main.tex
-23ee5ba7400f81a4106061469dad49fcedd8655afc26c4bd13d9f89214a74d60  chardet-relicense/manuscript/references.bib  (unchanged from v1)
+c95f771b180729d15b6e99c5f7ec956618cf1ec29ad1086f4f3ce9d4a47fa098  chardet-relicense/manuscript/main.tex
+81fa9e14d32f25402a53121ff575553d69db3fe9d6434ca9cf1e295a0ad7ba0c  chardet-relicense/manuscript/references.bib  (v2.1: orphans removed per F11)
 03fc94f9d9819b5ab0a5011c9d6992143b8f2cd583d0be2fa870839b0a9d3c34  chardet-relicense/manuscript/main.bbl  (local only)
-2b7f75fb182e3b5ea450cd9100c2328639c2d5add0ad7a678d27cfe5fa3cb11c  chardet-relicense/manuscript/main.pdf  (local only)
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  chardet-relicense/manuscript/arxiv_submission_bundle.tar.gz
+95e737c88f8181ce893b443617852d8d1770ddb19aa602679d3e663585da6498  chardet-relicense/manuscript/main.pdf  (local only; pdflatex output is non-deterministic without SOURCE_DATE_EPOCH)
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  chardet-relicense/manuscript/arxiv_submission_bundle.tar.gz
 52185a8ab395d7d7aa6b38f1b36a7bd4584464d8daa91673a896520fe72a451b  chardet-relicense/manuscript/figures/fig1_implementation_dag.pdf  (unchanged from v1)
 fc0101e6a5f4b9619338537a621f9905edbb5f57a5243d9113bb7c2e41491209  chardet-relicense/manuscript/figures/fig2_topology_features.pdf  (Phase 2 K small-multiples)
 9d2ff592143792a8ff93441345381b70e34ed11a294263fdac37ff116064ae3a  chardet-relicense/manuscript/figures/fig3_control_flow_hist.pdf  (unchanged from v1)
@@ -351,15 +436,15 @@ fc0101e6a5f4b9619338537a621f9905edbb5f57a5243d9113bb7c2e41491209  chardet-relice
 
 Approval is conditional on:
 
-1. The user reviewing the rendered v2 `main.pdf` (page count 32, byte
-   count 511532) and the updated numeric body claims in the abstract,
-   Table 4, and Section 5.
+1. The user reviewing the rendered v2.1 `main.pdf` (page count 33,
+   byte count 533932) and the updated numeric body claims in the
+   abstract, Table 4, and Section 5.
 2. The user confirming the License decision (CC BY 4.0) at arXiv
    upload — durable per arXiv policy, not downgradable from the v1
    commitment.
 3. The user confirming the updated Comments-field text at arXiv upload
    (see `arxiv-metadata.md`); note the v1 Comments said "27 pages, 3
-   figures" and the v2 Comments say "v2; 32 pages, 4 figures" with a
+   figures" and the v2.1 Comments say "v2; 33 pages, 4 figures" with a
    new multi-pair-calibration phrase.
 4. The user submitting from the v2 artefact bundle
    `arxiv_submission_bundle.tar.gz` only — NOT from the manuscript

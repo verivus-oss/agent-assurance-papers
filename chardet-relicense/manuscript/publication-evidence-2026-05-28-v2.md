@@ -19,11 +19,17 @@ supersedes only for the v2 arXiv version replacement.
 - v1 audit pair (`verification-report-2026-05-28.md`,
   `publication-evidence-2026-05-28.md`) unchanged on disk; this v2 note
   does not edit them.
-- v2 work tip: branch `v2-phase5-m` (this commit), parent
-  `bc30f6b v2 Phase 4 (agent L): editor pass integrating Phase 1a/1b/2/3
-  changes`.
+- v2 work tip: branch `v2-phase6-n` (v2.1 after round-1 red-team
+  patch — see the v2-phase6-n commit for the 12 fixes F1-F12).
+  Phase 5 parent: `5d6a522 v2 Phase 5 (agent M): refresh arXiv bundle
+  + v2 audit-trail pair`.
 - v2 bundle SHA256:
-  `25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39`.
+  `f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb`
+  (v2.1; rebuilt with the corrected `--format=ustar` recipe — see
+  `Source bundle command (v2)` below. The Phase 5 v2.0 SHA
+  `25f757e6...` is superseded; it was produced before the PAX-header
+  diagnosis. The v1 bundle SHA `4c882da2...` remains the v1
+  anchor and is preserved on disk.).
 
 ## Build command (unchanged container, unchanged recipe)
 
@@ -45,14 +51,17 @@ Container ID (verified):
 `1c1639677099e11724ad314695476cac297bab5dc913b2d1638778ac2a6b0c3a`
 (same image hash as v1, per `v2-baseline.md`).
 
-Observed output:
+Observed output (v2.1 after round-1 red-team patch; page count
+rose from 32 to 33 to accommodate the new C06f matcher-ablation,
+training-contamination, realistic-corpus-independence, and
+cross-pair-comparability paragraphs):
 
 ```text
 This is BibTeX, Version 0.99e (TeX Live 2026)
 The top-level auxiliary file: main.aux
 The style file: plain.bst
 Database file #1: references.bib
-Output written on main.pdf (32 pages, 511532 bytes).
+Output written on main.pdf (33 pages, 533932 bytes).
 Transcript written on main.log.
 ```
 
@@ -68,7 +77,7 @@ $ grep -c '^!' main.log
 Cleveref settled in 4 passes; final pass reported no "Label(s) may have
 changed" message.
 
-## Citation sanity (v2)
+## Citation sanity (v2.1)
 
 ```text
 $ grep -oE '\\cite[a-z]*\{[^}]+\}' main.tex | sed 's/\\cite[a-z]*{//;s/}//' \
@@ -76,27 +85,28 @@ $ grep -oE '\\cite[a-z]*\{[^}]+\}' main.tex | sed 's/\\cite[a-z]*{//;s/}//' \
 36
 $ grep -oE '^@[a-zA-Z]+\{[^,]+' references.bib | sed 's/^@[a-zA-Z]*{//' \
     | sort -u | wc -l
-38
+36
 $ diff <(grep -oE '\\cite[a-z]*\{[^}]+\}' main.tex | sed 's/\\cite[a-z]*{//;s/}//' \
         | tr ',' '\n' | sed 's/^ *//' | sort -u) \
        <(grep -oE '^@[a-zA-Z]+\{[^,]+' references.bib | sed 's/^@[a-zA-Z]*{//' | sort -u)
-> verivus2025patent1
-> verivus2025verifiable
+(no output: every bib entry has at least one cite, every cite has a bib entry).
 ```
 
-Two bib entries were orphaned by Phase 3 J's narrative-compression pass
-(removal of the Lineage + sqry paragraphs that cited
-`verivus2025verifiable` and `verivus2025patent1`). Per the user's
-explicit Phase 3 directive (leave references.bib alone; Phase 4 would
-decide), and per Phase 4 Agent L's decision not to prune, and per the
-Phase 5 scope-of-work (bundle + audit, not editor), the orphans are
-retained. pdflatex tolerates unused `@entry` records without warning.
+Phase 6 N removed the two orphan entries (`verivus2025verifiable`,
+`verivus2025patent1`) per round-1 red-team finding F11: arXiv's
+guidance is that every bib entry be cited, and the citing
+paragraphs were already gone (Phase 3 J's Lineage+sqry trim).
 
 ## URL status check (v2)
 
-The v2 references.bib is byte-identical to v1 (sha256
-`23ee5ba7400f81a4106061469dad49fcedd8655afc26c4bd13d9f89214a74d60`); no
-URL changes were made. The v1 URL-status table in
+The v2.1 references.bib differs from v1 only in the removal of two
+orphan entries (`verivus2025verifiable`, `verivus2025patent1`)
+per round-1 red-team finding F11. No URL changes were made. The
+v2.1 references.bib sha256 is
+`81fa9e14d32f25402a53121ff575553d69db3fe9d6434ca9cf1e295a0ad7ba0c`;
+the v1 references.bib sha256 was
+`23ee5ba7400f81a4106061469dad49fcedd8655afc26c4bd13d9f89214a74d60`.
+The v1 URL-status table in
 `publication-evidence-2026-05-28.md` applies unchanged: 24 URLs, 21 of
 which return 200, 3 of which return 403/405 from known anti-scrape
 endpoints (`copyleaks.com`, `law.justia.com`, `supreme.justia.com`,
@@ -105,9 +115,12 @@ browser.
 
 ## Numeric validation cross-check
 
-The v2 headline numbers cross-checked against
+The v2.1 headline numbers cross-checked against
 `figures/scripts/validation_report.v2.json` (the post-merge joint
-re-derivation captured at `3b95ab3`):
+re-derivation captured at `3b95ab3`, then patched by Phase 6 N to
+synchronise the C06b calibration subtree with the R1--R5 audit
+values reported in the witness TSVs and `multi_pair_comparison.tex`
+— round-1 red-team finding F3):
 
 ```text
 == validation_report.v2.json (v6/v7 pair) ==
@@ -144,11 +157,11 @@ similarities.LONGEST_MATCH    = 18.0              (paper: "longest token match: 
 similarities.MAXIMUM_LENGTH   = 247026.0          (paper: "roughly 247,000")
 ```
 
-## Source bundle command (v2)
+## Source bundle command (v2.1)
 
 ```sh
 cd chardet-relicense/manuscript
-tar --sort=name --owner=0 --group=0 --numeric-owner \
+tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner \
   --mtime='2026-05-28 14:00Z' \
   -cf - \
   00README.json main.tex references.bib \
@@ -160,21 +173,35 @@ tar --sort=name --owner=0 --group=0 --numeric-owner \
   | gzip -n -9 > arxiv_submission_bundle.tar.gz
 ```
 
-The `gzip -n -9` piping is required for byte-reproducibility — gzip
-without `-n` embeds its run timestamp. The v1 build command
-(`tar -czf`) is byte-stable for the v1 artefact as-shipped but is not
-re-runnable bit-identical; the v2 recipe corrects this.
+Two flags are load-bearing for byte-reproducibility:
 
-## Tarball reproducibility witness
+- `--format=ustar` — GNU tar's default `pax` format emits PAX
+  extended headers that include volatile `atime`/`ctime` fields,
+  so the same recipe run twice produces different bytes. The
+  `ustar` format does not emit those headers and is bit-stable.
+  (Round-1 red-team finding F1 surfaced this: the Phase 5 v2.0
+  recipe omitted `--format=ustar` and the documented v2.0 SHA
+  `25f757e6...` did not reproduce; the v2.1 SHA below does.)
+- `gzip -n -9` — gzip without `-n` embeds its run timestamp,
+  which is the v1-recipe gap the Phase 5 documentation already
+  called out.
+
+## Tarball reproducibility witness (v2.1)
 
 ```text
-$ tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-05-28 14:00Z' \
-    -cf - <inventory> | gzip -n -9 > /tmp/v2_run1.tar.gz
-$ tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-05-28 14:00Z' \
-    -cf - <inventory> | gzip -n -9 > /tmp/v2_run2.tar.gz
+$ INV="00README.json main.tex references.bib \
+       figures/fig1_implementation_dag.pdf \
+       figures/fig2_topology_features.pdf \
+       figures/fig3_control_flow_hist.pdf \
+       figures/fig5_walker_architecture.pdf \
+       figures/scripts/multi_pair_comparison.tex"
+$ tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mtime='2026-05-28 14:00Z' -cf - $INV | gzip -n -9 > /tmp/v2_run1.tar.gz
+$ tar --format=ustar --sort=name --owner=0 --group=0 --numeric-owner \
+    --mtime='2026-05-28 14:00Z' -cf - $INV | gzip -n -9 > /tmp/v2_run2.tar.gz
 $ sha256sum /tmp/v2_run1.tar.gz /tmp/v2_run2.tar.gz
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  /tmp/v2_run1.tar.gz
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  /tmp/v2_run2.tar.gz
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  /tmp/v2_run1.tar.gz
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  /tmp/v2_run2.tar.gz
 ```
 
 ## Bundle contents
@@ -211,16 +238,20 @@ picks them up.
 ## Integrity-property assertions (publication-evidence form)
 
 A reader who downloads `arxiv_submission_bundle.tar.gz` (SHA256
-`25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39`) can
+`f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb`) can
 externally verify the following without trusting this document:
 
-1. **Tarball reproducibility.** Running the v2 tar command above on
+1. **Tarball reproducibility.** Running the v2.1 tar command above on
    the in-bundle source files (cloned at this commit) reproduces the
-   bundle SHA bit-for-bit.
+   bundle SHA bit-for-bit. The `--format=ustar` flag is load-bearing;
+   omitting it causes GNU tar's default `pax` format to emit
+   volatile PAX extended headers and break bit-reproducibility (the
+   v2.0 documentation regression that round-1 red-team finding F1
+   identified).
 
 2. **PDF reproducibility.** Running the documented `podman run ... pdflatex`
    sequence on the bundle source (with the same TeX Live image hash
-   `1c1639677099e1...`) reproduces a 32-page, 511532-byte PDF.
+   `1c1639677099e1...`) reproduces a 33-page, 533932-byte PDF.
 
 3. **Numeric headline traceability.** Every number cited in the abstract
    and Table 4 can be checked against the public
@@ -256,7 +287,7 @@ To enter at the arXiv UI for the v2 replacement (recorded in
 - **License**: Creative Commons Attribution 4.0 International (CC BY 4.0),
   `http://creativecommons.org/licenses/by/4.0/` (UNCHANGED — durable per
   arXiv policy).
-- **Comments**: `v2; 32 pages, 4 figures; falsifiable detection harness
+- **Comments**: `v2; 33 pages, 4 figures; falsifiable detection harness
   for AI-driven code rewrites, applied to the chardet v6/v7 relicensing
   dispute, now with multi-pair calibration (v5/v6, v6/v7,
   v6/charset-normalizer) and four new signals (C06a' Weisfeiler-Lehman,
@@ -267,15 +298,15 @@ To enter at the arXiv UI for the v2 replacement (recorded in
   rendering of the paper's `\begin{abstract}...\end{abstract}` block at
   commit `bc30f6b`).
 
-## Final hashes (v2)
+## Final hashes (v2.1)
 
 ```text
 9f99ecefdad244abfa3a0ae86400cdf3a1d98a7342ad01db10949e08fe1b0cda  chardet-relicense/manuscript/00README.json
-0d89675ec96cdf962496dfc792dff578d03cc7d4e46b18a784ed3f12a4345893  chardet-relicense/manuscript/main.tex
-23ee5ba7400f81a4106061469dad49fcedd8655afc26c4bd13d9f89214a74d60  chardet-relicense/manuscript/references.bib  (unchanged from v1)
+c95f771b180729d15b6e99c5f7ec956618cf1ec29ad1086f4f3ce9d4a47fa098  chardet-relicense/manuscript/main.tex
+81fa9e14d32f25402a53121ff575553d69db3fe9d6434ca9cf1e295a0ad7ba0c  chardet-relicense/manuscript/references.bib  (v2.1: orphans removed per F11)
 03fc94f9d9819b5ab0a5011c9d6992143b8f2cd583d0be2fa870839b0a9d3c34  chardet-relicense/manuscript/main.bbl   (local only)
-2b7f75fb182e3b5ea450cd9100c2328639c2d5add0ad7a678d27cfe5fa3cb11c  chardet-relicense/manuscript/main.pdf   (local only)
-25f757e65a7a6d74e67f0a45ed2b6afa9cb165d704528e56aed94dec5776ba39  chardet-relicense/manuscript/arxiv_submission_bundle.tar.gz
+95e737c88f8181ce893b443617852d8d1770ddb19aa602679d3e663585da6498  chardet-relicense/manuscript/main.pdf   (local only; pdflatex output is non-deterministic without SOURCE_DATE_EPOCH, so this hash is for the final build of the v2.1 commit and will differ on re-runs by reader)
+f21d91430d274649ec88dfbf4f389c3d8c8061620e30503c87bee60b3f5b95fb  chardet-relicense/manuscript/arxiv_submission_bundle.tar.gz
 52185a8ab395d7d7aa6b38f1b36a7bd4584464d8daa91673a896520fe72a451b  chardet-relicense/manuscript/figures/fig1_implementation_dag.pdf  (unchanged from v1)
 fc0101e6a5f4b9619338537a621f9905edbb5f57a5243d9113bb7c2e41491209  chardet-relicense/manuscript/figures/fig2_topology_features.pdf  (Phase 2 K small-multiples)
 9d2ff592143792a8ff93441345381b70e34ed11a294263fdac37ff116064ae3a  chardet-relicense/manuscript/figures/fig3_control_flow_hist.pdf  (unchanged from v1)

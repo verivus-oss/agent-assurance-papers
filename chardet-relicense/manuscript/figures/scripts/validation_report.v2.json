@@ -81,11 +81,12 @@
               "evidence": "density: v6=0.00418 v7=0.00516 reldiff=0.104; sccs: v6=342 v7=358 reldiff=0.023; mean_in_degree: v6=1.43 v7=1.84 reldiff=0.127; max_in_degree: v6=34 v7=44 reldiff=0.128"
             },
             "c06b": {
-              "jaccard": 0.333,
+              "jaccard": 0.666667,
               "shared": 2,
-              "a_only": 1,
-              "b_only": 3,
-              "evidence": "shared: ['cchardet', 'datasets']; v6_only: ['create_language_model']; v7_only: ['charset_normalizer', 'confusion_training', 'utils']"
+              "a_only": 0,
+              "b_only": 1,
+              "evidence": "shared: ['cchardet', 'datasets']; v6_only: []; v7_only: ['charset_normalizer']",
+              "_note": "post-R1-R5-audit value (matches witness.tsv); supersedes the v1-filter value previously stored here"
             },
             "c06c": {
               "cosine": 0.984,
@@ -142,11 +143,12 @@
               "evidence": "density: v6=0.00421 v7=0.00418 reldiff=0.003; sccs: v6=288 v7=342 reldiff=0.086; mean_in_degree: v6=1.21 v7=1.43 reldiff=0.083; max_in_degree: v6=36 v7=34 reldiff=0.029"
             },
             "c06b": {
-              "jaccard": 0.2,
+              "jaccard": 0.25,
               "shared": 1,
               "a_only": 2,
-              "b_only": 2,
-              "evidence": "shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['create_language_model', 'datasets']"
+              "b_only": 1,
+              "evidence": "shared: ['cchardet']; v6_only: ['setuptools', 'sphinx_rtd_theme']; v7_only: ['datasets']",
+              "_note": "post-R1-R5-audit value (matches witness.tsv); supersedes the v1-filter value previously stored here"
             },
             "c06c": {
               "cosine": 0.995,
@@ -205,9 +207,10 @@
             "c06b": {
               "jaccard": 0.0,
               "shared": 0,
-              "a_only": 3,
+              "a_only": 2,
               "b_only": 5,
-              "evidence": "shared: []; v6_only: ['cchardet', 'create_language_model', 'datasets']; v7_only: ['chardet', 'mypyc', 'nox', 'setuptools', 'typing_extensions']"
+              "evidence": "shared: []; v6_only: ['cchardet', 'datasets']; v7_only: ['chardet', 'mypyc', 'nox', 'setuptools', 'typing_extensions']",
+              "_note": "post-R1-R5-audit value (matches witness.tsv); supersedes the v1-filter value previously stored here"
             },
             "c06c": {
               "cosine": 0.999,
