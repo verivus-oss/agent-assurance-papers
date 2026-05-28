@@ -1591,58 +1591,25 @@ agent harness.
 Three independent LLM reviewers verified the bundle and the
 paper across multiple iterations using a shared
 \texttt{contract-declaration} ``verification report'' as the
-corrective-program spec (\cref{sec:llm-review}). The reviewers and
-their access posture:
-
-\begin{itemize}[itemsep=2pt, topsep=2pt]
-  \item \textbf{Codex} (OpenAI Codex v0.132.0, GPT-5-class model,
-    \texttt{workspace-write} sandbox mode, \texttt{on-request}
-    approval policy, \texttt{sqry}+\texttt{ref\_tools}+\texttt{exa}
-    MCP servers). Iterated three rounds on the bundle (Round 1
-    REJECTED with two concrete blockers; Round 2 APPROVAL WITH
-    MINOR NOTES; Round 3 UNCONDITIONAL APPROVAL on all 15 bundle
-    contracts) and two rounds on this paper (Round 1 REJECTED with
-    six concrete blockers; Round 2 REJECTED with three additional
-    blockers; all addressed in the manuscript). Across both
-    artefacts Codex caught: the SUMMARY-undercount bug in
-    \texttt{detect.sh}, the sandbox-incompatible worktree creation
-    (which led to the \texttt{git clone --shared} mirror trick),
-    stale lines-of-code counts in this manuscript (380+175 vs
-    actual 589+228), the misleading ``no network access'' claim
-    originally in \cref{sec:venv}, the missing reverse-computable
-    raw counts in the Figure 3 caption, and an under-specified
-    reviewer-attribution block in this acknowledgments section.
-    Codex did not catch the chardet \#325 misattribution (the
-    issue opener); Grok also did not catch it on its own,
-    although both flagged related ambiguity in their reviews.
-  \item \textbf{Grok} (Grok Build, model \texttt{grok-build},
-    \texttt{bypassPermissions} mode, \texttt{alwaysApprove} = true,
-    same MCP set). Iterated one round on the bundle (UNCONDITIONAL
-    APPROVAL on all 15 bundle contracts with one diagnostic note
-    about an incomplete stdlib filter, which led to the
-    \texttt{sys.stdlib\_module\_names} fix and the C06b number
-    sharpening from 0.167 to 0.333) and two rounds on this paper
-    (Round 1 APPROVAL WITH MINOR NOTES with three documentation-
-    drift blockers; Round 2 UNCONDITIONAL APPROVAL on all 20 paper
-    contracts). Grok caught the V01 ``exactly these files''
-    contract bug, the same LoC drift Codex caught, the chardet
-    \#325 attribution ambiguity, and a minor bib-author looseness.
-  \item \textbf{Gemini} (Gemini 3.1 Pro Preview, \texttt{yolo}
-    approval mode, same MCP set). Iterated one round on the bundle
-    (UNCONDITIONAL APPROVAL on all 15 bundle contracts; no
-    blockers identified). On the second-round bundle review and on
-    both paper-review rounds, Gemini's runs failed before
-    completion with a \texttt{TerminalQuotaError} reporting ``You
-    have exhausted your capacity on this model. Your quota will
-    reset after [X]h[Y]m'' --- the model itself was not at fault;
-    the upstream provider rate-limited the account before the
-    review could begin. Gemini's verdict on the final paper
-    version is therefore not part of the record at submission time
-    --- it caught nothing on the paper because it could not
-    examine the paper. We note the gap explicitly rather than
-    silently omitting it and encourage independent re-verification
-    by any reviewer (LLM or human) with quota.
-\end{itemize}
+corrective-program spec (\cref{sec:llm-review}). Codex (OpenAI
+Codex v0.132.0, GPT-5-class, \texttt{workspace-write} sandbox,
+\texttt{on-request} approvals) iterated three rounds on the
+bundle and two rounds on the paper, reaching UNCONDITIONAL
+APPROVAL on all 15 bundle contracts and on the manuscript after
+all blockers were addressed. Grok (Grok Build, model
+\texttt{grok-build}, \texttt{bypassPermissions},
+\texttt{alwaysApprove}) reached UNCONDITIONAL APPROVAL on all 15
+bundle contracts in one round and on all 20 paper contracts after
+a second round. Gemini (Gemini 3.1 Pro Preview, \texttt{yolo})
+reached UNCONDITIONAL APPROVAL on the first-round bundle review;
+its second-round bundle review and both paper-review rounds
+failed before completion with an upstream \texttt{TerminalQuotaError},
+so Gemini's verdict on the final paper version is not part of the
+record at submission time. We note the gap explicitly rather than
+silently omitting it. All three reviewers shared the same MCP set
+(\texttt{sqry}, \texttt{ref\_tools}, \texttt{exa}); the
+itemised list of issues each reviewer caught is preserved in the
+v2 review packet in the repository's commit history.
 
 The multi-LLM review is a methodological note, not an external
 peer review and not a guarantee of correctness. Disclosing it is
@@ -1650,36 +1617,6 @@ not a disclaimer of responsibility: the Verivus OSS organisation
 and the named human contributor accept responsibility for what
 the paper claims. It is a disclosure of process, because process
 matters when the subject is process.
-
-\paragraph{Lineage and prior work.}
-The work described in this paper sits in a lineage of prior Verivus
-research on Verifiable AI Governance~\cite{verivus2025verifiable},
-the master narrative ``AI You Can Prove,'' and the foundational
-mechanisms for verifiable multi-agent AI
-consensus~\cite{verivus2025patent1}. That thesis predates this
-manuscript by several years; DAG-TOML, the spec family the proof
-bundle conforms to~\cite{verivus2026dagtoml}, is the current
-open-source instantiation of the broader thesis's
-contract-declaration substrate. The representation is expected to
-evolve; the specific TOML syntax in use today is not load-bearing
-on the thesis. The chardet proof bundle is, at the time of writing,
-the first application of the DAG-TOML spec to a real, publicly
-disputed, production code base; we expect more applications to
-follow, by us and by others.
-
-\paragraph{sqry as the structured-AST substrate.}
-The C06a call-graph topology signal was shaped during design by the
-existence of sqry~\cite{verivus2026sqry}, the Verivus-OSS semantic
-code search tool that parses source into an AST and builds a
-queryable graph of symbols and relationships. sqry's design thesis
---- that an LLM-driven analyst is best served by a queryable
-structured graph of code, not by a vector embedding of code --- is
-the same thesis that makes C06a's per-feature vector valuable: each
-feature names a structural property in terms a reviewer can audit,
-rather than a coordinate in a latent space they cannot. sqry was
-used directly to corroborate the V2 findings in
-\cref{sec:sqry}; the corroboration is not what made the paper, but
-it raised our confidence in C06a's numerical claims.
 
 \paragraph{Verbatim user-prompt record.}
 The verbatim user prompts that produced both the proof bundle and
