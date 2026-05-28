@@ -175,6 +175,93 @@ and v7.0.0 tags and report the numbers I observed.
     surfaced and fixed.
 \end{itemize}
 
+\subsection{Empirical motivation: where token-level matching fails}
+\label{sec:jplag-empirical-motivation}
+
+The motivation for measuring at the call-graph topology and
+control-flow layers (signals C06a and C06c, defined formally in
+\cref{sec:signals}), rather than at the token-string layer, is not
+abstract. It is the empirical observation that the established
+academic token-string detector finds essentially no similarity
+between chardet v6 and v7, while the structural signals find a great
+deal. This contrast is the central empirical argument of this paper
+and the reason the rest of it exists.
+
+JPlag~\cite{prechelt2002jplag,jplag2026repo} is the established
+workhorse for cohort-based code-similarity work in university and
+conference settings, and has been for over twenty years. The engine
+tokenises each submission via a language-specific grammar (Java, C,
+C++, Python 3, Scheme, and a longer list in the current v6 release),
+then compares the resulting token strings with Running Karp-Rabin
+Greedy String Tiling (RKR-GST). The ``structure-aware'' framing in
+third-party descriptions, to be precise, refers to the tokeniser
+pulling an abstraction layer out of the parse tree rather than
+comparing raw text; it is not AST graph comparison in the sense this
+paper uses. JPlag runs locally and uploads nothing, which is the
+property that makes it the trusted academic-integrity tool, and by
+design it finds suspicious pairs within a set of submissions, rather
+than against the open web.
+
+I ran JPlag v6.3.0 on the chardet v6.0.0 and v7.0.0 pair, structured
+as two sibling submissions (84 v6 \texttt{.py} files plus 22 v7
+\texttt{.py} files; the v6 file count is higher than the extractor's
+87 because JPlag's submission layout includes some \texttt{.py} files
+that our extractor's test-filename regex excludes, and neither effect
+materially shifts the headline). The captured numbers are in
+\cref{tab:jplag-vs-c06}; the run configuration and the full numerics
+are recorded in \cref{sec:related-tools}.
+
+\begin{table}[h]
+\small
+\centering
+\caption{Headline similarity between chardet 6.0.0 and 7.0.0 under
+three different detection engines, against the same two-tag pair.
+JPlag v6.3.0 token-string engine versus this paper's call-graph and
+control-flow signals. The contrast is the load-bearing empirical
+motivation for this paper.}
+\label{tab:jplag-vs-c06}
+\begin{tabular}{@{}llr@{}}
+\toprule
+Engine & Signal & Similarity \\
+\midrule
+JPlag v6.3.0 (RKR-GST tokens) & AVG token-string overlap & 0.04\% \\
+JPlag v6.3.0 (RKR-GST tokens) & MAX token-string overlap & 1.30\% \\
+JPlag v6.3.0 (RKR-GST tokens) & longest token match & 18 tokens \\
+\midrule
+This paper, C06a & call-graph topology & 88.1\% \\
+This paper, C06c & control-flow histogram cosine & 98.4\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+JPlag's token-string engine, configured with default minimum token
+match (12), finds essentially no similarity between v6 and v7. The
+longest matched token sequence is 18 tokens, against a v7
+token-stream length of roughly 247{,}000. That is the answer JPlag is
+designed to give, and read on its own terms it is the correct
+answer: under JPlag's definition of ``submissions suspiciously
+similar to each other,'' the two versions are not similar. A
+coursework cohort that contained both versions would not be flagged.
+The same pair, however, scores 88\% similar at the call-graph
+topology layer (C06a) and 98\% similar at the control-flow shape
+layer (C06c). This is the central empirical argument of the paper:
+an LLM-driven rewrite can defeat token-level matching, comfortably,
+while still inheriting the original's structural shape, and the
+higher-layer signals catch the inheritance that the token-string
+view does not.
+
+A practical caveat I should mention. JPlag's bundled Python 3 grammar
+(ANTLR-based, bounded to a Python version that predates PEP 515
+underscore numeric literals like \texttt{1\_536}) emitted parse errors
+on \texttt{chardet/metadata/languages.py} in v6, which carries
+frequency tables in exactly that syntax. JPlag completed the
+comparison on the files it could tokenise; the unparsed files are
+data tables rather than logic, so the headline similarity is not
+materially affected. I document the issue rather than tidy it away.
+The broader comparison with other similarity-detection tools
+(AST-based academic detectors, commercial AI-augmented checkers) is
+deferred to \cref{sec:related-tools}.
+
 \paragraph{Scope and what this paper does not claim.}
 The harness does not measure training-data provenance. It does not
 address the upstream Mozilla copyright in the original
@@ -1351,79 +1438,19 @@ different job from either. I worked through each of these as part of
 writing this paper, ran the one engine I could run end-to-end against
 the chardet v6/v7 pair, and report what came back.
 
-\paragraph{Token-based academic detectors.}
-JPlag~\cite{prechelt2002jplag,jplag2026repo} is the established
-workhorse for cohort-based code-similarity work in university and
-conference settings, and has been for over twenty years. The engine
-tokenises each submission via a language-specific grammar (Java, C,
-C++, Python 3, Scheme, and a longer list in the current v6 release),
-then compares the resulting token strings with Running Karp-Rabin
-Greedy String Tiling (RKR-GST). The ``structure-aware'' framing in
-third-party descriptions, to be precise, refers to the tokeniser
-pulling an abstraction layer out of the parse tree rather than
-comparing raw text; it is not AST graph comparison in the sense this
-paper uses. JPlag runs locally and uploads nothing, which is the
-property that makes it the trusted academic-integrity tool, and by
-design it finds suspicious pairs within a set of submissions, rather
-than against the open web.
-
-I ran JPlag v6.3.0 on the chardet v6.0.0 and v7.0.0 pair, structured
-as two sibling submissions (84 v6 \texttt{.py} files plus 22 v7
-\texttt{.py} files; the v6 file count is higher than the extractor's
-87 because JPlag's submission layout includes some \texttt{.py} files
-that our extractor's test-filename regex excludes, and neither effect
-materially shifts the headline). The reproduction script is in
-\texttt{chardet-relicense/manuscript/figures/scripts/run\_jplag.sh}, the raw JSON output in
-\texttt{chardet-relicense/manuscript/figures/scripts/jplag\_chardet\_results.json}, and the
-captured numbers are in \cref{tab:jplag-vs-c06}.
-
-\begin{table}[h]
-\small
-\centering
-\caption{Headline similarity between chardet 6.0.0 and 7.0.0 under
-three different detection engines, against the same two-tag pair.
-JPlag v6.3.0 token-string engine versus this paper's call-graph and
-control-flow signals. The contrast is the load-bearing empirical
-motivation for this paper.}
-\label{tab:jplag-vs-c06}
-\begin{tabular}{@{}llr@{}}
-\toprule
-Engine & Signal & Similarity \\
-\midrule
-JPlag v6.3.0 (RKR-GST tokens) & AVG token-string overlap & 0.04\% \\
-JPlag v6.3.0 (RKR-GST tokens) & MAX token-string overlap & 1.30\% \\
-JPlag v6.3.0 (RKR-GST tokens) & longest token match & 18 tokens \\
-\midrule
-This paper, C06a & call-graph topology & 88.1\% \\
-This paper, C06c & control-flow histogram cosine & 98.4\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-JPlag's token-string engine, configured with default minimum token
-match (12), finds essentially no similarity between v6 and v7. The
-longest matched token sequence is 18 tokens, against a v7
-token-stream length of roughly 247{,}000. That is the answer JPlag is
-designed to give, and read on its own terms it is the correct
-answer: under JPlag's definition of ``submissions suspiciously
-similar to each other,'' the two versions are not similar. A
-coursework cohort that contained both versions would not be flagged.
-The same pair, however, scores 88\% similar at the call-graph
-topology layer (C06a) and 98\% similar at the control-flow shape
-layer (C06c). This is the central empirical argument of the paper:
-an LLM-driven rewrite can defeat token-level matching, comfortably,
-while still inheriting the original's structural shape, and the
-higher-layer signals catch the inheritance that the token-string
-view does not.
-
-A practical caveat I should mention. JPlag's bundled Python 3 grammar
-(ANTLR-based, bounded to a Python version that predates PEP 515
-underscore numeric literals like \texttt{1\_536}) emitted parse errors
-on \texttt{chardet/metadata/languages.py} in v6, which carries
-frequency tables in exactly that syntax. JPlag completed the
-comparison on the files it could tokenise; the unparsed files are
-data tables rather than logic, so the headline similarity is not
-materially affected. I document the issue rather than tidy it away.
+\paragraph{Token-based academic detectors (run configuration).}
+The JPlag empirical contrast that motivates this paper appears
+earlier; see \cref{sec:jplag-empirical-motivation} for the headline
+numbers, the comparison table (\cref{tab:jplag-vs-c06}), and the
+argument that token-level matching cannot see what call-graph and
+control-flow signals can. Here we record only the run configuration
+and the reproduction artefacts that did not fit the introduction.
+JPlag v6.3.0 was run on the chardet v6.0.0 and v7.0.0 pair with
+default minimum token match (12) under its bundled Python 3 grammar.
+The reproduction script is in
+\texttt{chardet-relicense/manuscript/figures/scripts/run\_jplag.sh},
+the raw JSON output in
+\texttt{chardet-relicense/manuscript/figures/scripts/jplag\_chardet\_results.json}.
 
 \paragraph{AST-based academic detectors.}
 A separate research lineage compares programs at the AST level rather
