@@ -3,6 +3,12 @@
     "compiler": "pdflatex"
   },
   "sources": [
-    { "filename": "main.tex", "usage": "toplevel" }
+    { "filename": "main.tex", "usage": "toplevel" },
+    { "filename": "references.bib", "usage": "include" },
+    { "filename": "figures/scripts/multi_pair_comparison.tex", "usage": "include" },
+    { "filename": "figures/fig1_implementation_dag.pdf", "usage": "include" },
+    { "filename": "figures/fig2_topology_features.pdf", "usage": "include" },
+    { "filename": "figures/fig3_control_flow_hist.pdf", "usage": "include" },
+    { "filename": "figures/fig5_walker_architecture.pdf", "usage": "include" }
   ]
 }
