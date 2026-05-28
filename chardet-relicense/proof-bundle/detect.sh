@@ -46,11 +46,16 @@ environment overrides:
 EOF
 }
 
-if [[ $# -lt 1 ]]; then
-  usage; exit 2
-fi
+# Default to the legacy pair when invoked without arguments so the v1
+# reproduction step `bash detect.sh` keeps working byte-equivalently.
+# `bash detect.sh -h` or `--help` still prints usage.
+case "${1:-}" in
+  -h|--help)
+    usage; exit 0
+    ;;
+esac
 
-pair="$1"
+pair="${1:-v6_v7}"
 
 chardet_repo="${CHARDET_REPO:-/srv/repos/public/spec-poc/chardet-relicense/chardet}"
 charset_norm_repo="${CHARSET_NORMALIZER_REPO:-/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer}"
