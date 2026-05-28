@@ -32,6 +32,14 @@
         }
       },
       "witness_tsv_sha_field_records": "tag-object SHA (matches `git rev-parse <tag>`)"
+    },
+    "phase1b_addendum": {
+      "produced_by": "v2-phase1b-n agent",
+      "produced_on": "2026-05-28",
+      "description": "Bootstrap 95% CIs added under independent.<signal>.bootstrap_ci_95 for C06a, C06a' (prime), C06c, and C06f across all three calibration pairs. See v2-phase1b-bootstrap-methodology.md for methodology.",
+      "bootstrap_seed": 20260528,
+      "bootstrap_n": 1000,
+      "patch_sidecar": "validation_report.v2_patch.n.json"
     }
   },
   "independent": {
@@ -238,7 +246,37 @@
         0.10707086853645155,
         0.10711874283731752,
         0.10711874283731752
-      ]
+      ],
+      "bootstrap_ci_95": {
+        "_meta": {
+          "resampling_unit": "implementation files, with replacement, each side independently",
+          "method": "WL-kernel cosine over k=4 iterations, percentile-bootstrap CI"
+        },
+        "v6_v7": {
+          "lower": 0.433374,
+          "upper": 0.694396,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.749788,
+          "upper": 0.889469,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.479213,
+          "upper": 0.863035,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      }
     },
     "c06f": {
       "n_v6_functions": 177,
@@ -262,7 +300,34 @@
         "v6_unique": true,
         "v7_unique": true
       },
-      "all_invariants_pass": true
+      "all_invariants_pass": true,
+      "bootstrap_ci_95": {
+        "_meta": {
+          "resampling_unit": "matched function pairs, with replacement",
+          "method": "1-mean(pair distance), percentile-bootstrap CI"
+        },
+        "v6_v7": {
+          "lower": 0.886493,
+          "upper": 0.935713,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 31
+        },
+        "v5_v6": {
+          "lower": 0.973643,
+          "upper": 0.989697,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 103
+        },
+        "v6_charset_norm": {
+          "lower": 0.749961,
+          "upper": 0.841309,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 77
+        }
+      }
     },
     "c06b": {
       "audit": {
@@ -692,6 +757,70 @@
         }
       },
       "headline_finding": "On random bytes (v1's only workload) v6 and v7 are fully diverged. On realistic input \u2014 Wikipedia HTML, RFC bodies, multilingual plain text, MIME messages \u2014 once encoding-label normalisation is applied the two versions agree on the decoder family 62.5% of the time (40/64 non-random items). The genuine behavioural divergences are concentrated in (a) ASCII vs Windows-1252 superset boundary, (b) v7's 'cp864' label on pure ASCII RFCs (a notable regression), (c) confidence calibration in the data-starved short-snippet regime, and (d) the random-input null-response format. Conclusion: the operational contract is partially preserved on realistic input (62.5% normalised agreement) but with a non-trivial set of edge-case regressions; the v1 paper's 'fully diverged on random fuzz' framing was correct in its narrow domain but understated the realistic-input agreement."
+    },
+    "c06a": {
+      "bootstrap_ci_95": {
+        "_meta": {
+          "resampling_unit": "implementation files, with replacement, each side independently",
+          "method": "1-mean(reldiff over 8 topology features), percentile-bootstrap CI"
+        },
+        "v6_v7": {
+          "lower": 0.736636,
+          "upper": 0.94947,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.786326,
+          "upper": 0.970529,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.747862,
+          "upper": 0.947081,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      }
+    },
+    "c06c": {
+      "bootstrap_ci_95": {
+        "_meta": {
+          "resampling_unit": "implementation files, with replacement, each side independently",
+          "method": "normalised control-flow histogram cosine, percentile-bootstrap CI"
+        },
+        "v6_v7": {
+          "lower": 0.944901,
+          "upper": 0.996264,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.956872,
+          "upper": 0.999304,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.947863,
+          "upper": 0.999118,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      }
     }
   },
   "comparison_bp": [

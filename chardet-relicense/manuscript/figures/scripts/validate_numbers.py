@@ -35,6 +35,7 @@ Exit code 0 on full agreement, 1 on any divergence.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import math
@@ -617,6 +618,438 @@ def recompute_c06e_rates(v6: pathlib.Path,
 
 
 # --------------------------------------------------------------------------
+# V2 Phase 1b — bootstrap 95% confidence intervals for the structural
+# similarity headline numbers (C06a / C06a' / C06c / C06f), applied to
+# all three calibration pairs (v6_v7, v5_v6, v6_charset_norm).
+#
+# Resampling unit: implementation files of each side, independently with
+# replacement. This is the same unit C06d's existing bootstrap uses at
+# a coarser granularity (samples = shared public-API names). For C06a /
+# C06a' / C06c the unit is the per-file AST contribution: each .py file's
+# (node/edge/control-flow) contribution is treated as one observation;
+# a resample picks N files with replacement from a side's N-file list,
+# concatenates their contributions, then recomputes the headline number.
+#
+# For C06f the resampling unit is the matched function pair (the
+# pre-existing CI's unit), applied to each pair so all three pairs get
+# the same machinery rather than only v6_v7.
+#
+# Pinned seed: BOOTSTRAP_SEED = 20260528 (Werner's pin date). Re-running
+# this script with the same seed reproduces identical CIs.
+# --------------------------------------------------------------------------
+
+BOOTSTRAP_SEED = 20260528
+BOOTSTRAP_N = 1000
+
+
+def _per_file_call_graph_contributions(
+    root: pathlib.Path,
+) -> list[dict[str, Any]]:
+    """Return one entry per implementation file: the (functions, edges)
+    that file contributes to the merged call graph. Pre-computed once so
+    bootstrap resamples are cheap (~0.5ms each, vs the ~1.3s a fresh
+    walk-and-parse would cost).
+
+    Mirrors ex._build_call_graph's per-file work exactly, but emits a
+    per-file record instead of a merged graph. Joining the records and
+    feeding them to `_call_graph_from_file_contribs` reproduces the
+    harness graph byte-for-byte (verified by the point-estimate-inside-CI
+    sanity check during multi-pair bootstrap)."""
+    out: list[dict[str, Any]] = []
+    for p in ex.iter_impl_py_files(root):
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, UnicodeDecodeError):
+            out.append({"path": p, "functions": set(), "edges": []})
+            continue
+        module_name = (
+            p.relative_to(root).with_suffix("").as_posix().replace("/", ".")
+        )
+        c = ex._CallEdgeCollector(module_name)
+        c.visit(tree)
+        out.append({
+            "path": p,
+            "functions": set(c.functions),
+            "edges": list(c.edges),
+        })
+    return out
+
+
+def _call_graph_from_file_contribs(
+    contribs: list[dict[str, Any]],
+) -> nx.DiGraph:
+    """Merge a (possibly-with-duplicates) list of per-file contributions
+    into a single networkx DiGraph. Duplicates are natural under bootstrap
+    resampling: if file F is sampled twice, its functions are added twice
+    (no-op for set semantics on nodes) and its edges are added twice
+    (DiGraph collapses duplicate edges — we WANT this, because the
+    underlying graph being measured is a set of (caller, callee) pairs,
+    not a multiset). The bootstrap variation therefore comes from the
+    *set* of files included in each resample, not from edge multiplicity.
+
+    This matches the intuition: the resampling unit is a *file's
+    structural contribution*, and a file appearing twice contributes the
+    same set of edges twice — the union is the same as the single
+    contribution. Variation comes from which files are dropped (each
+    bootstrap sample omits ~37% of files on average for large N)."""
+    g: nx.DiGraph = nx.DiGraph()
+    for c in contribs:
+        for f in c["functions"]:
+            g.add_node(f)
+        for caller, callee in c["edges"]:
+            g.add_edge(caller, callee)
+    return g
+
+
+def _topology_features(g: nx.DiGraph) -> list[float]:
+    """The 8-feature vector C06a uses, in fixed order so bootstrap
+    resamples produce comparable vectors. Mirrors ex._graph_topology
+    keys (nodes, edges, density, sccs, mean_in, mean_out, max_in,
+    max_out)."""
+    if g.number_of_nodes() == 0:
+        return [0.0] * 8
+    in_deg = [d for _, d in g.in_degree()]
+    out_deg = [d for _, d in g.out_degree()]
+    return [
+        float(g.number_of_nodes()),
+        float(g.number_of_edges()),
+        nx.density(g),
+        float(nx.number_strongly_connected_components(g)),
+        sum(in_deg) / len(in_deg),
+        sum(out_deg) / len(out_deg),
+        float(max(in_deg)),
+        float(max(out_deg)),
+    ]
+
+
+def _c06a_similarity_from_features(
+    fa: list[float], fb: list[float],
+) -> float:
+    """Replicates the harness 1-mean(reldiff) calculation used in
+    ex.signal_c06a_call_graph (per-feature symmetric relative difference,
+    average across features, similarity = 1 - mean)."""
+    diffs = []
+    for a, b in zip(fa, fb):
+        denom = abs(a) + abs(b)
+        diffs.append((abs(a - b) / denom) if denom > 0 else 0.0)
+    return 1.0 - (sum(diffs) / len(diffs))
+
+
+def bootstrap_c06a(
+    root_a: pathlib.Path, root_b: pathlib.Path,
+    seed: int = BOOTSTRAP_SEED, n_resamples: int = BOOTSTRAP_N,
+) -> dict[str, Any]:
+    """Bootstrap 95% CI for C06a (8-feature call-graph cosine similarity).
+
+    Resamples implementation files of each side independently with
+    replacement, rebuilds each side's call graph from the resampled file
+    contributions, recomputes the 8-feature vector, recomputes the
+    1-mean(reldiff) similarity. Returns (lower, upper) at the 2.5/97.5
+    percentile of the n_resamples bootstrap point estimates."""
+    contribs_a = _per_file_call_graph_contributions(root_a)
+    contribs_b = _per_file_call_graph_contributions(root_b)
+    if not contribs_a or not contribs_b:
+        return {"lower": 0.0, "upper": 0.0, "n_resamples": n_resamples,
+                "seed": seed, "n_files_a": len(contribs_a),
+                "n_files_b": len(contribs_b),
+                "note": "empty file list — CI undefined"}
+    rng = np.random.default_rng(seed)
+    na, nb = len(contribs_a), len(contribs_b)
+    boot = []
+    for _ in range(n_resamples):
+        ia = rng.integers(0, na, size=na)
+        ib = rng.integers(0, nb, size=nb)
+        sample_a = [contribs_a[i] for i in ia]
+        sample_b = [contribs_b[i] for i in ib]
+        ga = _call_graph_from_file_contribs(sample_a)
+        gb = _call_graph_from_file_contribs(sample_b)
+        fa = _topology_features(ga)
+        fb = _topology_features(gb)
+        boot.append(_c06a_similarity_from_features(fa, fb))
+    return {
+        "lower": float(np.percentile(boot, 2.5)),
+        "upper": float(np.percentile(boot, 97.5)),
+        "n_resamples": n_resamples,
+        "seed": seed,
+        "n_files_a": na,
+        "n_files_b": nb,
+    }
+
+
+def bootstrap_c06a_prime(
+    root_a: pathlib.Path, root_b: pathlib.Path,
+    seed: int = BOOTSTRAP_SEED, n_resamples: int = BOOTSTRAP_N,
+) -> dict[str, Any]:
+    """Bootstrap 95% CI for C06a' (WL-kernel aggregate cosine).
+
+    Same resampling unit as C06a (implementation files with replacement).
+    Per resample: rebuild graph, compute WL label multiset over k iters
+    (using ex._wl_label_multiset), cosine across union of labels."""
+    contribs_a = _per_file_call_graph_contributions(root_a)
+    contribs_b = _per_file_call_graph_contributions(root_b)
+    if not contribs_a or not contribs_b:
+        return {"lower": 0.0, "upper": 0.0, "n_resamples": n_resamples,
+                "seed": seed, "n_files_a": len(contribs_a),
+                "n_files_b": len(contribs_b),
+                "note": "empty file list — CI undefined"}
+    rng = np.random.default_rng(seed)
+    na, nb = len(contribs_a), len(contribs_b)
+    boot = []
+    for _ in range(n_resamples):
+        ia = rng.integers(0, na, size=na)
+        ib = rng.integers(0, nb, size=nb)
+        sample_a = [contribs_a[i] for i in ia]
+        sample_b = [contribs_b[i] for i in ib]
+        ga = _call_graph_from_file_contribs(sample_a)
+        gb = _call_graph_from_file_contribs(sample_b)
+        bag_a = ex._wl_label_multiset(ga, ex._WL_ITERATIONS)
+        bag_b = ex._wl_label_multiset(gb, ex._WL_ITERATIONS)
+        boot.append(ex._multiset_cosine(bag_a, bag_b))
+    return {
+        "lower": float(np.percentile(boot, 2.5)),
+        "upper": float(np.percentile(boot, 97.5)),
+        "n_resamples": n_resamples,
+        "seed": seed,
+        "n_files_a": na,
+        "n_files_b": nb,
+    }
+
+
+def _per_file_control_flow_contributions(
+    root: pathlib.Path,
+) -> list[Counter]:
+    """Return one Counter per implementation file: that file's
+    control-flow node-class histogram. Pre-computed so bootstrap
+    resamples (sum of sampled Counters) are cheap.
+
+    Mirrors ex._control_flow_histogram's per-file pass but keeps the
+    per-file breakdown so resample = sum over picked indices."""
+    out: list[Counter] = []
+    for p in ex.iter_impl_py_files(root):
+        h: Counter[str] = Counter()
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, UnicodeDecodeError):
+            out.append(h)
+            continue
+        for node in ast.walk(tree):
+            for cls in ex._CONTROL_FLOW_NODES:
+                if isinstance(node, cls):
+                    h[cls.__name__] += 1
+                    break
+        out.append(h)
+    return out
+
+
+def bootstrap_c06c(
+    root_a: pathlib.Path, root_b: pathlib.Path,
+    seed: int = BOOTSTRAP_SEED, n_resamples: int = BOOTSTRAP_N,
+) -> dict[str, Any]:
+    """Bootstrap 95% CI for C06c (control-flow histogram cosine).
+
+    Same resampling unit (implementation files with replacement).
+    Per resample: sum sampled per-file histograms, normalise by total,
+    compute cosine with scipy."""
+    pf_a = _per_file_control_flow_contributions(root_a)
+    pf_b = _per_file_control_flow_contributions(root_b)
+    if not pf_a or not pf_b:
+        return {"lower": 0.0, "upper": 0.0, "n_resamples": n_resamples,
+                "seed": seed, "n_files_a": len(pf_a),
+                "n_files_b": len(pf_b),
+                "note": "empty file list — CI undefined"}
+    rng = np.random.default_rng(seed)
+    na, nb = len(pf_a), len(pf_b)
+    boot = []
+    for _ in range(n_resamples):
+        ia = rng.integers(0, na, size=na)
+        ib = rng.integers(0, nb, size=nb)
+        h_a: Counter[str] = Counter()
+        h_b: Counter[str] = Counter()
+        for i in ia:
+            h_a.update(pf_a[i])
+        for i in ib:
+            h_b.update(pf_b[i])
+        keys = sorted(set(h_a) | set(h_b))
+        va = np.array([h_a.get(k, 0) for k in keys], dtype=float)
+        vb = np.array([h_b.get(k, 0) for k in keys], dtype=float)
+        sa, sb = va.sum(), vb.sum()
+        if sa > 0:
+            va = va / sa
+        if sb > 0:
+            vb = vb / sb
+        if va.any() and vb.any():
+            boot.append(1.0 - float(scipy_cosine(va, vb)))
+        else:
+            boot.append(0.0)
+    return {
+        "lower": float(np.percentile(boot, 2.5)),
+        "upper": float(np.percentile(boot, 97.5)),
+        "n_resamples": n_resamples,
+        "seed": seed,
+        "n_files_a": na,
+        "n_files_b": nb,
+    }
+
+
+def bootstrap_c06f(
+    root_a: pathlib.Path, root_b: pathlib.Path,
+    seed: int = BOOTSTRAP_SEED, n_resamples: int = BOOTSTRAP_N,
+) -> dict[str, Any]:
+    """Bootstrap 95% CI for C06f (per-function shape similarity).
+
+    Resampling unit: matched function pairs (the same unit the existing
+    in-line CI in recompute_c06f uses for v6_v7). Per resample: pick
+    len(pairs) pairs with replacement, average their distances, similarity
+    = 1 - mean distance.
+
+    NB: this differs from C06a / C06a' / C06c, which resample
+    implementation files. The choice is deliberate: C06f's headline IS
+    the average over matched pairs, so the natural bootstrap unit is the
+    matched pair (mirroring the existing CI at line ~323 of this file).
+    See the methodology paragraph in v2-phase1b-bootstrap-methodology.md."""
+    g6 = ex._build_call_graph(root_a)
+    g7 = ex._build_call_graph(root_b)
+    f6 = ex._collect_functions(root_a)
+    f7 = ex._collect_functions(root_b)
+    ex._attach_call_graph_position(f6, g6)
+    ex._attach_call_graph_position(f7, g7)
+    pairs, _, _ = ex._match_functions(f6, f7)
+    if not pairs:
+        return {"lower": 0.0, "upper": 0.0, "n_resamples": n_resamples,
+                "seed": seed, "n_matched_pairs": 0,
+                "note": "no matched pairs — CI undefined"}
+    rng = np.random.default_rng(seed)
+    dist_array = np.array([d for _, _, d in pairs])
+    n = len(dist_array)
+    boot = []
+    for _ in range(n_resamples):
+        idx = rng.integers(0, n, size=n)
+        boot.append(1.0 - float(dist_array[idx].mean()))
+    return {
+        "lower": float(np.percentile(boot, 2.5)),
+        "upper": float(np.percentile(boot, 97.5)),
+        "n_resamples": n_resamples,
+        "seed": seed,
+        "n_matched_pairs": n,
+    }
+
+
+# Pair manifest — mirrors detect.sh's case statement. The bootstrap
+# driver materialises worktrees for each pair from these definitions
+# and runs the four bootstrap functions per pair.
+_PAIRS: list[dict[str, Any]] = [
+    {
+        "name": "v6_v7",
+        "repo_a": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/chardet"),
+        "tag_a": "6.0.0",
+        "pkg_a": "chardet",
+        "repo_b": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/chardet"),
+        "tag_b": "7.0.0",
+        "pkg_b": "chardet",
+    },
+    {
+        "name": "v5_v6",
+        "repo_a": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/chardet"),
+        "tag_a": "5.0.0",
+        "pkg_a": "chardet",
+        "repo_b": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/chardet"),
+        "tag_b": "6.0.0",
+        "pkg_b": "chardet",
+    },
+    {
+        "name": "v6_charset_norm",
+        "repo_a": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/chardet"),
+        "tag_a": "6.0.0",
+        "pkg_a": "chardet",
+        "repo_b": pathlib.Path(
+            "/srv/repos/public/spec-poc/chardet-relicense/charset_normalizer"),
+        "tag_b": "3.4.7",
+        "pkg_b": "charset_normalizer",
+    },
+]
+
+
+def _materialise_pair(pair: dict[str, Any], workdir: pathlib.Path,
+                     ) -> tuple[pathlib.Path, pathlib.Path]:
+    """Materialise side-A and side-B worktrees for a pair, mirroring
+    detect.sh's behaviour (clone --shared then `worktree add --detach`).
+    Handles the same-repo case (v6_v7 and v5_v6) by re-using one mirror."""
+    mirror_a = workdir / f"mirror_a_{pair['name']}"
+    subprocess.run(
+        ["git", "clone", "--shared", str(pair["repo_a"]), str(mirror_a)],
+        check=True, capture_output=True, text=True,
+    )
+    side_a = workdir / f"A_{pair['name']}"
+    subprocess.run(
+        ["git", "-C", str(mirror_a), "worktree", "add", "--detach",
+         str(side_a), pair["tag_a"]],
+        check=True, capture_output=True, text=True,
+    )
+    if pair["repo_a"] == pair["repo_b"]:
+        side_b = workdir / f"B_{pair['name']}"
+        subprocess.run(
+            ["git", "-C", str(mirror_a), "worktree", "add", "--detach",
+             str(side_b), pair["tag_b"]],
+            check=True, capture_output=True, text=True,
+        )
+    else:
+        mirror_b = workdir / f"mirror_b_{pair['name']}"
+        subprocess.run(
+            ["git", "clone", "--shared", str(pair["repo_b"]), str(mirror_b)],
+            check=True, capture_output=True, text=True,
+        )
+        side_b = workdir / f"B_{pair['name']}"
+        subprocess.run(
+            ["git", "-C", str(mirror_b), "worktree", "add", "--detach",
+             str(side_b), pair["tag_b"]],
+            check=True, capture_output=True, text=True,
+        )
+    return side_a, side_b
+
+
+def compute_all_bootstrap_cis(
+    workdir: pathlib.Path,
+    n_resamples: int = BOOTSTRAP_N,
+    seed: int = BOOTSTRAP_SEED,
+) -> dict[str, Any]:
+    """Run the four bootstrap CIs (C06a, C06a', C06c, C06f) across all
+    three calibration pairs. Returns a dict keyed by signal then pair,
+    matching the shape requested by the v2-phase1b directive."""
+    out: dict[str, dict[str, Any]] = {
+        "c06a": {"_resampling_unit": "implementation files, with replacement, each side independently",
+                  "_method": "1-mean(reldiff over 8 topology features), percentile-bootstrap CI"},
+        "c06a_prime": {"_resampling_unit": "implementation files, with replacement, each side independently",
+                       "_method": f"WL-kernel cosine over k={ex._WL_ITERATIONS} iterations, percentile-bootstrap CI"},
+        "c06c": {"_resampling_unit": "implementation files, with replacement, each side independently",
+                 "_method": "normalised control-flow histogram cosine, percentile-bootstrap CI"},
+        "c06f": {"_resampling_unit": "matched function pairs, with replacement",
+                 "_method": "1-mean(pair distance), percentile-bootstrap CI"},
+    }
+    for pair in _PAIRS:
+        print(f"[bootstrap] materialising pair {pair['name']}...",
+              file=sys.stderr)
+        side_a, side_b = _materialise_pair(pair, workdir)
+        print(f"[bootstrap] {pair['name']}: C06a ...", file=sys.stderr)
+        out["c06a"][pair["name"]] = bootstrap_c06a(
+            side_a, side_b, seed=seed, n_resamples=n_resamples)
+        print(f"[bootstrap] {pair['name']}: C06a' ...", file=sys.stderr)
+        out["c06a_prime"][pair["name"]] = bootstrap_c06a_prime(
+            side_a, side_b, seed=seed, n_resamples=n_resamples)
+        print(f"[bootstrap] {pair['name']}: C06c ...", file=sys.stderr)
+        out["c06c"][pair["name"]] = bootstrap_c06c(
+            side_a, side_b, seed=seed, n_resamples=n_resamples)
+        print(f"[bootstrap] {pair['name']}: C06f ...", file=sys.stderr)
+        out["c06f"][pair["name"]] = bootstrap_c06f(
+            side_a, side_b, seed=seed, n_resamples=n_resamples)
+    return out
+
+
+# --------------------------------------------------------------------------
 # Compare against harness-reported headline numbers, fail loudly on drift.
 # --------------------------------------------------------------------------
 
@@ -646,6 +1079,54 @@ HARNESS_HEADLINE = {
 }
 
 
+def _run_bootstrap_all_pairs(args) -> int:
+    """Phase-1b driver: compute 95% bootstrap CIs for the four structural
+    similarity signals across all three calibration pairs and emit them
+    as a side-car JSON patch."""
+    with tempfile.TemporaryDirectory(prefix="bootstrap-cis-") as td:
+        workdir = pathlib.Path(td)
+        cis = compute_all_bootstrap_cis(
+            workdir, n_resamples=args.bootstrap_n, seed=BOOTSTRAP_SEED,
+        )
+    patch = {
+        "_meta": {
+            "produced_by": "validate_numbers.py --bootstrap-all-pairs (Phase 1b agent N)",
+            "bootstrap_seed": BOOTSTRAP_SEED,
+            "bootstrap_n": args.bootstrap_n,
+            "description": (
+                "95% bootstrap CIs (2.5/97.5 percentile method) for "
+                "structural similarity signals C06a, C06a', C06c, C06f, "
+                "applied to all three calibration pairs. Resampling unit "
+                "is implementation files (independent each side) for "
+                "C06a/C06a'/C06c, and matched function pairs for C06f. "
+                "Mirrors the seeded RNG pattern of the in-script C06d "
+                "bootstrap; see v2-phase1b-bootstrap-methodology.md for "
+                "the editor's-pen-ready methodology paragraph."
+            ),
+        },
+        "independent": {
+            "bootstrap_ci_95": cis,
+        },
+    }
+    patch_path = (
+        HERE.parent / "validation_report.v2_patch.n.json"
+    )
+    patch_path.write_text(json.dumps(patch, indent=2, default=str))
+    print(f"wrote: {patch_path}")
+    # Human-readable summary.
+    print()
+    print(f"{'signal':<12} {'pair':<18} {'lower':>8} {'upper':>8} {'n':>5} "
+          f"{'seed':>10}")
+    print("-" * 70)
+    for sig in ("c06a", "c06a_prime", "c06c", "c06f"):
+        for pair_name in ("v6_v7", "v5_v6", "v6_charset_norm"):
+            ci = cis[sig][pair_name]
+            print(f"{sig:<12} {pair_name:<18} {ci['lower']:>8.4f} "
+                  f"{ci['upper']:>8.4f} {ci['n_resamples']:>5} "
+                  f"{ci['seed']:>10}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=pathlib.Path, default=DEFAULT_REPO)
@@ -661,7 +1142,30 @@ def main() -> int:
         type=pathlib.Path,
         default=HERE.parent / "validation_report.v2_running.json",
     )
+    parser.add_argument(
+        "--bootstrap-all-pairs",
+        action="store_true",
+        help=("Phase-1b mode: skip the v6/v7 point-estimate re-check and "
+              "instead compute 95% bootstrap CIs for C06a / C06a' / C06c / "
+              "C06f across all three calibration pairs (v6_v7, v5_v6, "
+              "v6_charset_norm). Writes the CIs to a side-car JSON "
+              "(validation_report.v2_patch.n.json) for the orchestrator to "
+              "merge into validation_report.v2.json."),
+    )
+    parser.add_argument(
+        "--bootstrap-n",
+        type=int,
+        default=BOOTSTRAP_N,
+        help=("Number of bootstrap resamples per CI (default 1000; pinned "
+              "for reproducibility). The CLI flag exists so an operator "
+              "can lower the budget on slow pairs — pass `--bootstrap-n 500` "
+              "and document the reduction. The default is what the paper "
+              "quotes."),
+    )
     args = parser.parse_args()
+
+    if args.bootstrap_all_pairs:
+        return _run_bootstrap_all_pairs(args)
 
     if not args.repo.exists():
         print(f"error: chardet repo not found at {args.repo}",

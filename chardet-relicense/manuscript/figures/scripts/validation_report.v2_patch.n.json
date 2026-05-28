@@ -1,0 +1,121 @@
+{
+  "_meta": {
+    "produced_by": "validate_numbers.py --bootstrap-all-pairs (Phase 1b agent N)",
+    "bootstrap_seed": 20260528,
+    "bootstrap_n": 1000,
+    "description": "95% bootstrap CIs (2.5/97.5 percentile method) for structural similarity signals C06a, C06a', C06c, C06f, applied to all three calibration pairs. Resampling unit is implementation files (independent each side) for C06a/C06a'/C06c, and matched function pairs for C06f. Mirrors the seeded RNG pattern of the in-script C06d bootstrap; see v2-phase1b-bootstrap-methodology.md for the editor's-pen-ready methodology paragraph."
+  },
+  "independent": {
+    "bootstrap_ci_95": {
+      "c06a": {
+        "_resampling_unit": "implementation files, with replacement, each side independently",
+        "_method": "1-mean(reldiff over 8 topology features), percentile-bootstrap CI",
+        "v6_v7": {
+          "lower": 0.7366363736416134,
+          "upper": 0.9494701714496262,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.786325866666288,
+          "upper": 0.9705286129054363,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.7478624055508755,
+          "upper": 0.9470811143339527,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      },
+      "c06a_prime": {
+        "_resampling_unit": "implementation files, with replacement, each side independently",
+        "_method": "WL-kernel cosine over k=4 iterations, percentile-bootstrap CI",
+        "v6_v7": {
+          "lower": 0.43337379361097966,
+          "upper": 0.6943960904434473,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.7497875604356765,
+          "upper": 0.8894688571286592,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.47921336670049913,
+          "upper": 0.8630346216794551,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      },
+      "c06c": {
+        "_resampling_unit": "implementation files, with replacement, each side independently",
+        "_method": "normalised control-flow histogram cosine, percentile-bootstrap CI",
+        "v6_v7": {
+          "lower": 0.9449010536442355,
+          "upper": 0.996264113997604,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 33
+        },
+        "v5_v6": {
+          "lower": 0.9568719288665825,
+          "upper": 0.9993041963476876,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 49,
+          "n_files_b": 89
+        },
+        "v6_charset_norm": {
+          "lower": 0.9478630954539393,
+          "upper": 0.9991182064520202,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_files_a": 89,
+          "n_files_b": 20
+        }
+      },
+      "c06f": {
+        "_resampling_unit": "matched function pairs, with replacement",
+        "_method": "1-mean(pair distance), percentile-bootstrap CI",
+        "v6_v7": {
+          "lower": 0.8864929436206974,
+          "upper": 0.935712776298492,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 31
+        },
+        "v5_v6": {
+          "lower": 0.9736429013314857,
+          "upper": 0.9896971194069157,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 103
+        },
+        "v6_charset_norm": {
+          "lower": 0.7499612867473882,
+          "upper": 0.8413087360898115,
+          "n_resamples": 1000,
+          "seed": 20260528,
+          "n_matched_pairs": 77
+        }
+      }
+    }
+  }
+}
