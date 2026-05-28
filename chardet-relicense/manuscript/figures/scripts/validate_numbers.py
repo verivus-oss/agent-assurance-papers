@@ -48,8 +48,21 @@ from typing import Any
 
 # Import the harness signal extractors so we can call them directly.
 HERE = pathlib.Path(__file__).resolve()
-REPO_ROOT = HERE.parents[3]  # chardet-relicense/manuscript/figures/scripts/ -> repo root
-PROOF_DIR = REPO_ROOT / "chardet-relicense" / "proof-bundle"
+# Locate the proof-bundle by upward search so the script is robust to being
+# run from a worktree or via a symlink. The previous form
+# (`REPO_ROOT = HERE.parents[3]` then `REPO_ROOT / "chardet-relicense" /
+# "proof-bundle"`) doubled the `chardet-relicense/` segment because
+# parents[3] is itself `chardet-relicense/`, producing
+# `chardet-relicense/chardet-relicense/proof-bundle` which does not exist.
+def _find_proof_dir(start: pathlib.Path) -> pathlib.Path:
+    for ancestor in [start, *start.parents]:
+        candidate = ancestor / "chardet-relicense" / "proof-bundle"
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(
+        f"could not locate chardet-relicense/proof-bundle above {start}")
+PROOF_DIR = _find_proof_dir(HERE)
+REPO_ROOT = PROOF_DIR.parents[1]
 sys.path.insert(0, str(PROOF_DIR))
 
 import extract_signals as ex  # noqa: E402
