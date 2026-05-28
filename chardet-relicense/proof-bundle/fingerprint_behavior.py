@@ -190,20 +190,15 @@ def _load_corpus(corpus_dir: pathlib.Path) -> tuple[dict[str, list[tuple[str, by
 # Runner: detect a list of inputs inside a venv'd subprocess.
 # ---------------------------------------------------------------------
 
-<<<<<<< HEAD
-def _detect_one(py: pathlib.Path, corpus_path: pathlib.Path, module_name: str = "chardet") -> list[dict] | str:
-    """Run <module>.detect() on each input in `corpus_path` (a file with
-    one base64-per-line representation of the corpus). Returns the
-    parsed JSON output, or an error string. The module must expose a
+def _detect_one(
+    py: pathlib.Path, corpus_path: pathlib.Path, module_name: str = "chardet",
+) -> list[dict] | str:
+    """Run <module>.detect() on each input. Module must expose a
     chardet-compatible detect() returning {"encoding": str|None,
-    "confidence": float|None, ...}; charset-normalizer ships such a
+    "confidence": float|None, ...}. charset-normalizer ships a compat
     shim in `charset_normalizer.legacy.detect` re-exported at the
-    package root."""
+    package root (Q×C integration for v6_charset_norm pair)."""
     runner = f"""
-=======
-def _detect_one(py: pathlib.Path, corpus_path: pathlib.Path) -> list[dict] | str:
-    runner = """
->>>>>>> v2-phase1a-c
 import base64, json, sys
 import {module_name} as _det
 out = []
@@ -318,29 +313,16 @@ def _norm_bucket(result: dict) -> tuple[str | None, str | None]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-<<<<<<< HEAD
+    # Pair-agnostic flags (Q's multi-pair extension).
     parser.add_argument("--tree-a", dest="tree_a", help="worktree of side A")
     parser.add_argument("--tree-b", dest="tree_b", help="worktree of side B")
     parser.add_argument("--module-a", dest="module_a", default="chardet",
                         help="python module name to import on side A (default chardet)")
     parser.add_argument("--module-b", dest="module_b", default="chardet",
                         help="python module name to import on side B (default chardet)")
+    # Legacy aliases.
     parser.add_argument("--v6-tree", dest="v6_tree", help="legacy alias for --tree-a")
     parser.add_argument("--v7-tree", dest="v7_tree", help="legacy alias for --tree-b")
-    args = parser.parse_args()
-
-    tree_a_str = args.tree_a or args.v6_tree
-    tree_b_str = args.tree_b or args.v7_tree
-    if not tree_a_str or not tree_b_str:
-        parser.error("must supply --tree-a/--tree-b (or legacy --v6-tree/--v7-tree)")
-
-    v6_tree = pathlib.Path(tree_a_str).resolve()
-    v7_tree = pathlib.Path(tree_b_str).resolve()
-    module_a = args.module_a
-    module_b = args.module_b
-=======
-    parser.add_argument("--v6-tree", required=True, help="git-worktree of chardet at 6.0.0")
-    parser.add_argument("--v7-tree", required=True, help="git-worktree of chardet at 7.0.0")
     parser.add_argument(
         "--corpus-dir",
         default=None,
@@ -353,8 +335,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    v6_tree = pathlib.Path(args.v6_tree).resolve()
-    v7_tree = pathlib.Path(args.v7_tree).resolve()
+    tree_a_str = args.tree_a or args.v6_tree
+    tree_b_str = args.tree_b or args.v7_tree
+    if not tree_a_str or not tree_b_str:
+        parser.error("must supply --tree-a/--tree-b (or legacy --v6-tree/--v7-tree)")
+
+    v6_tree = pathlib.Path(tree_a_str).resolve()
+    v7_tree = pathlib.Path(tree_b_str).resolve()
+    module_a = args.module_a
+    module_b = args.module_b
     here = pathlib.Path(__file__).resolve().parent
     corpus_dir = pathlib.Path(args.corpus_dir).resolve() if args.corpus_dir else here / DEFAULT_CORPUS_DIR_REL
 
@@ -365,7 +354,6 @@ def main() -> int:
     if not by_bucket:
         _emit_skip("corpus load returned no buckets")
         return 0
->>>>>>> v2-phase1a-c
 
     workdir = pathlib.Path(tempfile.mkdtemp(prefix="chardet-fingerprint-"))
     try:

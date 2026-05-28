@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # detect.sh — the executable witness for chardet-relicense/proof-bundle/.
 #
-<<<<<<< HEAD
-# Runs five static-AST signals + one behavioural-fingerprint signal
+# Runs seven static-AST signals + one behavioural-fingerprint signal
 # against checkouts of a SAME-DOMAIN PAIR of encoding-detector
 # libraries. The pair to run is selected by a positional argument:
 #
@@ -11,35 +10,19 @@
 #   v6_charset_norm  chardet 6.0.0 vs charset-normalizer (latest stable tag) —
 #                    calibration: independent same-domain detector
 #
-# Signals (unchanged from v1):
-#   AUX1  literal source carryover     (whitespace-normalised SHA-256)
-#   C06a  call-graph topology          (degree distribution + SCC + density)
-#   C06b  import-edge set              (third-party Jaccard)
-#   C06c  control-flow histogram       (cosine similarity of normalised hist)
-#   C06d  public-API signature equiv   (strict / renamed_args / diverged)
-<<<<<<< HEAD
-#   C06e  behavioural fingerprint      (1000 deterministic fuzz inputs)
-=======
-# Runs seven static-AST signals + one behavioural-fingerprint signal
-# against checkouts of chardet at tags 6.0.0 (last LGPL-era) and 7.0.0
-# (Dan Blanchard's AI-rewritten MIT release):
-#
+# Signals:
 #   AUX1   literal source carryover     (whitespace-normalised SHA-256)
 #   C06a   call-graph topology          (degree distribution + SCC + density)
 #   C06a'  call-graph WL kernel         (Weisfeiler-Lehman k=4, V2 R1 response)
-#   C06b   import-edge set              (third-party Jaccard)
+#   C06b   import-edge set              (third-party Jaccard, R3/R4 audit)
 #   C06c   control-flow histogram       (cosine similarity of normalised hist)
-#   C06d   public-API signature equiv   (strict / renamed_args / diverged)
-#   C06e   behavioural fingerprint      (1000 deterministic fuzz inputs)
+#   C06d   public-API signature equiv   (strict / renamed_args / diverged + per-method walker)
+#   C06e   behavioural fingerprint      (multi-bucket realistic corpus +
+#                                        1000-random-byte control; per-bucket
+#                                        exact / bucket / normalized match
+#                                        rates — one TSV row per bucket
+#                                        plus an aggregate row)
 #   C06f   per-function AST shape       (shape-matched pairs, V2 R16 response)
->>>>>>> v2-phase1a-bp
-=======
-#   C06e  behavioural fingerprint      (multi-bucket realistic corpus +
-#                                       1000-random-byte control; per-bucket
-#                                       exact / bucket / normalized match
-#                                       rates — one TSV row per bucket
-#                                       plus an aggregate row)
->>>>>>> v2-phase1a-c
 #
 # Exit code:
 #   0  no FAIL verdicts
@@ -134,16 +117,9 @@ sha_b="$(git -C "${REPO_B}" rev-parse "${TAG_B}")"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
-<<<<<<< HEAD
 echo "proof-chardet-relicense: pair=${pair}"
 echo "  side A: repo=${REPO_A} tag=${TAG_A} sha=${sha_a} pkg=${PKG_A}"
 echo "  side B: repo=${REPO_B} tag=${TAG_B} sha=${sha_b} pkg=${PKG_B}"
-=======
-echo "proof-chardet-relicense: extracting AUX1 + C06a, C06a', C06b..C06f signals"
-echo "  repo:   ${chardet_repo}"
-echo "  v6 tag: ${v6_tag}"
-echo "  v7 tag: ${v7_tag}"
->>>>>>> v2-phase1a-bp
 echo
 
 # Materialise writable --shared mirrors so worktree metadata lands in a
@@ -169,18 +145,14 @@ static_out="$(python3 "${here}/extract_signals.py" \
   --root-a "${tmp}/A" --root-b "${tmp}/B" \
   --pkg-a  "${PKG_A}" --pkg-b  "${PKG_B}")"
 
+mkdir -p "${results_root}/${pair}"
+fingerprint_report_json="${results_root}/${pair}/c06e_report.json"
 set +e
-fingerprint_report_json="${tmp}/c06e_report.json"
 fingerprint_out="$(python3 "${here}/fingerprint_behavior.py" \
-<<<<<<< HEAD
   --tree-a "${tmp}/A" --tree-b "${tmp}/B" \
-  --module-a "${MODULE_A}" --module-b "${MODULE_B}" 2>&1)"
-=======
-  --v6-tree "${tmp}/v6" \
-  --v7-tree "${tmp}/v7" \
+  --module-a "${MODULE_A}" --module-b "${MODULE_B}" \
   --corpus-dir "${here}/corpora" \
   --report-json "${fingerprint_report_json}" 2>&1)"
->>>>>>> v2-phase1a-c
 set -e
 
 # Assemble output: header + static rows (with C06e DELEGATED placeholder

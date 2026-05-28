@@ -733,6 +733,7 @@ def signal_c06f_per_function_shape(v6: pathlib.Path,
     }
 
 
+
 # ----------------------------------------------------------------------------
 # C06b — import-edge set
 # ----------------------------------------------------------------------------
@@ -768,13 +769,6 @@ _STDLIB_HINT: frozenset[str] = (
 )
 
 
-<<<<<<< ours
-def _collect_imports(root: pathlib.Path, pkg_name: str = "chardet") -> set[str]:
-    pkg_name_candidates = {pkg_name}
-=======
-_PKG_SELF: frozenset[str] = frozenset({"chardet"})
-
-
 def _collect_raw_imports(root: pathlib.Path) -> set[str]:
     """Return the *raw* set of top-level module names imported by every
     implementation file under `root` (no filtering). Relative imports are
@@ -785,7 +779,6 @@ def _collect_raw_imports(root: pathlib.Path) -> set[str]:
     against `_STDLIB_HINT` and `_PKG_SELF` here, which obscured the
     classification rule.
     """
->>>>>>> theirs
     out: set[str] = set()
     for p in iter_impl_py_files(root):
         try:
@@ -795,8 +788,7 @@ def _collect_raw_imports(root: pathlib.Path) -> set[str]:
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name:
-                        out.add(alias.name.split(".")[0])
+                    out.add(alias.name.split(".")[0])
             elif isinstance(node, ast.ImportFrom):
                 if node.level and node.level > 0:
                     continue  # relative import — internal, not an edge
@@ -805,30 +797,33 @@ def _collect_raw_imports(root: pathlib.Path) -> set[str]:
     return {m for m in out if m}
 
 
-def _module_resolves_inside(root: pathlib.Path, name: str) -> pathlib.Path | None:
+def _module_resolves_inside(
+    root: pathlib.Path, name: str, pkg_name: str = "chardet",
+) -> pathlib.Path | None:
     """Return the first on-disk path under `root` that an absolute import
     of `name` could resolve to as a Python module, or None.
 
+    The pkg_name parameter (v2 multi-pair extension, Q×D integration) is
+    the top-level package directory the audit treats as "first-party
+    self-sibling". For the v6/v7 pair it is "chardet"; for the
+    v6/charset-normalizer pair side B is "charset_normalizer".
+
     Resolution candidates considered, in order:
-        1. Inside the chardet package directory itself (sibling submodule).
+        1. Inside the <pkg_name> package directory itself (sibling submodule).
         2. As a top-level `.py` file or package directory at the repo
            root (sibling helper script).
         3. As a `.py` file or package directory inside any sibling
            top-level directory of the repo (e.g. `scripts/<name>.py`,
            `tools/<name>/__init__.py`).
-
-    The check is a pure filesystem lookup; no import machinery is
-    invoked, so the rule is re-derivable from the cloned source tree
-    alone with no environment side-effects.
     """
-    # Locate the chardet package directory if present, for R3 checks.
-    chardet_pkg_candidates = [root / "chardet", root / "src" / "chardet"]
-    chardet_pkg = next((d for d in chardet_pkg_candidates if d.is_dir()), None)
+    # Locate the package directory if present, for R3 checks.
+    pkg_candidates = [root / pkg_name, root / "src" / pkg_name]
+    pkg_dir = next((d for d in pkg_candidates if d.is_dir()), None)
 
-    # R3 — chardet sibling submodule.
-    if chardet_pkg is not None:
+    # R3 — <pkg_name> sibling submodule.
+    if pkg_dir is not None:
         for suffix in (f"{name}.py", name):
-            candidate = chardet_pkg / suffix
+            candidate = pkg_dir / suffix
             if candidate.exists():
                 if candidate.is_file() or (candidate / "__init__.py").is_file():
                     return candidate
@@ -842,21 +837,16 @@ def _module_resolves_inside(root: pathlib.Path, name: str) -> pathlib.Path | Non
             return candidate / "__init__.py"
 
     # R4b — file in any sibling top-level directory (e.g. scripts/).
-    # Bounded to depth-1 directories under root to keep the rule cheap
-    # and deterministic. Skips dot-directories and known non-source
-    # buckets so that worktree metadata cannot influence the result.
     skip = {"__pycache__", "build", "dist", ".tox", ".venv", "tests", "test", "docs"}
     for child in sorted(root.iterdir()):
         if not child.is_dir():
             continue
         if child.name.startswith(".") or child.name in skip:
             continue
-        if chardet_pkg is not None and child == chardet_pkg.parent and child.name == "src":
-            # src/chardet already covered above; skip plain src/ helper
-            # files that aren't inside the chardet package.
+        if pkg_dir is not None and child == pkg_dir.parent and child.name == "src":
             for sub_suffix in (f"{name}.py", name):
                 sub_candidate = child / sub_suffix
-                if sub_candidate == chardet_pkg:
+                if sub_candidate == pkg_dir:
                     continue
                 if sub_candidate.is_file():
                     return sub_candidate
@@ -873,11 +863,14 @@ def _module_resolves_inside(root: pathlib.Path, name: str) -> pathlib.Path | Non
     return None
 
 
-def _classify_import(root: pathlib.Path, name: str) -> tuple[str, str, pathlib.Path | None]:
-    """Classify `name` against the source tree at `root`.
+def _classify_import(
+    root: pathlib.Path, name: str, pkg_name: str = "chardet",
+) -> tuple[str, str, pathlib.Path | None]:
+    """Classify `name` against the source tree at `root` for the package
+    `pkg_name` (Q×D parametrisation).
 
     Returns (origin, rule_id, resolved_path):
-        origin     — one of stdlib / first_party_chardet / sibling_package /
+        origin     — one of stdlib / first_party_self / sibling_package /
                      internal_helper / third_party
         rule_id    — R1_stdlib / R2_first_party_self / R3_first_party_sibling /
                      R4_internal_helper / R5_third_party_kept
@@ -886,37 +879,27 @@ def _classify_import(root: pathlib.Path, name: str) -> tuple[str, str, pathlib.P
 
     Rule precedence (first match wins):
         R1_stdlib              — `name in sys.stdlib_module_names`
-        R2_first_party_self    — name == "chardet"
-        R3_first_party_sibling — resolves inside `<root>/[src/]chardet/`
+        R2_first_party_self    — name == pkg_name
+        R3_first_party_sibling — resolves inside `<root>/[src/]<pkg_name>/`
         R4_internal_helper     — resolves elsewhere inside the cloned tree
         R5_third_party_kept    — does not resolve anywhere in `root`
 
-    Only R5 imports are kept for the Jaccard computation. R3 and R4 are
-    re-derivable by re-running this filesystem check against any clone
-    of the chardet repo at the relevant tag.
+    Only R5 imports are kept for the Jaccard computation.
     """
     if name in _STDLIB_HINT:
         return ("stdlib", "R1_stdlib", None)
-    if name in _PKG_SELF:
-        return ("first_party_chardet", "R2_first_party_self", None)
+    if name == pkg_name:
+        return ("first_party_self", "R2_first_party_self", None)
 
-    resolved = _module_resolves_inside(root, name)
+    resolved = _module_resolves_inside(root, name, pkg_name)
     if resolved is not None:
-        # R3 if the resolved path lives inside the chardet/ package dir
-        # *within `root`*; otherwise R4 (sibling helper script). We use
-        # path-relative-to-root + a fixed package-dir prefix rather than
-        # an absolute-path segment scan, so a clone living under any
-        # parent directory (including one called "chardet/") is
-        # classified consistently. The package dir is either
-        # `<root>/chardet/...` (the legacy layout) or
-        # `<root>/src/chardet/...` (the src-layout used by v7).
         try:
             rel_parts = resolved.resolve().relative_to(root.resolve()).parts
         except ValueError:
             rel_parts = ()
         is_sibling = (
-            (len(rel_parts) >= 1 and rel_parts[0] == "chardet")
-            or (len(rel_parts) >= 2 and rel_parts[0] == "src" and rel_parts[1] == "chardet")
+            (len(rel_parts) >= 1 and rel_parts[0] == pkg_name)
+            or (len(rel_parts) >= 2 and rel_parts[0] == "src" and rel_parts[1] == pkg_name)
         )
         if is_sibling:
             return ("sibling_package", "R3_first_party_sibling", resolved)
@@ -925,7 +908,9 @@ def _classify_import(root: pathlib.Path, name: str) -> tuple[str, str, pathlib.P
     return ("third_party", "R5_third_party_kept", None)
 
 
-def _audit_imports(root: pathlib.Path, version_label: str) -> list[dict]:
+def _audit_imports(
+    root: pathlib.Path, version_label: str, pkg_name: str = "chardet",
+) -> list[dict]:
     """Return one audit-row dict per imported module name in `root`.
 
     Each row is {module, version, origin, kept_for_jaccard, rule_id,
@@ -935,7 +920,7 @@ def _audit_imports(root: pathlib.Path, version_label: str) -> list[dict]:
     names = _collect_raw_imports(root)
     rows: list[dict] = []
     for name in sorted(names, key=str.lower):
-        origin, rule_id, resolved = _classify_import(root, name)
+        origin, rule_id, resolved = _classify_import(root, name, pkg_name)
         kept = rule_id == "R5_third_party_kept"
         rows.append({
             "module": name,
@@ -952,40 +937,37 @@ def _kept_set(audit_rows: list[dict]) -> set[str]:
     return {r["module"] for r in audit_rows if r["kept_for_jaccard"] == "yes"}
 
 
-<<<<<<< ours
 def signal_c06b_import_edges(
     v6: pathlib.Path, v7: pathlib.Path,
     pkg_a: str = "chardet", pkg_b: str = "chardet",
 ) -> dict:
-    i6 = _collect_imports(v6, pkg_a)
-    i7 = _collect_imports(v7, pkg_b)
-=======
-def signal_c06b_import_edges(v6: pathlib.Path, v7: pathlib.Path) -> dict:
-    audit6 = _audit_imports(v6, "v6")
-    audit7 = _audit_imports(v7, "v7")
-    i6 = _kept_set(audit6)
-    i7 = _kept_set(audit7)
->>>>>>> theirs
+    audit_a = _audit_imports(v6, "v6", pkg_a)
+    audit_b = _audit_imports(v7, "v7", pkg_b)
+    i6 = _kept_set(audit_a)
+    i7 = _kept_set(audit_b)
     inter = i6 & i7
     union = i6 | i7
     jaccard = len(inter) / len(union) if union else 0.0
     return {
         "signal": "import_edge_set",
         "contract": "C06b",
-        "expected": "report Jaccard overlap of third-party imports under audit rules R1..R5",
+        "expected": "report Jaccard overlap of third-party (non-stdlib, non-self) imports",
         "actual": f"jaccard={jaccard:.3f} shared={len(inter)} v6_only={len(i6 - i7)} v7_only={len(i7 - i6)}",
         "verdict": "MEASURED",
         "evidence": f"shared: {sorted(inter)}; v6_only: {sorted(i6 - i7)}; v7_only: {sorted(i7 - i6)}",
     }
 
 
-def _emit_debug_imports_tsv(v6: pathlib.Path, v7: pathlib.Path, out_path: pathlib.Path) -> None:
+def _emit_debug_imports_tsv(
+    v6: pathlib.Path, v7: pathlib.Path, out_path: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> None:
     """Write the full per-module classification trace as TSV.
 
     Columns: module | version | origin | kept_for_jaccard | rule_id |
     resolved_path. Rows are sorted by (module lower-case, version).
     """
-    rows = _audit_imports(v6, "v6") + _audit_imports(v7, "v7")
+    rows = _audit_imports(v6, "v6", pkg_a) + _audit_imports(v7, "v7", pkg_b)
     rows.sort(key=lambda r: (r["module"].lower(), r["version"]))
     header = ["module", "version", "origin", "kept_for_jaccard", "rule_id", "resolved_path"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1154,6 +1136,477 @@ def _signature_match(a: dict, b: dict) -> str:
     return "diverged"
 
 
+
+
+# ----------------------------------------------------------------------------
+# C06d (per-method extension) — walk class bodies and compare each method.
+#
+# Added in v2 in response to reviewer R4: "the class-level 'diverged' verdict
+# without per-method inspection is a blind spot — a class might be 90% strict
+# at the method level with a couple of signature shifts, and rolling that up
+# to one 'diverged' label hides what is actually going on." The extension
+# below walks every public class exported from `__all__` in both versions
+# AND emits, for each name-equal method pair, a strict / renamed_args /
+# diverged verdict computed from {signature, raised exception types,
+# return annotation, documented public attributes}.
+#
+# AST-only. No runtime import. Method matching is name-equal (a renamed-
+# method matcher is deferred to a future revision).
+# ----------------------------------------------------------------------------
+
+
+def _annotation_text(node: ast.AST | None) -> str | None:
+    """Render an annotation AST back to source-style text for comparison.
+
+    We use ast.unparse (py3.9+) which gives a stable textual form. The
+    text comparison is the equivalence relation we use — two annotations
+    are 'identical' iff their unparse strings match, modulo a small set
+    of normalisations (Optional[X] vs X | None, Union[X, Y] vs X | Y)."""
+    if node is None:
+        return None
+    try:
+        raw = ast.unparse(node)
+    except Exception:
+        return None
+    # Normalise the two common Optional / Union spellings so PEP-604 union
+    # syntax in v7 doesn't look like a divergence from typing.Optional in v6.
+    return _normalise_annotation(raw)
+
+
+def _normalise_annotation(text: str) -> str:
+    """Best-effort normalisation: Optional[X] -> X | None;
+    Union[A, B] -> A | B; collapse whitespace.
+
+    Done with string parsing because the goal is comparison stability for
+    a small, well-known set of annotations in the chardet public API, not
+    full type-theoretic equivalence."""
+    s = " ".join(text.split())
+    # Optional[X] -> X | None
+    while True:
+        i = s.find("Optional[")
+        if i < 0:
+            break
+        # find matching ]
+        depth = 0
+        j = i + len("Optional[")
+        start = j
+        while j < len(s):
+            if s[j] == "[":
+                depth += 1
+            elif s[j] == "]":
+                if depth == 0:
+                    break
+                depth -= 1
+            j += 1
+        if j >= len(s):
+            break
+        inner = s[start:j]
+        s = s[:i] + inner + " | None" + s[j + 1:]
+    # Union[A, B, ...] -> A | B | ...
+    while True:
+        i = s.find("Union[")
+        if i < 0:
+            break
+        depth = 0
+        j = i + len("Union[")
+        start = j
+        while j < len(s):
+            if s[j] == "[":
+                depth += 1
+            elif s[j] == "]":
+                if depth == 0:
+                    break
+                depth -= 1
+            j += 1
+        if j >= len(s):
+            break
+        inner = s[start:j]
+        # split inner on top-level commas
+        parts: list[str] = []
+        depth2 = 0
+        buf = ""
+        for ch in inner:
+            if ch == "," and depth2 == 0:
+                parts.append(buf.strip())
+                buf = ""
+            else:
+                if ch == "[":
+                    depth2 += 1
+                elif ch == "]":
+                    depth2 -= 1
+                buf += ch
+        if buf.strip():
+            parts.append(buf.strip())
+        s = s[:i] + " | ".join(parts) + s[j + 1:]
+    return " ".join(s.split())
+
+
+def _describe_method(node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict:
+    """Describe a single method for cross-version comparison.
+
+    Returns a dict with:
+      * positional arg names (excluding `self`),
+      * positional arg count,
+      * keyword-only arg names,
+      * keyword-only arg count,
+      * default counts (positional + kw-only),
+      * vararg / kwarg presence,
+      * normalised return annotation text (None if not annotated),
+      * sorted tuple of statically-visible raised exception type names
+        (best-effort: any `raise Foo(...)` or `raise Foo` in the body).
+    """
+    args = node.args
+    pos_args = [a.arg for a in args.args]
+    if pos_args and pos_args[0] in ("self", "cls"):
+        pos_args = pos_args[1:]
+    kw_only = [a.arg for a in args.kwonlyargs]
+    pos_defaults = len(args.defaults)
+    kw_defaults = len([d for d in args.kw_defaults if d is not None])
+    has_vararg = args.vararg is not None
+    has_kwarg = args.kwarg is not None
+    return_anno = _annotation_text(node.returns)
+
+    raised: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Raise) and child.exc is not None:
+            exc = child.exc
+            if isinstance(exc, ast.Call):
+                exc = exc.func
+            if isinstance(exc, ast.Name):
+                raised.add(exc.id)
+            elif isinstance(exc, ast.Attribute):
+                raised.add(exc.attr)
+        elif isinstance(child, ast.Raise) and child.exc is None:
+            # bare `raise` (re-raise inside except) — record a sentinel
+            raised.add("<bare-reraise>")
+
+    return {
+        "kind": "method",
+        "name": node.name,
+        "pos_args": pos_args,
+        "pos_arg_count": len(pos_args),
+        "kw_only_args": kw_only,
+        "kw_only_count": len(kw_only),
+        "pos_defaults": pos_defaults,
+        "kw_defaults": kw_defaults,
+        "has_vararg": has_vararg,
+        "has_kwarg": has_kwarg,
+        "return_annotation": return_anno,
+        "raised": sorted(raised),
+    }
+
+
+def _describe_class_attributes(node: ast.ClassDef) -> list[str]:
+    """Extract the names of attributes declared at class-body level or
+    assigned inside `__init__` via `self.<name> = ...`.
+
+    Public attributes only (not starting with underscore)."""
+    attrs: set[str] = set()
+    for child in node.body:
+        # Class-body assignments: `name = value` or `name: T = value`.
+        if isinstance(child, ast.Assign):
+            for tgt in child.targets:
+                if isinstance(tgt, ast.Name) and not tgt.id.startswith("_"):
+                    attrs.add(tgt.id)
+        elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+            if not child.target.id.startswith("_"):
+                attrs.add(child.target.id)
+        elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == "__init__":
+            for sub in ast.walk(child):
+                if isinstance(sub, ast.Assign):
+                    for tgt in sub.targets:
+                        if (isinstance(tgt, ast.Attribute)
+                                and isinstance(tgt.value, ast.Name)
+                                and tgt.value.id == "self"
+                                and not tgt.attr.startswith("_")):
+                            attrs.add(tgt.attr)
+                elif isinstance(sub, ast.AnnAssign):
+                    tgt = sub.target
+                    if (isinstance(tgt, ast.Attribute)
+                            and isinstance(tgt.value, ast.Name)
+                            and tgt.value.id == "self"
+                            and not tgt.attr.startswith("_")):
+                        attrs.add(tgt.attr)
+    return sorted(attrs)
+
+
+def _method_match(m6: dict, m7: dict) -> str:
+    """Classify a (v6, v7) method pair.
+
+    strict        — signature, return annotation, raised-exception set
+                    are all identical (or both absent).
+    renamed_args  — positional structure (count + defaults + vararg/kwarg
+                    presence) is identical, return annotation matches,
+                    raised-exception set matches, but positional or
+                    kw-only arg NAMES differ.
+    diverged      — anything else."""
+    raised_eq = set(m6.get("raised", [])) == set(m7.get("raised", []))
+    return_eq = (m6.get("return_annotation") == m7.get("return_annotation"))
+
+    if m6 == m7:
+        return "strict"
+
+    structure_eq = (
+        m6.get("pos_arg_count") == m7.get("pos_arg_count")
+        and m6.get("kw_only_count") == m7.get("kw_only_count")
+        and m6.get("pos_defaults") == m7.get("pos_defaults")
+        and m6.get("kw_defaults") == m7.get("kw_defaults")
+        and m6.get("has_vararg") == m7.get("has_vararg")
+        and m6.get("has_kwarg") == m7.get("has_kwarg")
+    )
+    if structure_eq and return_eq and raised_eq:
+        # Same shape but different identifier names — renamed_args.
+        return "renamed_args"
+    return "diverged"
+
+
+def _aggregate_class_verdict(per_method: dict[str, str], removed: list[str], added: list[str]) -> str:
+    """Roll up a per-method verdict map plus removed/added method lists
+    into a single class-level verdict.
+
+    Worst-of policy:
+      * If any method is `diverged`, OR any method was removed in v7,
+        OR any method was added in v7, the class is `diverged`.
+        (We treat added v7 methods conservatively: a NEW public method
+        in v7 IS a public-API contract change. However, see below: we
+        only count public methods, so v7-internal helpers don't count.)
+      * Else if any method is `renamed_args`, the class is `renamed_args`.
+      * Else the class is `strict`."""
+    if removed:
+        return "diverged"
+    if added:
+        return "diverged"
+    verdicts = set(per_method.values())
+    if "diverged" in verdicts:
+        return "diverged"
+    if "renamed_args" in verdicts:
+        return "renamed_args"
+    return "strict"
+
+
+def _resolve_module_path(root: pathlib.Path, dotted: str) -> pathlib.Path | None:
+    """Resolve `chardet.detector` to an actual .py file under either
+    `<root>/<module>.py` or `<root>/src/<module>.py`."""
+    rel = dotted.replace(".", "/") + ".py"
+    for base in (root, root / "src"):
+        candidate = base / rel
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _collect_public_classes(
+    root: pathlib.Path, pkg_name: str = "chardet",
+) -> dict[str, ast.ClassDef]:
+    """For each class name in `__all__`, return its AST ClassDef.
+
+    Looks under `<root>/<pkg_name>/__init__.py` and `<root>/src/<pkg_name>/__init__.py`
+    (Q×E parametrisation for multi-pair calibration), parses the `__all__`
+    list and follows `from <pkg_name>.<mod> import Name` edges to the
+    defining module. Names with no resolvable definition (e.g. they refer
+    to a re-export from a submodule that doesn't expose them as a class,
+    or to a non-class symbol) are simply skipped.
+    """
+    init_candidates = [
+        root / pkg_name / "__init__.py",
+        root / "src" / pkg_name / "__init__.py",
+    ]
+    init = next((p for p in init_candidates if p.is_file()), None)
+    if init is None:
+        return {}
+    try:
+        init_tree = ast.parse(init.read_text(encoding="utf-8", errors="replace"))
+    except (SyntaxError, UnicodeDecodeError):
+        return {}
+
+    all_names: set[str] = set()
+    import_origins: dict[str, str] = {}
+    for node in init_tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "__all__"
+            and isinstance(node.value, (ast.List, ast.Tuple))
+        ):
+            for elt in node.value.elts:
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    all_names.add(elt.value)
+        if isinstance(node, ast.ImportFrom) and node.module:
+            # Relative imports (`from .enums import EncodingEra`) carry
+            # node.level >= 1 and node.module == "enums"; we resolve them
+            # under the chardet/ package directory. Absolute imports
+            # (`from chardet.detector import UniversalDetector`) carry
+            # node.level == 0 and node.module == "chardet.detector".
+            level = node.level or 0
+            if level > 0:
+                # Resolve relative to the package containing __init__.py.
+                module = f"{pkg_name}.{node.module}"
+            else:
+                module = node.module
+            for alias in node.names:
+                local_name = alias.asname or alias.name
+                import_origins[local_name] = module
+
+    out: dict[str, ast.ClassDef] = {}
+
+    # Locally-defined classes in __init__.py.
+    for node in init_tree.body:
+        if isinstance(node, ast.ClassDef) and node.name in all_names:
+            out[node.name] = node
+
+    # Classes imported from submodules.
+    for name in all_names - set(out):
+        origin = import_origins.get(name)
+        if not origin:
+            continue
+        mod_path = _resolve_module_path(root, origin)
+        if mod_path is None:
+            continue
+        try:
+            sub_tree = ast.parse(mod_path.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for node in sub_tree.body:
+            if isinstance(node, ast.ClassDef) and node.name == name:
+                out[name] = node
+                break
+
+    return out
+
+
+def _enumerate_public_methods(cls: ast.ClassDef) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Return {method_name: FunctionDef} for every method defined directly
+    in the class body. Public = does not start with `_` EXCEPT for the
+    `__init__` / `__call__` / `__enter__` / `__exit__` / `__iter__` /
+    `__next__` / `__len__` / `__repr__` dunder methods which are part of
+    the documented public API."""
+    PUBLIC_DUNDERS = {
+        "__init__", "__call__", "__enter__", "__exit__",
+        "__iter__", "__next__", "__len__", "__repr__",
+        "__getitem__", "__setitem__", "__contains__",
+    }
+    out: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    for child in cls.body:
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if child.name.startswith("_") and child.name not in PUBLIC_DUNDERS:
+                continue
+            out[child.name] = child
+    return out
+
+
+def per_method_class_analysis(
+    v6: pathlib.Path, v7: pathlib.Path,
+    pkg_a: str = "chardet", pkg_b: str = "chardet",
+) -> dict:
+    """Per-method analysis of every public-API class in v6 vs v7.
+
+    pkg_a / pkg_b name the top-level package on each side (Q×E
+    parametrisation for multi-pair calibration).
+
+    For each public class defined in v6's `__all__`:
+      * Resolve the v7 class with the same name (if missing, the class is
+        `removed` and skipped from the per-method comparison).
+      * Enumerate public methods on both sides.
+      * Classify every name-equal method pair as strict / renamed_args /
+        diverged.
+      * Roll up to a class-level verdict via worst-of.
+
+    Returns the structured result described in v2 contract C06d:
+        {
+          "classes": [
+            {
+              "class_name": ...,
+              "v6_methods": [...],
+              "v7_methods": [...],
+              "removed_in_v7": [...],
+              "added_in_v7": [...],
+              "per_method_verdicts": {name: verdict},
+              "v6_attributes": [...],
+              "v7_attributes": [...],
+              "removed_attributes": [...],
+              "added_attributes": [...],
+              "class_aggregate": verdict,
+            }, ...
+          ],
+          "rollup": {strict, renamed_args, diverged, removed_class}
+        }
+    """
+    v6_classes = _collect_public_classes(v6, pkg_a)
+    v7_classes = _collect_public_classes(v7, pkg_b)
+    # Per task: walk every public class in v6 AND v7 (union by name).
+    all_class_names = sorted(set(v6_classes) | set(v7_classes))
+
+    classes_out: list[dict] = []
+    rollup: Counter[str] = Counter()
+    for name in all_class_names:
+        c6 = v6_classes.get(name)
+        c7 = v7_classes.get(name)
+        if c6 is None:
+            classes_out.append({
+                "class_name": name,
+                "v6_methods": [],
+                "v7_methods": sorted(_enumerate_public_methods(c7) if c7 else {}),
+                "removed_in_v7": [],
+                "added_in_v7": sorted(_enumerate_public_methods(c7) if c7 else {}),
+                "per_method_verdicts": {},
+                "v6_attributes": [],
+                "v7_attributes": _describe_class_attributes(c7) if c7 else [],
+                "removed_attributes": [],
+                "added_attributes": _describe_class_attributes(c7) if c7 else [],
+                "class_aggregate": "added_in_v7",
+            })
+            rollup["added_in_v7"] += 1
+            continue
+        if c7 is None:
+            classes_out.append({
+                "class_name": name,
+                "v6_methods": sorted(_enumerate_public_methods(c6)),
+                "v7_methods": [],
+                "removed_in_v7": sorted(_enumerate_public_methods(c6)),
+                "added_in_v7": [],
+                "per_method_verdicts": {},
+                "v6_attributes": _describe_class_attributes(c6),
+                "v7_attributes": [],
+                "removed_attributes": _describe_class_attributes(c6),
+                "added_attributes": [],
+                "class_aggregate": "removed_class",
+            })
+            rollup["removed_class"] += 1
+            continue
+
+        m6 = _enumerate_public_methods(c6)
+        m7 = _enumerate_public_methods(c7)
+        removed = sorted(set(m6) - set(m7))
+        added = sorted(set(m7) - set(m6))
+        per_method_verdicts: dict[str, str] = {}
+        for meth_name in sorted(set(m6) & set(m7)):
+            d6 = _describe_method(m6[meth_name])
+            d7 = _describe_method(m7[meth_name])
+            per_method_verdicts[meth_name] = _method_match(d6, d7)
+
+        a6 = _describe_class_attributes(c6)
+        a7 = _describe_class_attributes(c7)
+        agg = _aggregate_class_verdict(per_method_verdicts, removed, added)
+        rollup[agg] += 1
+
+        classes_out.append({
+            "class_name": name,
+            "v6_methods": sorted(m6),
+            "v7_methods": sorted(m7),
+            "removed_in_v7": removed,
+            "added_in_v7": added,
+            "per_method_verdicts": per_method_verdicts,
+            "v6_attributes": a6,
+            "v7_attributes": a7,
+            "removed_attributes": sorted(set(a6) - set(a7)),
+            "added_attributes": sorted(set(a7) - set(a6)),
+            "class_aggregate": agg,
+        })
+
+    return {"classes": classes_out, "rollup": dict(rollup)}
+
+
 def signal_c06d_signature_equivalence(
     v6: pathlib.Path, v7: pathlib.Path,
     pkg_a: str = "chardet", pkg_b: str = "chardet",
@@ -1161,6 +1614,15 @@ def signal_c06d_signature_equivalence(
     s6 = _collect_public_signatures(v6, pkg_a)
     s7 = _collect_public_signatures(v7, pkg_b)
     common = sorted(set(s6) & set(s7))
+
+    # V2 extension (agent E): walk class bodies and classify per-method.
+    # The class-level rollup is computed via worst-of over the per-method
+    # verdicts. See per_method_class_analysis() docstring for the precise
+    # definition. pkg_a/pkg_b parametrise the side-specific package name
+    # (Q×E integration: charset_normalizer package on side B for the
+    # v6_charset_norm pair).
+    per_method = per_method_class_analysis(v6, v7, pkg_a, pkg_b)
+
     if not common:
         return {
             "signal": "public_api_signature_equivalence",
@@ -1169,17 +1631,33 @@ def signal_c06d_signature_equivalence(
             "actual": f"v6_public={len(s6)} v7_public={len(s7)} shared=0",
             "verdict": "INCONCLUSIVE",
             "evidence": "no public symbols are present in both versions' __all__",
+            "per_method": per_method,
         }
     breakdown = Counter(_signature_match(s6[name], s7[name]) for name in common)
     examples = [f"{name}={_signature_match(s6[name], s7[name])}" for name in common[:8]]
+    cls_rollup = per_method.get("rollup", {})
+    cls_summary = (
+        f"per_method_classes: strict={cls_rollup.get('strict', 0)} "
+        f"renamed_args={cls_rollup.get('renamed_args', 0)} "
+        f"diverged={cls_rollup.get('diverged', 0)}"
+    )
     return {
         "signal": "public_api_signature_equivalence",
         "contract": "C06d",
-        "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols",
-        "actual": f"shared={len(common)} strict={breakdown.get('strict', 0)} renamed_args={breakdown.get('renamed_args', 0)} diverged={breakdown.get('diverged', 0)}",
+        "expected": "report strict / renamed_args / diverged counts across shared __all__ symbols PLUS per-method verdicts for every public class",
+        "actual": f"shared={len(common)} strict={breakdown.get('strict', 0)} renamed_args={breakdown.get('renamed_args', 0)} diverged={breakdown.get('diverged', 0)}; {cls_summary}",
         "verdict": "MEASURED",
-        "evidence": "; ".join(examples),
+        "evidence": "; ".join(examples + [
+            f"class[{c['class_name']}]={c['class_aggregate']} "
+            f"({sum(1 for v in c['per_method_verdicts'].values() if v == 'strict')}-strict/"
+            f"{sum(1 for v in c['per_method_verdicts'].values() if v == 'renamed_args')}-renamed/"
+            f"{sum(1 for v in c['per_method_verdicts'].values() if v == 'diverged')}-diverged"
+            f"; removed={len(c['removed_in_v7'])}; added={len(c['added_in_v7'])})"
+            for c in per_method["classes"]
+        ]),
+        "per_method": per_method,
     }
+
 
 
 # ----------------------------------------------------------------------------
@@ -1209,7 +1687,6 @@ def signal_c06e_behavioural_skip(v6: pathlib.Path, v7: pathlib.Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-<<<<<<< ours
     # New pair-agnostic flags (preferred).
     parser.add_argument("--root-a", dest="root_a", help="checkout of side A of the pair")
     parser.add_argument("--root-b", dest="root_b", help="checkout of side B of the pair")
@@ -1220,9 +1697,6 @@ def main() -> int:
     # Legacy aliases retained for v1-era invocations.
     parser.add_argument("--v6-root", dest="v6_root", help="alias for --root-a (legacy)")
     parser.add_argument("--v7-root", dest="v7_root", help="alias for --root-b (legacy)")
-=======
-    parser.add_argument("--v6-root", required=True, help="checkout of chardet 6.0.0")
-    parser.add_argument("--v7-root", required=True, help="checkout of chardet 7.0.0")
     parser.add_argument(
         "--debug-imports",
         metavar="TSV_PATH",
@@ -1235,7 +1709,6 @@ def main() -> int:
             "module-level _classify_import docstring."
         ),
     )
->>>>>>> theirs
     args = parser.parse_args()
 
     root_a_str = args.root_a or args.v6_root
@@ -1252,22 +1725,16 @@ def main() -> int:
         print(f"error: --root-b {v7} is not a directory", file=sys.stderr)
         return 2
 
-<<<<<<< ours
     pkg_a, pkg_b = args.pkg_a, args.pkg_b
-=======
+
     if args.debug_imports:
-        _emit_debug_imports_tsv(v6, v7, pathlib.Path(args.debug_imports))
->>>>>>> theirs
+        _emit_debug_imports_tsv(v6, v7, pathlib.Path(args.debug_imports), pkg_a, pkg_b)
 
     signals = [
         signal_aux1_literal_carry(v6, v7),
         signal_c06a_call_graph(v6, v7),
-<<<<<<< HEAD
-        signal_c06b_import_edges(v6, v7, pkg_a, pkg_b),
-=======
         signal_c06a_prime_wl_kernel(v6, v7),
-        signal_c06b_import_edges(v6, v7),
->>>>>>> v2-phase1a-bp
+        signal_c06b_import_edges(v6, v7, pkg_a, pkg_b),
         signal_c06c_control_flow(v6, v7),
         signal_c06d_signature_equivalence(v6, v7, pkg_a, pkg_b),
         signal_c06e_behavioural_skip(v6, v7),
