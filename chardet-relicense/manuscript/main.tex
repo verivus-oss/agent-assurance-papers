@@ -80,25 +80,50 @@ as more production codebases get the same treatment). I am not
 trying to adjudicate the chardet dispute, and this paper does not
 take a position on whether v7's relicensing is valid; what I am
 trying to do is move the conversation from assertion to evidence,
-by shipping a detection harness that produces six structural,
-falsifiable, reproducible signals comparing v6.0.0 and v7.0.0 of
-the library, five of which are explicitly designed to survive
-identifier renaming and module restructuring, and one of which
-(AUX1, the file-hash baseline) is retained as a continuity check
-with naive prior approaches. On the actual artefacts, literal
-source carryover is zero, v7's call-graph topology is 0.881
-similar to v6's, the normalised AST control-flow histogram cosine
-is 0.984, three of five shared public-API signatures are
-byte-identical (``strict''), v7 imports a substantially different
-third-party dependency set (Jaccard 0.333), and the two versions
-never agree on encoding or confidence over 1000 random byte
-inputs. The combined picture is internally consistent but legally
-ambiguous, with the honest summary being that v7 preserves the
-\emph{shape of v6's thinking} while replacing what v6 actually
-\emph{does}. The contribution is the methodology and the bundle,
-not a verdict on chardet specifically: a self-contained,
-multi-LLM-reviewed artefact that any reviewer, lawyer, or court
-can re-run and inspect.
+by shipping a detection harness that produces eight structural and
+behavioural, falsifiable, reproducible signals (AUX1 file-hash
+baseline plus C06a, C06a$'$, C06b, C06c, C06d, C06e, C06f) and runs
+them across \emph{three} calibration pairs rather than the v6/v7 pair
+alone: the v6/v7 LGPL-to-MIT pair under dispute, v5/v6 as a
+conventional same-project release-to-release evolution baseline, and
+v6/charset\_normalizer as an independent same-domain reimplementation
+baseline. The headline finding is that the structural-similarity
+signals the v1 framing leaned on do not separate v6/v7 from those
+calibration baselines: C06a call-graph similarity is $0.881$ on
+v6/v7 but $0.930$ on v5/v6 and $0.922$ on v6/charset\_normalizer
+(an independent same-domain library scores \emph{higher} on this
+signal than the disputed pair), and the C06c control-flow cosine
+similarly saturates ($0.984$ / $0.995$ / $0.999$). The new C06f
+per-function shape similarity, reported with bootstrap CIs, does
+discriminate: v6/v7 sits at $0.913\,[0.89,\,0.94]$ over only
+$31/177=17.5\%$ of v6 functions matched, between conventional
+evolution ($0.982\,[0.97,\,0.99]$ at $64.0\%$ match) and
+independent same-domain rewrite ($0.796\,[0.75,\,0.84]$ at
+$43.5\%$); the v6/v7 match \emph{rate} is the lowest of the three,
+which is the signature this paper labels ``AI-driven rewrite.'' On
+the v1 random-byte workload C06e behavioural agreement is $0.000$
+for v6/v7 (matching the $0.000$ on v6/charset\_normalizer) versus
+$0.968$ for v5/v6, cleanly separating routine evolution from any
+non-evolutionary pair. On realistic input (HTML, multilingual,
+email, RFC bodies) the new normalised family-agreement rate is
+$0.625$ for v6/v7, $0.688$ for v5/v6, and $0.594$ for
+v6/charset\_normalizer, so behavioural calibration separates
+evolution from non-evolution but does not separate AI rewrite from
+independent rewrite inside the non-evolutionary band. C06b
+third-party-imports Jaccard, recomputed under the R1--R5 audit
+rules, rises to $0.667$ on v6/v7 (above $0.250$ on v5/v6 and
+$0.000$ on v6/charset\_normalizer), so the v1 ``external boundary
+is genuinely different'' framing inverts. The combined picture
+remains legally ambiguous, but for a different reason than the v1
+draft argued: structural signals do not discriminate derivation
+from convergence, behavioural calibration separates evolution from
+non-evolution but does not separate derivative-rewrite from
+independent-rewrite within the non-evolutionary band, and the v6/v7
+pair sits in a strange middle ground that matches neither a normal
+release evolution nor a clean-room independent rewrite. The
+contribution is the methodology and the bundle (a self-contained,
+multi-LLM-reviewed artefact that any reviewer, lawyer, or court can
+re-run and inspect), not a verdict on chardet specifically.
 \end{abstract}
 
 \section{Introduction}
@@ -139,13 +164,21 @@ The conversation, frankly, is currently being conducted on
 assertion. I propose to conduct it on evidence. The contribution
 here is a detection harness that, given a pair of code versions
 and a contract declaration listing the structural invariants the
-reviewer cares about, produces six numeric signals (one cheap
-baseline, AUX1, plus five that survive identifier renaming and
-module restructuring, C06a through C06e), together with a
+reviewer cares about, produces eight numeric signals (one cheap
+baseline, AUX1, plus seven that survive identifier renaming and
+module restructuring: C06a call-graph topology, C06a$'$
+Weisfeiler-Lehman kernel, C06b third-party imports, C06c
+control-flow histogram, C06d public-API parity, C06e behavioural
+fingerprint, and C06f per-function shape), together with a
 machine-checkable record of how the signals were derived, what
-they exclude, and how a reader can reproduce them. I have
-instantiated the harness against the real \texttt{chardet} v6.0.0
-and v7.0.0 tags and report the numbers I observed.
+they exclude, and how a reader can reproduce them. The v2 revision
+runs the harness across \emph{three} calibration pairs --- the
+disputed v6/v7 pair, the conventional v5/v6 release-to-release
+evolution pair, and the independent same-domain v6/charset\_normalizer
+pair --- so that any structural-similarity number reported on
+v6/v7 is read against the baseline of what same-shape signals
+look like for codebases known to be related and codebases known
+to be unrelated.
 
 \paragraph{Contributions.}
 \begin{itemize}[leftmargin=*,nosep]
@@ -501,7 +534,7 @@ defeat that signal without losing the property the signal is
 designed to preserve. We collect those defences in
 \cref{tab:adversary} and discuss them in \cref{sec:adversary}.
 
-\subsection{Where the six signals sit in the layered detection space}
+\subsection{Where the signals sit in the layered detection space}
 \label{sec:layers}
 
 The six signals are not the only conceivable evidence layers. Each
@@ -532,9 +565,10 @@ public-API signature & \texttt{ast.parse} & low & medium & C06d \\
 control-flow histogram & \texttt{ast.walk} & low & high & C06c \\
 import-edge set & \texttt{ast.Import} & low & high & C06b \\
 call-graph topology & \texttt{networkx} + \texttt{ast} & medium & high & C06a \\
+graph kernels & Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler} & medium & high & C06a$'$ (v2) \\
+per-function shape & \texttt{ast} + greedy match & medium & high & C06f (v2) \\
 behavioural fuzz & venv install + RNG inputs & high & very high & C06e \\
 tree-edit distance & GumTree~\cite{falleri2014gumtree} & med.--high & med.--high & future \\
-graph kernels & Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler} & medium & high & future \\
 symbolic execution & KLEE~\cite{cadar2008klee}, angr~\cite{shoshitaishvili2016sok} & very high & high & future \\
 data-flow analysis & Soufflé~\cite{jordan2016souffle} & high & high & future \\
 code embeddings & CodeBERT~\cite{feng2020codebert} & medium & statistical only & not used \\
@@ -542,16 +576,20 @@ code embeddings & CodeBERT~\cite{feng2020codebert} & medium & statistical only &
 \end{tabularx}
 \end{table}
 
-\section{The Six Signals}
+\section{The Eight Signals}
 \label{sec:signals}
 
-The six signals are declared as TOML contracts in
+The signals are declared as TOML contracts in
 \texttt{contract\_declaration.toml}~\cite{verivus2026dagtoml} and
 implemented as Python in \texttt{extract\_signals.py} and
-\texttt{fingerprint\_behavior.py}. We summarise each below; the
-full implementations are in the bundle and are 589 plus 232
-lines of code respectively (verified via \texttt{wc -l} at commit
-\texttt{6acef08}).
+\texttt{fingerprint\_behavior.py}. The v1 release shipped six
+signals (AUX1 plus C06a--e); the v2 revision adds C06a$'$
+(\cref{sec:c06aprime}) and C06f (\cref{sec:c06f}) in response to
+reviewer concerns R1 and R16, respectively, that the v1 set was
+coarse at the module level and could miss either fine-grained
+neighbourhood reorganisation or surgical per-function paraphrase.
+We summarise each below; the full implementations are in the
+bundle.
 
 \subsection{AUX1 -- Literal source carryover (baseline)}
 \label{sec:aux1}
@@ -646,7 +684,11 @@ graph-structural rather than tree-structural). A single
 Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler} similarity score
 would compress the eight features down to one number and lose the
 per-feature diagnostic value that the current C06a explicitly emits
-(``v6 vs v7 differ by 0.104 on density but only 0.023 on SCC count'').
+(``v6 vs v7 differ by 0.104 on density but only 0.023 on SCC count'');
+the v2 revision ships C06a$'$ (\cref{sec:c06aprime}) as a
+companion WL kernel score precisely because the two views answer
+different questions and C06a alone cannot resolve fine-grained
+neighbourhood structure.
 Embedding-based methods (CodeBERT~\cite{feng2020codebert} and similar)
 score on statistical similarity in a learned latent space and so are
 not invariant under arbitrary semantics-preserving rewrites in the way
@@ -660,6 +702,42 @@ C06d's strict / renamed / diverged counts, and of C06e's input-corpus
 reproducibility from the same RNG seed appears in
 \cref{sec:numeric-validation} and is recorded in
 \path{chardet-relicense/manuscript/figures/scripts/validation_report.json}.
+
+\subsection{C06a$'$ -- Weisfeiler-Lehman kernel similarity}
+\label{sec:c06aprime}
+\paragraph{What it computes.} C06a$'$ is the v2 revision's response to
+reviewer concern R1, which observed that C06a's eight-feature summary
+vector is necessarily coarse --- two graphs can share node count, edge
+count, density, SCC count, and the four degree statistics while
+differing in fine-grained neighbourhood structure. C06a$'$ adds a
+Weisfeiler-Lehman~\cite{shervashidze2011weisfeiler} kernel comparator
+that complements C06a without replacing it. For each version's call
+graph we construct a multiset of WL node labels by iteratively
+relabelling each node by a hash of its current label together with
+the sorted multiset of its neighbours' labels, repeating for $k=4$
+iterations. The two versions' multisets are compared by cosine
+similarity at each iteration; the aggregate C06a$'$ score is the
+mean cosine across iterations $0$ through $k$. Iteration $0$ depends
+only on the initial uniform labels (so its cosine is dominated by
+degree-distribution agreement); each subsequent iteration incorporates
+information from a wider neighbourhood radius. The aggregate value
+therefore reads as ``how similar are the two graphs at increasing
+levels of structural depth, averaged.''
+
+\paragraph{Why it survives paraphrase.} Like C06a, the WL labelling
+is invariant under vertex renaming: only structure determines the
+multiset at each iteration. Unlike C06a, it captures rooted
+neighbourhood patterns, so two graphs with matching summary
+features but mismatched topology are distinguishable.
+
+\paragraph{Adversary defence.} Defeating C06a$'$ requires reorganising
+the rooted neighbourhood structure at every depth, not just preserving
+the eight summary features. An adversary who keeps the call graph
+shape constant cannot keep the WL multiset constant by surface
+restructuring; the only way to move C06a$'$ without moving observable
+behaviour is to break up neighbourhoods --- inlining, dispatch
+indirection, or function fission --- which themselves move other
+signals in this suite.
 
 \subsection{C06b -- Third-party import-edge set}
 \label{sec:c06b}
@@ -723,6 +801,22 @@ cannot be changed without breaking those callers.
 ``diverged'' across the board is to change the public API itself.
 That is a visible API-breaking change to downstream users.
 
+\paragraph{Disjoint-shape limitation.} C06d only informs when the two
+\texttt{\_\_all\_\_} sets share at least one name. When the two
+public-API class sets are fundamentally different --- as for v6 vs
+charset\_normalizer (v6 ships \texttt{EncodingEra} and
+\texttt{UniversalDetector}; charset\_normalizer ships
+\texttt{CharsetMatch} and \texttt{CharsetMatches}) --- the per-method
+walker correctly emits empty per-method verdicts rather than
+fabricating cross-class comparisons. The v6/charset\_normalizer
+column in \cref{tab:multi-pair-calibration} therefore shows
+$0/0/0/2/2$ on the per-method row: zero strict, zero renamed, zero
+diverged, two classes added on the right, two on the left. The
+v2 revision treats this as a known degeneracy of C06d: when public
+API shapes are disjoint, the signal cannot adjudicate, and the
+calibration evidence has to come from elsewhere in the suite (here,
+C06a$'$, C06e, and C06f).
+
 \subsection{C06e -- Behavioural fingerprint}
 \label{sec:c06e}
 We install each version into its own Python virtual environment
@@ -752,6 +846,45 @@ score \emph{low} (i.e., to argue independence) must change the
 behaviour. The signal is therefore self-falsifying in either
 direction: the result depends on what the rewrite actually does.
 
+\subsection{C06f -- Per-function shape similarity}
+\label{sec:c06f}
+\paragraph{What it computes.} C06f is the v2 revision's response to
+reviewer concern R16, which observed that C06a and C06a$'$ are
+both module-level signals --- a surgical per-function paraphrase
+that leaves the module-level call graph intact is invisible to
+either. C06f drops to the function granularity. For each function
+in either codebase we record a shape descriptor (the body's
+control-flow node-class histogram, the body's call-out simple-name
+multiset, the parameter-arity tuple, and the function's degree
+within the call graph), then attempt to match each function in side
+A to a function in side B by greedy nearest-neighbour pairing in
+descriptor space subject to a similarity floor. The signal reports
+two numbers: the \emph{match rate} (matched pairs / functions on
+side A) and the \emph{mean within-match similarity} (averaged
+descriptor distance over the matched pairs, mapped to a
+$0$--$1$ similarity).
+
+\paragraph{Why it survives paraphrase.} The shape descriptor uses
+grammar productions and arities, not identifier text. Renaming any
+function does not change its descriptor; reordering callees in the
+body permutes a multiset whose hash is unaffected. The match
+itself is identifier-blind --- the greedy pairing optimises on
+descriptor distance, not on name similarity.
+
+\paragraph{Adversary defence.} The two reported numbers move
+independently and an adversary cannot tune both. To lift the
+within-match similarity score the adversary has to reproduce
+matched functions' bodies faithfully; to lift the match rate the
+adversary has to preserve a function's shape niche across the
+rewrite (similar arity, similar local control-flow footprint,
+similar callee fan-out). Surgical paraphrase that preserves shape
+trivially scores high on within-match similarity but moves the
+match rate only when shape niches are preserved at scale; an
+aggressive restructuring (function fission, fusion, or
+redistribution across modules) drops the match rate
+sharply --- which is exactly the v6/v7 signature
+($17.5\%$ match rate; see \cref{sec:results-calibration}).
+
 \begin{table}[h]
 \small
 \centering
@@ -765,10 +898,12 @@ Signal & Property preserved & Adversary defence \\
 \midrule
 AUX1 & file bytes & rename any single identifier \\
 C06a & call-graph shape & restructure the call graph (inline / indirect) \\
+C06a$'$ & WL neighbourhood multisets & reorganise rooted neighbourhoods at every depth \\
 C06b & third-party deps & keep the same dependency set \\
 C06c & AST control-flow shape & change branching, looping, exception handling \\
 C06d & public-API signature & change the public API (API-breaking) \\
 C06e & runtime behaviour & change the actual outputs on representative inputs \\
+C06f & per-function shape niches & preserve shape AND match rate simultaneously \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -866,17 +1001,24 @@ read-only. Both runs produced identical static signal values.
 \subsection{Headline numbers}
 \label{sec:headline}
 
-\cref{tab:results} reports the six signal values we observed when
+\cref{tab:results} reports the eight signal values we observed when
 \texttt{detect.sh} ran against the upstream \texttt{chardet} clone with
-tags 6.0.0 and 7.0.0 checked out. All values are reproducible by re-running
-the harness; the supplementary README documents the exact
-invocation and the bibliographic record of our run.
+tags 6.0.0 and 7.0.0 checked out. The headline numbers are the v6/v7
+focus column; the calibration story --- the same eight signals run
+on v5/v6 and on v6/charset\_normalizer --- is in
+\cref{sec:results-calibration} and \cref{tab:multi-pair-calibration}.
+All values are reproducible by re-running the harness against the
+three pairs; the supplementary README documents the exact invocation
+and the bibliographic record of our runs.
 
 \begin{table}[h]
 \small
 \centering
 \caption{Observed signal values on chardet v6.0.0 vs v7.0.0
-(harness run, May 22, 2026).}
+(harness run, May 28, 2026). Bracketed values are 95\%
+percentile-bootstrap confidence intervals over 1000 resamples
+(seed=20260528); see \cref{sec:results-calibration} for the
+methodology paragraph.}
 \label{tab:results}
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.27\linewidth}p{0.09\linewidth}Xp{0.13\linewidth}@{}}
 \toprule
@@ -888,75 +1030,263 @@ literal source carryover &
   PASS \\
 call-graph topology similarity &
   C06a &
-  0.881 (342 vs 358 nodes; 488 vs 659 edges) &
+  $0.881\,[0.74,\,0.95]$ (342 vs 358 nodes; 488 vs 659 edges) &
+  MEASURED \\
+WL ($k{=}4$) kernel cosine &
+  C06a$'$ &
+  $0.587\,[0.43,\,0.69]$ (iter0 $0.876$, iter1 $0.294$, iter2--4 $\sim 0.11$) &
   MEASURED \\
 third-party import-edge Jaccard &
   C06b &
-  0.333 (shared: \texttt{cchardet}, \texttt{datasets}) &
+  $0.667$ under R1--R5 audit (shared: \texttt{cchardet}, \texttt{datasets}; v1-filter value $0.333$ from the unaudited rule) &
   MEASURED \\
 control-flow histogram cosine &
   C06c &
-  0.984 (652 vs 848 control-flow nodes total) &
+  $0.984\,[0.94,\,1.00]$ (652 vs 848 control-flow nodes total) &
   MEASURED \\
 public-API signature equivalence &
   C06d &
-  3 strict / 0 renamed\_args / 2 diverged of 5 shared &
+  3 strict / 0 renamed\_args / 2 diverged of 5 shared (symbol level); 1 / 0 / 1 / 1 / 0 (per-method on classes) &
   MEASURED \\
-behavioural fingerprint (1000 fuzz) &
+behavioural fingerprint (random fuzz, 1000) &
   C06e &
-  exact 0/1000; bucket 0/1000 &
+  exact $0/1000$; bucket $0/1000$ &
+  MEASURED \\
+behavioural fingerprint (realistic, 64) &
+  C06e &
+  normalised family agreement $40/64=0.625$ &
+  MEASURED \\
+per-function shape similarity &
+  C06f &
+  $0.913\,[0.89,\,0.94]$ over $31/177=17.5\%$ of v6 functions matched &
   MEASURED \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsection{Interpretation}
+\subsection{Interpretation: read each signal against its calibration}
 \label{sec:interpretation}
 
-The six numbers tell a coherent and internally consistent story
-(and the reason I separate them rather than collapsing them into a
-single score is that each one carries a distinct piece of evidence
-that a reviewer is going to want to quote in isolation).
-\textbf{Internal structure is highly preserved.} The C06a
-similarity of 0.881 and the C06c cosine of 0.984 together say that
-v7's call-graph shape and AST control-flow profile are close to
-v6's. The control-flow histogram is striking, frankly: v7 doubles
-the absolute count of \texttt{Return}, \texttt{For}, \texttt{Try},
-and \texttt{ExceptHandler} nodes relative to v6, but preserves the
-\emph{relative proportions} almost exactly (\cref{fig:cfhist}),
-which is the fingerprint of a larger codebase implementing the
-same control-flow shape rather than the fingerprint of an
-independent design.
+The eight numbers in \cref{tab:results} tell a coherent story, but
+the story is not the v1 draft's. The v1 draft argued that the
+high C06a ($0.881$) and C06c ($0.984$) values were evidence the
+v7 rewrite ``preserves the shape of v6's thinking.'' That reading
+does not survive the calibration pairs reported below
+(\cref{sec:results-calibration} and \cref{tab:multi-pair-calibration}):
+an independent same-domain library (charset\_normalizer) scores
+\emph{higher} on both signals than v6/v7 does, and a routine
+release-to-release evolution (v5/v6) scores higher still. C06a
+and C06c are domain-shape signals, not derivation signals. The
+load-bearing v6/v7 finding is therefore not the structural
+similarity number alone; it is the joint behaviour of the
+multi-pair calibration. We unpack each signal below in the order
+of \cref{tab:results}, deferring the calibration narrative to
+\cref{sec:results-calibration}.
 
-\textbf{External boundary is genuinely different.} The C06b
-Jaccard of 0.333 is dominated by v7-only additions, specifically
-\texttt{charset\_normalizer} (a competing detection library),
-\texttt{confusion\_training} and \texttt{utils} (sibling-package
-imports from v7's training subpackage, to name the three that
-matter). v7 is a replatform onto modern Python ML tooling, and
-the dependency boundary is the easiest place to see that.
+\textbf{Structural similarity is real but is domain-shaped, not
+derivation-shaped.} C06a's $0.881$ and C06c's $0.984$ are
+internally interpretable --- v7 doubles the absolute count of
+\texttt{Return}, \texttt{For}, \texttt{Try}, and
+\texttt{ExceptHandler} nodes relative to v6 but preserves the
+\emph{relative proportions} almost exactly
+(\cref{fig:cfhist}). On its own, that is the fingerprint of a
+larger codebase implementing the same control-flow shape rather
+than the fingerprint of an independent design. Once
+calibration enters, the same number says: this is what
+same-domain encoding detectors look like, full stop.
 
-\textbf{Public-API contract is mostly preserved by signature.} Of
-the five names in the intersection of the two \texttt{\_\_all\_\_}
-lists, three (\texttt{\_\_version\_\_}, \texttt{detect},
-\texttt{detect\_all}) have byte-identical signatures. The two
-``diverged'' cases are classes (\texttt{EncodingEra},
-\texttt{UniversalDetector}) where the signature descriptor we use
-for classes is shallow, and a per-method comparison that would
-tighten this is future work. I'm not trying to over-claim what
-C06d says: 3/5 strict on a 5-symbol surface is a small sample,
-and the bootstrap CI in \cref{sec:numeric-validation} is honest
-about that.
+\textbf{Fine-grained graph structure separates v6/v7 from
+conventional evolution.} C06a$'$ on v6/v7 is $0.587\,[0.43,\,0.69]$
+--- well below v5/v6's $0.902$ point estimate (CI
+$[0.75,\,0.89]^{\dagger}$ with the WL-multiset
+file-dropout artefact discussed in \cref{tab:multi-pair-calibration}).
+Iteration $0$ of the WL kernel (degree distribution only) yields
+cosine $0.876$, comparable to C06a; once neighbourhood structure
+is incorporated from iteration $1$ onward the similarity collapses
+to $\sim 0.11$. The v6/v7 graphs share degree statistics; they do
+not share topology beyond depth one. v6/charset\_normalizer's
+$0.872$ point estimate is in the same band as v6/v7's --- C06a$'$
+does \emph{not} separate v6/v7 from an independent same-domain
+library, only from a conventional release evolution.
 
-\textbf{Runtime behaviour is operationally distinct.} The C06e
-exact and bucket match rates of 0/1000 say that v6 and v7 never
-agree on encoding or confidence over 1000 random byte inputs.
-Whatever structural similarity the static signals report, v7's
-runtime is a new program, and that is the most direct evidence
-against the strong form of the derivative-work argument (it is
-not the only piece of evidence, but it is the one that does not
-depend on the static-AST extractor doing exactly what we say it
-does).
+\textbf{Per-function shape similarity ranks the three pairs and
+is the cleanest single-signal calibration result.} C06f gives
+v6/v7 a within-match similarity of $0.913\,[0.89,\,0.94]$ over
+only $31/177=17.5\%$ of v6 functions, v5/v6 a within-match
+similarity of $0.982\,[0.97,\,0.99]$ over $103/161=64.0\%$, and
+v6/charset\_normalizer a within-match similarity of
+$0.796\,[0.75,\,0.84]$ over $77/177=43.5\%$. The three CIs are
+disjoint and the ranking is well-supported at 95\%
+($v6/cn < v6/v7 < v5/v6$). The v6/v7 picture is high
+within-match similarity (when a function survives, it survives
+faithfully) combined with the lowest match rate of the three
+pairs (most v6 functions have no shape-and-position counterpart
+in v7 at all). That joint behaviour is what this paper means by
+``AI-driven rewrite signature'' (\cref{sec:results-calibration}):
+heavy structural reorganisation with a small minority of near-clones.
+
+\textbf{External boundary is largely the same, not different.}
+Under the R1--R5 audit rules introduced in v2, the v6/v7 C06b
+Jaccard rises to $0.667$ from the v1-filter value of $0.333$.
+The audited rules keep R5\_third\_party\_kept imports
+(\texttt{setuptools}, \texttt{sphinx\_rtd\_theme}) that the v1
+filter incorrectly excluded; the shared third-party set is in
+fact two ($\{$\texttt{cchardet}$\}$ on the v5/v6 baseline pair),
+not zero. The v1 ``external boundary is genuinely different''
+framing therefore inverts: v6/v7 share more third-party imports
+than v5/v6 do, and v6 and charset\_normalizer share none. C06b
+becomes the strongest retained \emph{structural-similarity}
+claim, with the calibration making it sharp rather than diluting
+it.
+
+\textbf{Public-API contract is mostly preserved by signature
+where signatures can be compared.} Of the five names in the
+intersection of the two \texttt{\_\_all\_\_} lists, three
+(\texttt{\_\_version\_\_}, \texttt{detect}, \texttt{detect\_all})
+have byte-identical signatures. The two ``diverged'' cases are
+classes (\texttt{EncodingEra}, \texttt{UniversalDetector}); the
+per-method walker added in v2 returns $1$ strict $/ 0$ renamed
+$/ 1$ diverged $/ 1$ added on classes, refining the v1 verdict.
+On the v6/charset\_normalizer pair the per-method walker emits
+$0/0/0/2/2$ (all classes added on each side; class sets disjoint)
+--- exactly the degenerate case \cref{sec:c06d} flagged, and a
+worked example of why C06d cannot adjudicate when public-API
+shapes are fundamentally different.
+
+\textbf{Runtime behaviour: random fuzz is a clean
+evolution-vs-non-evolution discriminator; realistic input is
+workload-dependent and regression-shaped.} On the v1 random-bytes
+workload C06e exact-match agreement is $0.000$ for v6/v7 and
+$0.000$ for v6/charset\_normalizer, against $0.968$ for v5/v6.
+Random fuzz cleanly separates routine release evolution from any
+non-evolutionary pair. On the new realistic corpus (HTML,
+multilingual text, RFC bodies, email; $n=64$) the normalised
+family-agreement rates are $0.625$ for v6/v7, $0.688$ for v5/v6,
+and $0.594$ for v6/charset\_normalizer --- much narrower
+spreads, with v6/v7 sitting in the same band as
+v6/charset\_normalizer. Behavioural calibration on realistic input
+separates routine evolution from non-evolution but does \emph{not}
+separate ``AI rewrite'' from ``independent same-domain rewrite''
+within the non-evolutionary band. The exact-match rate of $0/64$
+on realistic input is largely a label-formatting artefact (v7
+lower-cases labels) plus four concrete behavioural regressions:
+v7 reclassifies pure ASCII as \texttt{Windows-1252}; v7 labels
+pure-ASCII RFC bodies as \texttt{cp864} (Arabic codepage) at
+confidence $0.22$--$0.55$; v7 emits \texttt{cp932} where v6
+emitted \texttt{SHIFT\_JIS}; and on random bytes v7's
+``I don't know'' reply changed from
+\texttt{\{encoding: None, confidence: 0.0\}} to
+\texttt{\{encoding: None, confidence: 0.95\}}, breaking
+confidence semantics. The v1 ``operationally distinct'' framing
+holds on the random-bytes axis (and is now sharpened by the
+$0.968$ calibration value); on realistic input the divergence
+story is workload-dependent and regression-shaped, not
+``fully diverged.''
+
+\subsection{Multi-pair calibration: the v2 results in context}
+\label{sec:results-calibration}
+
+\cref{tab:multi-pair-calibration} reports the eight signals run
+on three pairs: v6/v7 (the LGPL-to-MIT focus pair under dispute),
+v5/v6 (a routine same-project release-to-release evolution
+intended as the conventional-evolution baseline), and
+v6/charset\_normalizer (an independent same-domain encoding
+detector intended as the independent-but-domain-shared
+reimplementation baseline). The two calibration pairs answer the
+question that v1 could not answer with a single column of
+numbers: what do these signals look like when we know the pair is
+related, and what do they look like when we know it is not?
+
+The narrative flip is that two of the signals the v1 draft
+leaned on as ``evidence of derivation'' --- C06a and C06c --- do
+not discriminate. The v6/v7 C06a value ($0.881$) is the
+\emph{lowest} of the three (v5/v6 = $0.930$,
+v6/charset\_normalizer = $0.922$), and the C06c values are all
+above $0.98$. Same-domain encoding detectors that are
+demonstrably independent score higher on these signals than the
+disputed pair does. The signal contracts have not changed; the
+calibration shows that those contracts measure domain shape, not
+derivation.
+
+What does discriminate is the joint behaviour of C06f's two
+numbers. The v6/v7 pair shows a low match rate ($17.5\%$) with
+high within-match similarity ($0.913\,[0.89,\,0.94]$), the
+v5/v6 pair shows a high match rate ($64.0\%$) with very high
+within-match similarity ($0.982\,[0.97,\,0.99]$), and the
+v6/charset\_normalizer pair shows an intermediate match rate
+($43.5\%$) with the lowest within-match similarity
+($0.796\,[0.75,\,0.84]$). The v6/v7 CI on within-match similarity
+overlaps with neither calibration baseline; the bootstrap places
+its rank between v6/cn (below) and v5/v6 (above) at 95\%. The
+v6/v7 \emph{match rate} is the lowest of the three. Combined,
+the pair exhibits a structural signature that is distinct from
+both conventional evolution and from independent same-domain
+rewrite: where v6 functions have shape-and-position counterparts
+in v7 at all (a small minority), the counterparts are very close;
+but the v6 to v7 transition reorganises or replaces far more
+functions than even a from-scratch independent reimplementation
+in the same domain does. The v6/v7 transition exhibits an
+``AI-driven rewrite signature'' --- distinct from a normal release
+evolution \emph{and} distinct from a clean-room independent rewrite.
+
+C06b under the R1--R5 audit is the strongest retained
+structural-similarity claim: v6/v7's $0.667$ Jaccard is above
+v5/v6's $0.250$ and well above v6/charset\_normalizer's $0.000$.
+The v1 ``external boundary is genuinely different'' framing
+inverts here: v6/v7 share more third-party imports under audited
+rules than the conventional same-project pair does.
+
+C06e behaves as a workload-dependent discriminator. On the v1
+random-bytes workload it cleanly separates routine evolution
+($0.968$) from any non-evolutionary pair ($0.000$ / $0.000$). On
+the new realistic corpus the spread is much narrower
+($0.625$ / $0.688$ / $0.594$), and the v6/v7 and
+v6/charset\_normalizer pairs occupy the same band. Behavioural
+calibration thus separates evolution from non-evolution but
+cannot, on realistic input, separate ``AI rewrite'' from
+``independent same-domain reimplementation'' within the
+non-evolutionary band.
+
+\input{figures/scripts/multi_pair_comparison.tex}
+
+\paragraph{Bootstrap methodology for the structural-similarity CIs.}
+All four structural-similarity headline numbers (C06a 8-feature
+call-graph similarity, C06a$'$ Weisfeiler-Lehman kernel cosine,
+C06c control-flow histogram cosine, C06f per-function shape
+similarity) are reported with 95\% percentile-bootstrap confidence
+intervals computed from 1000 resamples and the pinned random seed
+$20260528$. For C06a, C06a$'$, and C06c the resampling unit is
+the implementation file: on each bootstrap draw we sample $|A|$
+files with replacement from side A's implementation file list,
+$|B|$ from side B's list (the two sides resampled independently),
+reconstruct each side's structural object (call graph, WL label
+multiset, or normalised control-flow histogram) from the union of
+sampled file contributions, and recompute the similarity score;
+the CI is the $\{2.5,\,97.5\}$ percentiles of the 1000 resampled
+scores. For C06f the resampling unit is the matched function
+pair: we resample $n_{\mathrm{matched}}$ pairs with replacement
+from the post-matching pair list and recompute the mean pair
+distance. The C06d strict-rate CI from the v1 anchor is preserved
+unchanged (5-shared-symbols bootstrap; see
+\cref{sec:numeric-validation}); the four new CIs use the same
+percentile-bootstrap machinery. Choice of unit follows the
+structure of each signal: C06a/C06a$'$/C06c report per-codebase
+aggregates and the natural noise model is ``which files happened
+to end up in this snapshot''; C06f reports a per-pair mean and
+the natural noise model is ``which functions happened to match.''
+A caveat applies to C06a$'$ on the two calibration pairs
+(v5/v6 and v6/charset\_normalizer): the WL multiset is sensitive
+to whole-file dropout, and bootstrap-with-replacement at $N{=}1000$
+leaves $\approx 0.63N$ unique files per resample, biasing the
+CI's upper tail slightly below the point estimate. We retain the
+wider CI rather than tighten by switching to a subsample-without-
+replacement scheme; the qualitative ranking of pairs (v6/v7
+lowest, v5/v6 highest) is preserved across point estimates, lower
+bounds, and upper bounds. The full reproduction artefact is in
+\path{chardet-relicense/manuscript/figures/scripts/validate_numbers.py}
+and the per-pair CI metadata is recorded under
+\path{independent.<signal>.bootstrap_ci_95.<pair>} in
+\path{validation_report.v2.json}.
 
 \begin{figure}[h]
 \centering
@@ -971,10 +1301,29 @@ parallel; one layer-2 unit emits the combined witness.}
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.78\textwidth]{figures/fig2_topology_features.pdf}
-\caption{C06a call-graph topology features for chardet v6 and v7.
-v7 is larger on every feature (more nodes, more edges, larger maximum
-in-degree) but the relative differences are small enough to yield a
-mean similarity of 0.881.}
+\caption{C06a call-graph topology features across the three v2
+calibration pairs. Each subplot shows one of six topology features
+on its own linear y-axis, with grouped bars for v6/v7 (the headline
+pair), v5/v6 (routine same-project evolution), and
+v6/charset\_normalizer (independent same-domain reimplementation);
+the left bar of each pair is side A, the right bar is side B. v7 is
+uniformly larger than v6 on every feature (more nodes, more edges,
+higher mean and max degree, slightly higher density), v5 is
+uniformly smaller than v6 on the same axes, and
+charset\_normalizer sits below v6 on every feature except max
+out-degree. The per-feature pattern is consistent with the
+calibration narrative: structural growth between consecutive
+chardet majors looks similar in \emph{shape} to a from-scratch
+independent rewrite of the same domain --- neither pair shows a
+discriminating topology-feature signature on its own, which is
+precisely why C06f's per-function match rate, not C06a's bulk
+topology, ends up doing the discriminating work. Two of the
+eight \texttt{\_graph\_topology()} features are dropped from the
+panel because they are redundant on these graphs: \texttt{sccs}
+equals \texttt{nodes} (no recursion cycles), and
+\texttt{mean\_out\_degree} equals \texttt{mean\_in\_degree} by
+graph identity (sum of in-degrees = sum of out-degrees = $|E|$);
+the single ``mean degree'' panel represents both.}
 \label{fig:topology}
 \end{figure}
 
@@ -1488,16 +1837,28 @@ reviewer can re-derive from the artefacts a court would actually see.
 \section{Limitations and Future Work}
 \label{sec:limits-future}
 
-The harness is Python-specific; a Rust or Go target would need a
-distinct AST walker and a re-specification of which AST node types
-constitute the relevant control-flow vocabulary. The DAG-TOML
-scaffolding is language-neutral; only the extractor needs to change.
+The harness's reference extractor is Python-specific, although the
+v2 revision restructures the extractor around a language-neutral
+walker protocol; see \cref{sec:walker-seam} for the seam. The
+DAG-TOML scaffolding has always been language-neutral; the v2
+revision brings the extractor to the same standard structurally,
+even though only the Python reference walker is shipped.
 
-C06a is module-level. A surgical per-function paraphrase that
-preserves the module-level call graph is not caught. Function-level
-graph features --- per-function AST shape distances, body-token
-distributions, per-method signature equivalence on classes --- would
-close this gap and are the obvious next step.
+The v1 paper observed that C06a is module-level and that a
+surgical per-function paraphrase preserving the module-level call
+graph could go undetected. The v2 revision closes that gap with
+C06f (\cref{sec:c06f}), which reports a per-function match rate
+and a within-match similarity score; the v6/v7 result
+(\cref{sec:results-calibration}) is the worked instance. A
+further refinement --- per-method signature equivalence on
+classes --- is also folded into the v2 C06d (per-method walker,
+\cref{tab:multi-pair-calibration}).
+
+The C06d signal does not adjudicate when the two
+\texttt{\_\_all\_\_} class sets are fundamentally different;
+the v6/charset\_normalizer pair is the worked degeneracy
+(\cref{sec:c06d}). When public-API shapes are disjoint the
+calibration evidence has to come from elsewhere in the suite.
 
 C06e requires the test runner to be able to \texttt{pip install} both
 versions from local worktrees. Where that fails (missing native
@@ -1506,10 +1867,14 @@ not \texttt{FAIL}, and the gate distinguishes the two. A future
 revision could ship pre-built wheels of both versions and avoid the
 \texttt{pip install} step entirely.
 
-The behavioural fingerprint uses uniformly random bytes. A targeted
-input fuzzer that produces inputs known to exercise specific code
-paths in both versions would be strictly stronger. We did not build
-one; we note the gap.
+The behavioural fingerprint's v1 random-bytes workload is now
+complemented by a realistic corpus (HTML, multilingual text, RFC
+bodies, email; $n=64$) introduced in v2 in response to reviewer
+concern R3 that random bytes are the wrong workload for an
+encoding detector. A larger realistic corpus and a targeted input
+fuzzer that produces inputs known to exercise specific code paths
+in both versions would each be strictly stronger; both remain
+future work.
 
 The harness addresses output similarity. It does not address training
 data provenance. A future signal that joined the harness's output to
@@ -1517,6 +1882,67 @@ a sufficiently large model-training-data audit --- which the
 deployment context for closed models does not currently permit ---
 would address the question the FSF position
 raises~\cite{theregister2026chardet}.
+
+\subsection{Toward language-neutral extraction}
+\label{sec:walker-seam}
+
+The structural-similarity signals C06a, C06a$'$, C06b, C06c, C06d
+and C06f all consume one specific view of the implementation under
+test (a call graph, an import edge set, a control-flow node
+histogram, a public-API signature surface, or a per-function shape
+record). In the v1 paper these views were extracted directly via
+Python's \texttt{ast} module, hard-coding the implementation
+language into the signal definitions even though the signal
+\emph{contracts} are language-agnostic (a call graph is a call
+graph in any language). Phase 1b of the v2 revision restructures
+the extractor around an \texttt{ASTWalker} protocol
+(\cref{fig:walker}): each signal calls only
+\texttt{walker.iter\_call\_edges()},
+\texttt{walker.iter\_control\_flow\_nodes()},
+\texttt{walker.iter\_public\_api()},
+\texttt{walker.iter\_imports()},
+\texttt{walker.iter\_class\_methods()}, or
+\texttt{walker.iter\_function\_signatures()}, with no signal
+touching an \texttt{ast.*} type or any other language-specific
+parser API directly. The reference instance,
+\texttt{PythonASTWalker}, satisfies the protocol via the
+existing Python \texttt{ast} traversals (each protocol method maps
+to a well-defined set of AST node classes; the diagram annotates
+the mapping). Two hypothetical sibling instances,
+\texttt{TreeSitterRustWalker} (Rust via \texttt{syn} or
+tree-sitter) and \texttt{GoASTWalker} (Go via \texttt{go/ast}),
+are shown as un-implemented stubs alongside the Python walker;
+each protocol method is annotated with the language-native
+construct (\texttt{syn::ExprCall}, \texttt{go/ast.CallExpr}, etc.)
+a plugin author would need to wire up. We do \textbf{not} ship
+Rust or Go implementations; the claim being verified is
+structural, not empirical: that the signal definitions, as a
+body of code, no longer entangle the choice of implementation
+language with the choice of similarity contract. The refactor
+preserves every numeric output byte-for-byte against the
+pre-refactor harness --- the same point estimates, the same
+percentile-bootstrap CIs, and the same per-method verdict counts
+--- so it is a purely structural intervention. Reviewer concern
+R15 (the v1 ``language-neutral spec'' claim was unverified in
+code) is thereby answered by exhibiting the seam; the v1 prose
+is preserved unchanged and is now substantiated by the code
+structure.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.78\textwidth]{figures/fig5_walker_architecture.pdf}
+\caption{The v2 \texttt{ASTWalker} protocol seam. Each
+structural-similarity signal calls only the protocol's six
+language-neutral iterator methods; the reference
+\texttt{PythonASTWalker} satisfies the protocol via the existing
+Python \texttt{ast} traversals, and two hypothetical sibling
+instances (\texttt{TreeSitterRustWalker},
+\texttt{GoASTWalker}) are shown with the language-native
+construct each protocol method would map to. The Rust and Go
+walkers are illustrative stubs only --- the v2 paper ships the
+Python reference walker.}
+\label{fig:walker}
+\end{figure}
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -1607,9 +2033,13 @@ failed before completion with an upstream \texttt{TerminalQuotaError},
 so Gemini's verdict on the final paper version is not part of the
 record at submission time. We note the gap explicitly rather than
 silently omitting it. All three reviewers shared the same MCP set
-(\texttt{sqry}, \texttt{ref\_tools}, \texttt{exa}); the
-itemised list of issues each reviewer caught is preserved in the
-v2 review packet in the repository's commit history.
+(\texttt{sqry}, \texttt{ref\_tools}, \texttt{exa}); the itemised
+list of issues each reviewer caught is preserved in the v2 review
+packet at
+\path{chardet-relicense/manuscript/v2-phase1a-review-packet.md}
+and
+\path{chardet-relicense/manuscript/v2-phase1a-review-round2-responses.md}
+in the same repository.
 
 The multi-LLM review is a methodological note, not an external
 peer review and not a guarantee of correctness. Disclosing it is
