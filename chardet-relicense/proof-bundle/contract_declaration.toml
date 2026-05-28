@@ -51,6 +51,15 @@ must_name   = ["topology similarity score", "v6 node count", "v7 node count", "v
 verified_by = ["TEST:chardet-relicense::structural-signals"]
 
 [[contracts]]
+id          = "C06a'"
+domain      = "call_graph_wl_kernel"
+statement   = "The proof MUST compute a Weisfeiler-Lehman subtree-kernel similarity over the same directed call graph C06a operates on, using a directed-WL variant that combines each node's in-neighbour-label multiset and out-neighbour-label multiset separately at the refinement step (so edge direction is preserved). Initial labels are the (in-degree, out-degree) tuple so the kernel is invariant to identifier renaming. After k=4 refinement iterations the proof MUST report (a) the cosine similarity of the multiset union of refined labels across iterations (the standard WL feature map), and (b) the per-iteration cosine breakdown as a diagnostic. WL is strictly stronger than C06a's 8-feature topology summary: two graphs with identical degree distribution and SCC count can collide on C06a but separate under WL because WL captures neighbourhood structure. Implementation MUST be pure-stdlib (hashlib + collections.Counter); the proof MUST NOT introduce a new pip dependency just for this signal. The signal is reported ALONGSIDE C06a, not as a replacement — reviewers should see the coarse and refined numbers side by side."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["C06a"]
+must_name   = ["wl cosine similarity", "k iterations", "v6 label count", "v7 label count", "per-iteration cosine breakdown"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
 id          = "C06b"
 domain      = "import_edge_set"
 statement   = "The proof MUST compute the Jaccard overlap of the set of third-party (non-stdlib, non-self) top-level module names each version imports across its implementation surface. Preserved external dependencies are evidence the rewrite kept the original's environmental contract; a divergent set is evidence the rewrite re-platformed."
@@ -75,6 +84,15 @@ statement   = "For each public symbol exported by both versions (the intersectio
 applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
 depends_on  = ["AUX1"]
 must_name   = ["shared count", "strict count", "renamed_args count", "diverged count"]
+verified_by = ["TEST:chardet-relicense::structural-signals"]
+
+[[contracts]]
+id          = "C06f"
+domain      = "per_function_ast_shape"
+statement   = "The proof MUST extract a per-function AST shape signature for every FunctionDef/AsyncFunctionDef in each version (node-type histogram over the function body across a fixed AST node-class catalogue, max AST depth of the body, body statement count) and annotate each function with its call-graph fan-in and fan-out from the same call graph C06a builds. The proof MUST match functions across versions by the tuple (signature_shape_hash, fan_in_bucket, fan_out_bucket) where signature_shape_hash is derived from positional-arg count, keyword-only-arg count, default count, vararg presence, kwarg presence, and annotation count, and fan_*_bucket is the log-floor bucket of the degree. The proof MUST NOT match by function name — paraphrase often renames, and name-matching defeats the cross-version test. Within each match-key bucket the proof MUST pair v6 and v7 functions greedily by smallest shape-distance and MUST report unmatched-function counts on both sides honestly (no fallback to looser buckets or to name-based matching). Reported numbers: matched-pair count, v6 / v7 function counts, unmatched-v6 / unmatched-v7 counts, mean shape distance over matched pairs, per-function similarity (1 minus mean distance), and the fraction of matched pairs whose names happen to coincide (diagnostic — high values mean name was implicitly available even though we did not use it for matching)."
+applies_to  = ["chardet-relicense/proof-bundle/extract_signals.py"]
+depends_on  = ["C06a"]
+must_name   = ["matched pair count", "v6 function count", "v7 function count", "unmatched v6 count", "unmatched v7 count", "per-function similarity", "mean pair distance", "same-name overlap among matched pairs"]
 verified_by = ["TEST:chardet-relicense::structural-signals"]
 
 [[contracts]]

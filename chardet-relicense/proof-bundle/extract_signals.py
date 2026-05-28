@@ -52,6 +52,27 @@ Signals:
             histograms — survives renaming because node *types* are
             stable across function/identifier renaming.
 
+    C06a' — call_graph_wl_kernel  (added in V2 revision, R1 response)
+            A Weisfeiler-Lehman graph-kernel similarity over the same
+            directed call graphs C06a operates on. Unlike C06a's coarse
+            8-feature topology summary (which two non-isomorphic graphs
+            can collide on), WL hashes a multi-scale rooted-subtree
+            signature for every node and reports a cosine similarity
+            over the multiset of refined labels. k iterations of label
+            propagation distinguish graphs that agree on degree
+            distribution but differ on neighbourhood structure.
+            Implementation is pure-stdlib (hashlib + collections), no
+            new dependency.
+
+    C06f — per_function_ast_shape  (added in V2 revision, R16 response)
+            Per-function AST shape features (node-type histogram,
+            function-body depth, fan-in / fan-out in the call graph).
+            Cross-version function matching is by signature-shape hash
+            and call-graph position bucket, NOT by name (paraphrase
+            often renames). The signal reports both an aggregate
+            shape-distance over matched pairs AND an honest count of
+            unmatched functions on either side.
+
     C06d — public_api_signature_equivalence
             For each public symbol exported by both versions (the
             intersection of the two `__all__` lists), compare the
@@ -273,6 +294,442 @@ def signal_c06a_call_graph(v6: pathlib.Path, v7: pathlib.Path) -> dict:
         "actual": f"similarity={similarity:.3f} v6_nodes={int(t6['nodes'])} v7_nodes={int(t7['nodes'])} v6_edges={int(t6['edges'])} v7_edges={int(t7['edges'])}",
         "verdict": "MEASURED",
         "evidence": "; ".join(f"{k}: v6={t6[k]:.3g} v7={t7[k]:.3g} reldiff={diffs[k]:.3f}" for k in ("density", "sccs", "mean_in_degree", "max_in_degree")),
+    }
+
+
+# ----------------------------------------------------------------------------
+# C06a' — Weisfeiler-Lehman call-graph kernel (V2 revision, R1 response)
+#
+# C06a's 8-feature summary (n, m, density, |SCC|, mean/max in/out-degree)
+# is a *coarse* topology fingerprint: two non-isomorphic graphs with very
+# different connection patterns can still collide on those scalars. The
+# Weisfeiler-Lehman graph-kernel test refines node labels by iteratively
+# hashing each node's label together with the multiset of its neighbours'
+# labels. After k iterations the label of a node is a rooted-subtree
+# signature of depth k; the multiset of labels over the whole graph is
+# its k-hop fingerprint. Comparing the two multisets by cosine similarity
+# over the union of labels gives a graph-similarity score that is
+# strictly stronger than the topology summary — graphs that agree on
+# degree distribution but disagree on neighbourhood structure separate
+# under WL whereas they collide under C06a.
+#
+# Reference: Shervashidze et al., "Weisfeiler-Lehman Graph Kernels",
+# JMLR 2011. The standard formulation is for undirected labelled graphs;
+# we apply it to the directed call graph by combining each node's
+# in-neighbour-label-multiset and out-neighbour-label-multiset
+# separately at the refinement step, so direction is preserved. The
+# implementation is pure-stdlib (hashlib + collections.Counter) and adds
+# no new pip dependency — the networkx digraph C06a already builds is
+# all we need.
+#
+# k=4 chosen so the rooted subtree depth exceeds the typical call-chain
+# depth in chardet's detector pipeline (UniversalDetector -> charset
+# prober -> coding state machine -> distribution analyser is ~4 hops).
+# Lower k undercounts deep paraphrase; k>4 saturates because most
+# call-graph branches die out at depth 4 in this codebase.
+# ----------------------------------------------------------------------------
+
+# Number of WL refinement iterations. Documented above.
+_WL_ITERATIONS = 4
+
+
+def _wl_initial_label(g: nx.DiGraph, node: str) -> str:
+    """Initial label is the (in-degree, out-degree) tuple. Names are
+    NOT used: a renamed function in v7 still has the same degree
+    profile, which is the whole point — WL refines from a renaming-
+    invariant starting label."""
+    return f"d:{g.in_degree(node)}|{g.out_degree(node)}"
+
+
+def _wl_refine(g: nx.DiGraph, labels: dict[str, str]) -> dict[str, str]:
+    """One round of WL label refinement on a directed graph.
+
+    New label is sha256 of: (own label, sorted in-neighbour labels,
+    sorted out-neighbour labels). Truncated to 16 hex chars (still
+    collision-safe at this graph size) to keep the label dictionary
+    small in memory.
+    """
+    new: dict[str, str] = {}
+    for u in g.nodes():
+        in_labels = sorted(labels[v] for v in g.predecessors(u))
+        out_labels = sorted(labels[v] for v in g.successors(u))
+        payload = (
+            labels[u] + "|<|" + ",".join(in_labels) +
+            "|>|" + ",".join(out_labels)
+        ).encode("utf-8")
+        new[u] = hashlib.sha256(payload).hexdigest()[:16]
+    return new
+
+
+def _wl_label_multiset(g: nx.DiGraph, k: int = _WL_ITERATIONS
+                       ) -> Counter[str]:
+    """Run k iterations of WL refinement on `g` and return the
+    *bag-of-labels* over all iterations (including the initial label).
+    The Shervashidze WL-subtree kernel feature map is exactly the
+    multiset union over iterations, so cosine on these multisets
+    matches the published kernel."""
+    if g.number_of_nodes() == 0:
+        return Counter()
+    labels = {u: _wl_initial_label(g, u) for u in g.nodes()}
+    bag: Counter[str] = Counter(labels.values())
+    for _ in range(k):
+        labels = _wl_refine(g, labels)
+        bag.update(labels.values())
+    return bag
+
+
+def _multiset_cosine(a: Counter[str], b: Counter[str]) -> float:
+    """Cosine similarity over two label multisets (sparse dot product)."""
+    if not a or not b:
+        return 0.0
+    common = set(a) & set(b)
+    dot = sum(a[k] * b[k] for k in common)
+    na = math.sqrt(sum(v * v for v in a.values()))
+    nb = math.sqrt(sum(v * v for v in b.values()))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def signal_c06a_prime_wl_kernel(v6: pathlib.Path,
+                                 v7: pathlib.Path) -> dict:
+    """C06a' — Weisfeiler-Lehman kernel similarity over the v6 and v7
+    call graphs. Reported alongside C06a so reviewers can see the
+    coarse-vs-refined signal pair side by side."""
+    g6 = _build_call_graph(v6)
+    g7 = _build_call_graph(v7)
+    bag6 = _wl_label_multiset(g6, _WL_ITERATIONS)
+    bag7 = _wl_label_multiset(g7, _WL_ITERATIONS)
+    cos = _multiset_cosine(bag6, bag7)
+
+    # Per-iteration breakdown — useful diagnostic. We re-run iterations
+    # separately so reviewers can see whether the similarity collapses
+    # after the first refinement (indicating only degree-level
+    # agreement) or holds up through deep refinement (indicating
+    # genuine neighbourhood-structure agreement).
+    per_iter_cos: list[float] = []
+    if g6.number_of_nodes() and g7.number_of_nodes():
+        l6 = {u: _wl_initial_label(g6, u) for u in g6.nodes()}
+        l7 = {u: _wl_initial_label(g7, u) for u in g7.nodes()}
+        per_iter_cos.append(_multiset_cosine(Counter(l6.values()),
+                                             Counter(l7.values())))
+        for _ in range(_WL_ITERATIONS):
+            l6 = _wl_refine(g6, l6)
+            l7 = _wl_refine(g7, l7)
+            per_iter_cos.append(_multiset_cosine(Counter(l6.values()),
+                                                 Counter(l7.values())))
+
+    breakdown = ", ".join(f"iter{i}={c:.3f}" for i, c in
+                          enumerate(per_iter_cos))
+    return {
+        "signal": "call_graph_wl_kernel",
+        "contract": "C06a'",
+        "expected": (
+            "report WL-subtree kernel cosine similarity over the v6/v7 "
+            f"call graphs, k={_WL_ITERATIONS} refinement iterations"
+        ),
+        "actual": (
+            f"wl_cosine={cos:.3f} k={_WL_ITERATIONS} "
+            f"v6_labels={sum(bag6.values())} v7_labels={sum(bag7.values())}"
+        ),
+        "verdict": "MEASURED",
+        "evidence": (f"per-iteration cosine: {breakdown}" if breakdown
+                     else "empty call graph(s)"),
+    }
+
+
+# ----------------------------------------------------------------------------
+# C06f — per-function AST shape (V2 revision, R16 response)
+#
+# C06a / C06a' operate at module-level granularity: they ask "does the
+# whole call graph have the same shape". That misses surgical
+# per-function paraphrase — e.g. an AI rewrite where every function is
+# individually renamed AND restructured but the module-level call graph
+# is preserved end-to-end. C06f drops below the module to extract a
+# *per-function* shape signature: the histogram of AST node types
+# inside the function body, the maximum AST depth of the body, and the
+# function's fan-in / fan-out in the call graph.
+#
+# Cross-version function matching is the hard part: paraphrase often
+# renames functions, so matching by name is unsafe. Instead each
+# function is keyed by:
+#   (signature_shape_hash, fan_in_bucket, fan_out_bucket)
+# where:
+#   signature_shape_hash := (n_pos, n_kw_only, n_defaults, has_vararg,
+#                            has_kwarg, n_annotations)
+#   fan_in_bucket  := log-floor of in-degree   (0, 1, 2-3, 4-7, 8-15, ...)
+#   fan_out_bucket := log-floor of out-degree  (same buckets)
+# Functions with identical match keys are paired greedily by Hungarian
+# (we use a simpler stable greedy here — sample is small). Unmatched
+# functions on either side are reported as honest counts; we do NOT
+# fall back to name-matching them.
+# ----------------------------------------------------------------------------
+
+# AST node types we score for the per-function shape histogram.
+_FUNC_SHAPE_NODES = (
+    ast.If, ast.For, ast.While, ast.Try, ast.ExceptHandler, ast.With,
+    ast.AsyncWith, ast.AsyncFor, ast.Return, ast.Yield, ast.YieldFrom,
+    ast.Raise, ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Call,
+    ast.BoolOp, ast.BinOp, ast.UnaryOp, ast.Compare, ast.Lambda,
+    ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
+    ast.Subscript, ast.Attribute, ast.Name, ast.Constant,
+    ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+)
+if hasattr(ast, "Match"):
+    _FUNC_SHAPE_NODES = (*_FUNC_SHAPE_NODES, ast.Match)
+
+
+def _ast_depth(node: ast.AST) -> int:
+    """Max depth of `node`'s AST subtree, counting the node itself as 1."""
+    children = list(ast.iter_child_nodes(node))
+    if not children:
+        return 1
+    return 1 + max(_ast_depth(c) for c in children)
+
+
+def _signature_shape_key(node: ast.FunctionDef | ast.AsyncFunctionDef
+                          ) -> tuple:
+    a = node.args
+    n_pos = len(a.args) + len(a.posonlyargs) if hasattr(a, "posonlyargs") else len(a.args)
+    n_kw_only = len(a.kwonlyargs)
+    n_defaults = len(a.defaults) + sum(1 for d in a.kw_defaults if d is not None)
+    has_vararg = a.vararg is not None
+    has_kwarg = a.kwarg is not None
+    n_annotations = sum(1 for arg in (
+        list(a.args) + list(a.kwonlyargs)
+        + ([a.vararg] if a.vararg else [])
+        + ([a.kwarg] if a.kwarg else [])
+    ) if arg and arg.annotation is not None)
+    return (n_pos, n_kw_only, n_defaults, has_vararg, has_kwarg,
+            n_annotations)
+
+
+def _degree_bucket(deg: int) -> int:
+    """Log-floor bucket: 0 -> 0, 1 -> 1, 2..3 -> 2, 4..7 -> 3, ..."""
+    if deg <= 0:
+        return 0
+    return int(math.floor(math.log2(deg))) + 1
+
+
+class _FunctionShapeCollector(ast.NodeVisitor):
+    """Walk a module and record every FunctionDef / AsyncFunctionDef.
+
+    For each function we keep:
+        qual_name       — module.path.Class.func (used only for evidence
+                          strings, NEVER for cross-version matching)
+        sig_shape       — signature-shape tuple (see above)
+        body_hist       — Counter of AST node-type names within the body
+        depth           — max AST depth of the function body
+        n_stmts         — number of top-level body statements
+    """
+
+    def __init__(self, module_name: str):
+        self.module_name = module_name
+        self.scope: list[str] = [module_name]
+        self.functions: list[dict] = []
+
+    def _record(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        qual = _qualified_name(self.scope, node.name)
+        hist: Counter[str] = Counter()
+        for child in node.body:
+            for n in ast.walk(child):
+                for cls in _FUNC_SHAPE_NODES:
+                    if isinstance(n, cls):
+                        hist[cls.__name__] += 1
+                        break
+        depth = max((_ast_depth(s) for s in node.body), default=0)
+        self.functions.append({
+            "qual_name": qual,
+            "name": node.name,
+            "sig_shape": _signature_shape_key(node),
+            "body_hist": hist,
+            "depth": depth,
+            "n_stmts": len(node.body),
+        })
+        # Recurse into nested defs.
+        self.scope.append(node.name)
+        for child in node.body:
+            self.visit(child)
+        self.scope.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._record(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._record(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.scope.append(node.name)
+        for child in node.body:
+            self.visit(child)
+        self.scope.pop()
+
+
+def _collect_functions(root: pathlib.Path) -> list[dict]:
+    """Return list of per-function shape records across the whole tree."""
+    out: list[dict] = []
+    for p in iter_impl_py_files(root):
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8", errors="replace"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        module_name = p.relative_to(root).with_suffix("").as_posix().replace("/", ".")
+        c = _FunctionShapeCollector(module_name)
+        c.visit(tree)
+        out.extend(c.functions)
+    return out
+
+
+def _attach_call_graph_position(functions: list[dict],
+                                 g: nx.DiGraph) -> None:
+    """Annotate each function with fan_in / fan_out / buckets, using
+    qualified name to look up in the call graph (qual_name is how the
+    call graph keys functions). If the function isn't a node in g
+    (callee-only stubs may not be registered), we treat its in/out
+    degree as 0 — same as a leaf."""
+    for f in functions:
+        qn = f["qual_name"]
+        if qn in g.nodes:
+            f["fan_in"] = g.in_degree(qn)
+            f["fan_out"] = g.out_degree(qn)
+        else:
+            f["fan_in"] = 0
+            f["fan_out"] = 0
+        f["fan_in_bucket"] = _degree_bucket(f["fan_in"])
+        f["fan_out_bucket"] = _degree_bucket(f["fan_out"])
+        f["match_key"] = (f["sig_shape"], f["fan_in_bucket"],
+                          f["fan_out_bucket"])
+
+
+def _hist_cosine(a: Counter[str], b: Counter[str]) -> float:
+    keys = set(a) | set(b)
+    dot = sum(a.get(k, 0) * b.get(k, 0) for k in keys)
+    na = math.sqrt(sum(v * v for v in a.values()))
+    nb = math.sqrt(sum(v * v for v in b.values()))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _pair_distance(f6: dict, f7: dict) -> float:
+    """Distance in [0,1]: lower = more similar. Components:
+      - cosine on body histograms (weight 0.6)
+      - relative diff on depth     (weight 0.2)
+      - relative diff on n_stmts   (weight 0.2)
+    """
+    cos = _hist_cosine(f6["body_hist"], f7["body_hist"])
+    rd_depth = _relative_diff(float(f6["depth"]), float(f7["depth"]))
+    rd_stmts = _relative_diff(float(f6["n_stmts"]), float(f7["n_stmts"]))
+    return 0.6 * (1.0 - cos) + 0.2 * rd_depth + 0.2 * rd_stmts
+
+
+def _match_functions(v6_funcs: list[dict],
+                     v7_funcs: list[dict]
+                     ) -> tuple[list[tuple[dict, dict, float]],
+                                list[dict], list[dict]]:
+    """Greedy stable matching by (sig_shape, fan_in_bucket,
+    fan_out_bucket). Within each match-key bucket, pairs are formed by
+    smallest pair-distance first. Unmatched functions on either side
+    are returned honestly — we do NOT fall back to name-based matching
+    or to coarser buckets, because the whole point of C06f is to test
+    cross-version shape preservation under paraphrase, and inflating
+    the match count via name-based fallback would defeat that."""
+    buckets_v6: defaultdict[tuple, list[dict]] = defaultdict(list)
+    buckets_v7: defaultdict[tuple, list[dict]] = defaultdict(list)
+    for f in v6_funcs:
+        buckets_v6[f["match_key"]].append(f)
+    for f in v7_funcs:
+        buckets_v7[f["match_key"]].append(f)
+
+    pairs: list[tuple[dict, dict, float]] = []
+    used_v7: set[int] = set()
+    used_v6: set[int] = set()
+    for key, lst6 in buckets_v6.items():
+        lst7 = buckets_v7.get(key, [])
+        if not lst7:
+            continue
+        # Score every v6-v7 candidate pair in this bucket, sort, accept
+        # in increasing-distance order (each side picked at most once).
+        candidates: list[tuple[float, int, int]] = []
+        for i, f6 in enumerate(lst6):
+            for j, f7 in enumerate(lst7):
+                candidates.append((_pair_distance(f6, f7), i, j))
+        candidates.sort()
+        taken_i: set[int] = set()
+        taken_j: set[int] = set()
+        for dist, i, j in candidates:
+            if i in taken_i or j in taken_j:
+                continue
+            taken_i.add(i)
+            taken_j.add(j)
+            pairs.append((lst6[i], lst7[j], dist))
+            used_v6.add(id(lst6[i]))
+            used_v7.add(id(lst7[j]))
+
+    unmatched_v6 = [f for f in v6_funcs if id(f) not in used_v6]
+    unmatched_v7 = [f for f in v7_funcs if id(f) not in used_v7]
+    return pairs, unmatched_v6, unmatched_v7
+
+
+def signal_c06f_per_function_shape(v6: pathlib.Path,
+                                    v7: pathlib.Path) -> dict:
+    """C06f — per-function AST-shape signal.
+
+    Reports:
+      - total function counts (v6, v7)
+      - matched-pair count (by signature-shape + call-graph position)
+      - aggregate mean shape distance over matched pairs
+      - unmatched-function counts on each side (honest — no
+        name-based fallback)
+      - same-name overlap as a *diagnostic* number (to expose how
+        much of the matching is identifier-driven vs structural)
+    """
+    g6 = _build_call_graph(v6)
+    g7 = _build_call_graph(v7)
+    f6 = _collect_functions(v6)
+    f7 = _collect_functions(v7)
+    _attach_call_graph_position(f6, g6)
+    _attach_call_graph_position(f7, g7)
+
+    pairs, un6, un7 = _match_functions(f6, f7)
+
+    if pairs:
+        mean_dist = sum(d for _, _, d in pairs) / len(pairs)
+        # Also expose what fraction of matches are name-identical, as
+        # an honesty diagnostic — high overlap means name was implicitly
+        # available to the matcher even though we didn't use it.
+        same_name_overlap = sum(
+            1 for a, b, _ in pairs if a["name"] == b["name"]
+        ) / len(pairs)
+    else:
+        mean_dist = 1.0  # worst-case: nothing matched
+        same_name_overlap = 0.0
+
+    # The similarity figure inverts mean distance to align with C06a/C06c
+    # convention (1.0 = identical, 0.0 = unrelated).
+    similarity = max(0.0, 1.0 - mean_dist)
+
+    return {
+        "signal": "per_function_ast_shape",
+        "contract": "C06f",
+        "expected": (
+            "report per-function shape similarity over functions matched "
+            "by (signature-shape, fan-in-bucket, fan-out-bucket) and "
+            "honest unmatched-function counts on both sides"
+        ),
+        "actual": (
+            f"per_function_similarity={similarity:.3f} "
+            f"matched_pairs={len(pairs)} "
+            f"v6_functions={len(f6)} v7_functions={len(f7)} "
+            f"unmatched_v6={len(un6)} unmatched_v7={len(un7)}"
+        ),
+        "verdict": "MEASURED",
+        "evidence": (
+            f"mean_pair_distance={mean_dist:.3f}; "
+            f"same_name_overlap_among_matched={same_name_overlap:.3f}; "
+            f"matched/v6={len(pairs)}/{len(f6)} "
+            f"matched/v7={len(pairs)}/{len(f7)}"
+        ),
     }
 
 
@@ -595,10 +1052,16 @@ def main() -> int:
     signals = [
         signal_aux1_literal_carry(v6, v7),
         signal_c06a_call_graph(v6, v7),
+<<<<<<< HEAD
         signal_c06b_import_edges(v6, v7, pkg_a, pkg_b),
+=======
+        signal_c06a_prime_wl_kernel(v6, v7),
+        signal_c06b_import_edges(v6, v7),
+>>>>>>> v2-phase1a-bp
         signal_c06c_control_flow(v6, v7),
         signal_c06d_signature_equivalence(v6, v7, pkg_a, pkg_b),
         signal_c06e_behavioural_skip(v6, v7),
+        signal_c06f_per_function_shape(v6, v7),
     ]
 
     print("signal\tcontract\texpected\tactual\tverdict\tevidence")

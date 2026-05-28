@@ -48,8 +48,21 @@ from typing import Any
 
 # Import the harness signal extractors so we can call them directly.
 HERE = pathlib.Path(__file__).resolve()
-REPO_ROOT = HERE.parents[3]  # chardet-relicense/manuscript/figures/scripts/ -> repo root
-PROOF_DIR = REPO_ROOT / "chardet-relicense" / "proof-bundle"
+# Locate the proof-bundle by upward search so the script is robust to being
+# run from a worktree or via a symlink. The previous form
+# (`REPO_ROOT = HERE.parents[3]` then `REPO_ROOT / "chardet-relicense" /
+# "proof-bundle"`) doubled the `chardet-relicense/` segment because
+# parents[3] is itself `chardet-relicense/`, producing
+# `chardet-relicense/chardet-relicense/proof-bundle` which does not exist.
+def _find_proof_dir(start: pathlib.Path) -> pathlib.Path:
+    for ancestor in [start, *start.parents]:
+        candidate = ancestor / "chardet-relicense" / "proof-bundle"
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(
+        f"could not locate chardet-relicense/proof-bundle above {start}")
+PROOF_DIR = _find_proof_dir(HERE)
+REPO_ROOT = PROOF_DIR.parents[1]
 sys.path.insert(0, str(PROOF_DIR))
 
 import extract_signals as ex  # noqa: E402
@@ -182,6 +195,162 @@ def recompute_c06a(v6: pathlib.Path,
         "v7_features": f7,
         "rel_diffs": rel_diffs,
         "similarity": similarity,
+    }
+
+
+def recompute_c06a_prime(v6: pathlib.Path,
+                          v7: pathlib.Path) -> dict[str, Any]:
+    """Independently recompute C06a' (WL kernel) using networkx
+    primitives rather than the harness's pure-stdlib WL routine. The
+    cross-check is structural: we re-derive the WL labels by hand using
+    the same (in-degree, out-degree) initial labelling and the same
+    iterative refinement rule, but we drive the iteration from a fresh
+    networkx digraph traversal and use sha256 directly. If the harness
+    and this re-derivation produce different cosine numbers, that's a
+    bug somewhere. The kernel choice is *the same algorithm* — there is
+    no independent third-party WL kernel in scipy/numpy to cross-check
+    against, so we cross-check the implementation against itself driven
+    from different traversal orders, which catches at minimum any
+    accidental dependence on dict ordering.
+    """
+    g6 = ex._build_call_graph(v6)
+    g7 = ex._build_call_graph(v7)
+
+    def wl(g: nx.DiGraph, k: int) -> tuple[Counter, list[float], dict]:
+        if g.number_of_nodes() == 0:
+            return Counter(), [], {}
+        labels = {u: f"d:{g.in_degree(u)}|{g.out_degree(u)}"
+                  for u in g.nodes()}
+        bag: Counter = Counter(labels.values())
+        per_iter_labels = [dict(labels)]
+        for _ in range(k):
+            new = {}
+            for u in g.nodes():
+                in_l = sorted(labels[v] for v in g.predecessors(u))
+                out_l = sorted(labels[v] for v in g.successors(u))
+                payload = (labels[u] + "|<|" + ",".join(in_l)
+                           + "|>|" + ",".join(out_l)).encode("utf-8")
+                new[u] = hashlib.sha256(payload).hexdigest()[:16]
+            labels = new
+            bag.update(labels.values())
+            per_iter_labels.append(dict(labels))
+        return bag, [], {"per_iter": per_iter_labels}
+
+    bag6, _, info6 = wl(g6, ex._WL_ITERATIONS)
+    bag7, _, info7 = wl(g7, ex._WL_ITERATIONS)
+
+    def cosine_multiset(a: Counter, b: Counter) -> float:
+        if not a or not b:
+            return 0.0
+        common = set(a) & set(b)
+        dot = sum(a[k] * b[k] for k in common)
+        na = math.sqrt(sum(v * v for v in a.values()))
+        nb = math.sqrt(sum(v * v for v in b.values()))
+        if na == 0 or nb == 0:
+            return 0.0
+        return dot / (na * nb)
+
+    cos = cosine_multiset(bag6, bag7)
+
+    per_iter_cos = []
+    iters6 = info6.get("per_iter", [])
+    iters7 = info7.get("per_iter", [])
+    for li6, li7 in zip(iters6, iters7):
+        per_iter_cos.append(cosine_multiset(Counter(li6.values()),
+                                            Counter(li7.values())))
+
+    # Independent cross-check via numpy on the union-of-labels vector.
+    keys = sorted(set(bag6) | set(bag7))
+    v6_vec = np.array([bag6.get(k, 0) for k in keys], dtype=float)
+    v7_vec = np.array([bag7.get(k, 0) for k in keys], dtype=float)
+    if v6_vec.any() and v7_vec.any():
+        cos_scipy = 1.0 - float(scipy_cosine(v6_vec, v7_vec))
+    else:
+        cos_scipy = 0.0
+
+    return {
+        "k_iterations": ex._WL_ITERATIONS,
+        "v6_label_count": int(sum(bag6.values())),
+        "v7_label_count": int(sum(bag7.values())),
+        "wl_cosine": cos,
+        "wl_cosine_scipy_crosscheck": cos_scipy,
+        "agrees": math.isclose(cos, cos_scipy, rel_tol=1e-9),
+        "per_iteration_cosine": per_iter_cos,
+    }
+
+
+def recompute_c06f(v6: pathlib.Path,
+                   v7: pathlib.Path) -> dict[str, Any]:
+    """Independently recompute C06f primitives. We re-derive
+    per-function records via the harness collector but verify the
+    matching invariants externally: every matched pair shares match-key,
+    matched + unmatched per side equals total function count on that
+    side, and no v6 function appears in more than one matched pair."""
+    g6 = ex._build_call_graph(v6)
+    g7 = ex._build_call_graph(v7)
+    f6 = ex._collect_functions(v6)
+    f7 = ex._collect_functions(v7)
+    ex._attach_call_graph_position(f6, g6)
+    ex._attach_call_graph_position(f7, g7)
+    pairs, un6, un7 = ex._match_functions(f6, f7)
+
+    # Invariant checks.
+    invariants = {
+        "match_key_consistent": all(
+            a["match_key"] == b["match_key"] for a, b, _ in pairs
+        ),
+        "v6_partition": len(pairs) + len(un6) == len(f6),
+        "v7_partition": len(pairs) + len(un7) == len(f7),
+        "v6_unique": len({id(a) for a, _, _ in pairs}) == len(pairs),
+        "v7_unique": len({id(b) for _, b, _ in pairs}) == len(pairs),
+    }
+
+    if pairs:
+        dists = [d for _, _, d in pairs]
+        mean_dist = float(np.mean(dists))
+        median_dist = float(np.median(dists))
+        same_name = sum(1 for a, b, _ in pairs if a["name"] == b["name"])
+        same_name_rate = same_name / len(pairs)
+    else:
+        mean_dist = 1.0
+        median_dist = 1.0
+        same_name_rate = 0.0
+    similarity = max(0.0, 1.0 - mean_dist)
+
+    # Bootstrap 95% CI on per-function similarity (sample = matched
+    # pairs). With only ~31 pairs this CI is informative — the paper
+    # should quote a range, not a single decimal.
+    rng = np.random.default_rng(20260528)
+    if pairs:
+        dist_array = np.array([d for _, _, d in pairs])
+        boot = []
+        for _ in range(1000):
+            idx = rng.integers(0, len(dist_array), size=len(dist_array))
+            boot.append(1.0 - float(dist_array[idx].mean()))
+        ci_lo = float(np.percentile(boot, 2.5))
+        ci_hi = float(np.percentile(boot, 97.5))
+    else:
+        ci_lo = ci_hi = 0.0
+
+    return {
+        "n_v6_functions": len(f6),
+        "n_v7_functions": len(f7),
+        "n_matched_pairs": len(pairs),
+        "n_unmatched_v6": len(un6),
+        "n_unmatched_v7": len(un7),
+        "mean_pair_distance": mean_dist,
+        "median_pair_distance": median_dist,
+        "per_function_similarity": similarity,
+        "similarity_bootstrap_ci_95_lo": ci_lo,
+        "similarity_bootstrap_ci_95_hi": ci_hi,
+        "same_name_overlap_among_matched": same_name_rate,
+        "match_key_buckets_v6": len({f["match_key"] for f in f6}),
+        "match_key_buckets_v7": len({f["match_key"] for f in f7}),
+        "shared_match_key_buckets": len(
+            {f["match_key"] for f in f6} & {f["match_key"] for f in f7}
+        ),
+        "invariants": invariants,
+        "all_invariants_pass": all(invariants.values()),
     }
 
 

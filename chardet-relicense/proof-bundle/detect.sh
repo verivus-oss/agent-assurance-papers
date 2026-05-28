@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # detect.sh — the executable witness for chardet-relicense/proof-bundle/.
 #
+<<<<<<< HEAD
 # Runs five static-AST signals + one behavioural-fingerprint signal
 # against checkouts of a SAME-DOMAIN PAIR of encoding-detector
 # libraries. The pair to run is selected by a positional argument:
@@ -17,6 +18,20 @@
 #   C06c  control-flow histogram       (cosine similarity of normalised hist)
 #   C06d  public-API signature equiv   (strict / renamed_args / diverged)
 #   C06e  behavioural fingerprint      (1000 deterministic fuzz inputs)
+=======
+# Runs seven static-AST signals + one behavioural-fingerprint signal
+# against checkouts of chardet at tags 6.0.0 (last LGPL-era) and 7.0.0
+# (Dan Blanchard's AI-rewritten MIT release):
+#
+#   AUX1   literal source carryover     (whitespace-normalised SHA-256)
+#   C06a   call-graph topology          (degree distribution + SCC + density)
+#   C06a'  call-graph WL kernel         (Weisfeiler-Lehman k=4, V2 R1 response)
+#   C06b   import-edge set              (third-party Jaccard)
+#   C06c   control-flow histogram       (cosine similarity of normalised hist)
+#   C06d   public-API signature equiv   (strict / renamed_args / diverged)
+#   C06e   behavioural fingerprint      (1000 deterministic fuzz inputs)
+#   C06f   per-function AST shape       (shape-matched pairs, V2 R16 response)
+>>>>>>> v2-phase1a-bp
 #
 # Exit code:
 #   0  no FAIL verdicts
@@ -111,9 +126,16 @@ sha_b="$(git -C "${REPO_B}" rev-parse "${TAG_B}")"
 tmp="$(mktemp -d)"
 trap 'rm -rf "${tmp}"' EXIT
 
+<<<<<<< HEAD
 echo "proof-chardet-relicense: pair=${pair}"
 echo "  side A: repo=${REPO_A} tag=${TAG_A} sha=${sha_a} pkg=${PKG_A}"
 echo "  side B: repo=${REPO_B} tag=${TAG_B} sha=${sha_b} pkg=${PKG_B}"
+=======
+echo "proof-chardet-relicense: extracting AUX1 + C06a, C06a', C06b..C06f signals"
+echo "  repo:   ${chardet_repo}"
+echo "  v6 tag: ${v6_tag}"
+echo "  v7 tag: ${v7_tag}"
+>>>>>>> v2-phase1a-bp
 echo
 
 # Materialise writable --shared mirrors so worktree metadata lands in a
