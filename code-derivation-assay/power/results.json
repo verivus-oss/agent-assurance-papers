@@ -1,0 +1,2276 @@
+{
+  "meta": {
+    "seed": 20260530,
+    "n_sim": 2000,
+    "n_boot": 2000,
+    "lb_pct": 2.5,
+    "model": "binormal within-family AUC; family = inferential unit; between-family heterogeneity tau on logit-AUC scale; family-clustered BCa lower bound (jackknife accel).",
+    "caveat": "ASSUMED effect sizes (no pilot data yet). Output is a power map; operating point conditional on pilot."
+  },
+  "h1_auc_power": [
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.3995,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.266,
+      "lb_median": 0.5555555555555556,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.185,
+      "lb_median": 0.5833333333333334,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.237,
+      "lb_median": 0.5999999999999999,
+      "lb_p10": 0.3555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.231,
+      "lb_median": 0.5925925925925926,
+      "lb_p10": 0.4013420078633576
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.182,
+      "lb_median": 0.6111111111111112,
+      "lb_p10": 0.4722222222222222
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.514,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.4444444444444444
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.386,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.299,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.38888888888888884
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.343,
+      "lb_median": 0.6391770412436113,
+      "lb_p10": 0.4222222222222222
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.356,
+      "lb_median": 0.6481481481481481,
+      "lb_p10": 0.46296296296296297
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.3575,
+      "lb_median": 0.6647220725119045,
+      "lb_p10": 0.5138888888888888
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.6315,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.5135,
+      "lb_median": 0.7037037037037037,
+      "lb_p10": 0.4444444444444444
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.4305,
+      "lb_median": 0.6944444444444444,
+      "lb_p10": 0.4444444444444444
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.525,
+      "lb_median": 0.711111111111111,
+      "lb_p10": 0.4666666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.5315,
+      "lb_median": 0.7037037037037037,
+      "lb_p10": 0.5185185185185185
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.5715,
+      "lb_median": 0.7222222222222221,
+      "lb_p10": 0.5706154436356264
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.775,
+      "lb_median": 0.8888888888888888,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.675,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.599,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.724,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.726,
+      "lb_median": 0.7592592592592592,
+      "lb_p10": 0.5925925925925927
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.7685,
+      "lb_median": 0.7777777777777777,
+      "lb_p10": 0.6388888888888888
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.8755,
+      "lb_median": 0.8888888888888888,
+      "lb_p10": 0.6666666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.829,
+      "lb_median": 0.8888888888888888,
+      "lb_p10": 0.6666666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.773,
+      "lb_median": 0.8055555555555555,
+      "lb_p10": 0.6666666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.8445,
+      "lb_median": 0.8222222222222222,
+      "lb_p10": 0.6444444444444445
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.8795,
+      "lb_median": 0.8333333333333331,
+      "lb_p10": 0.6784393545868539
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.9155,
+      "lb_median": 0.8333333333333333,
+      "lb_p10": 0.7115800705613674
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.5015,
+      "lb_median": 0.72,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.3515,
+      "lb_median": 0.64,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.2835,
+      "lb_median": 0.6249869893990951,
+      "lb_p10": 0.43000000000000005
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.29,
+      "lb_median": 0.64,
+      "lb_p10": 0.4720000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.3005,
+      "lb_median": 0.6466666666666666,
+      "lb_p10": 0.5073088854412172
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.3055,
+      "lb_median": 0.655,
+      "lb_p10": 0.545
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.6275,
+      "lb_median": 0.76,
+      "lb_p10": 0.52
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.496,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.451,
+      "lb_median": 0.68,
+      "lb_p10": 0.51
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.4655,
+      "lb_median": 0.6880000000000001,
+      "lb_p10": 0.536
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.492,
+      "lb_median": 0.6942001331416867,
+      "lb_p10": 0.5666666666666667
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.4975,
+      "lb_median": 0.7,
+      "lb_p10": 0.5900000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.7465,
+      "lb_median": 0.8,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.6455,
+      "lb_median": 0.7600000000000001,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.6505,
+      "lb_median": 0.75,
+      "lb_p10": 0.5700000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.665,
+      "lb_median": 0.744,
+      "lb_p10": 0.5916813629289278
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.6995,
+      "lb_median": 0.7466666666666667,
+      "lb_p10": 0.6248595304898756
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.754,
+      "lb_median": 0.755,
+      "lb_p10": 0.645
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.868,
+      "lb_median": 0.84,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.823,
+      "lb_median": 0.8000000000000002,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.812,
+      "lb_median": 0.8,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.8455,
+      "lb_median": 0.8,
+      "lb_p10": 0.6719999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.8865,
+      "lb_median": 0.8066666666666666,
+      "lb_p10": 0.6866666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.9335,
+      "lb_median": 0.81,
+      "lb_p10": 0.72
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.958,
+      "lb_median": 0.92,
+      "lb_p10": 0.76
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.9355,
+      "lb_median": 0.88,
+      "lb_p10": 0.7200000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.935,
+      "lb_median": 0.86,
+      "lb_p10": 0.74
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.955,
+      "lb_median": 0.8639999999999999,
+      "lb_p10": 0.744
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.9785,
+      "lb_median": 0.8666666666666667,
+      "lb_p10": 0.7672474877426232
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.9885,
+      "lb_median": 0.875,
+      "lb_p10": 0.79
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.382,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.251,
+      "lb_median": 0.5555555555555556,
+      "lb_p10": 0.2222222222222222
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.156,
+      "lb_median": 0.5555555555555556,
+      "lb_p10": 0.2222222222222222
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.206,
+      "lb_median": 0.5555555555555556,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.203,
+      "lb_median": 0.5740740740740741,
+      "lb_p10": 0.3518518518518519
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.165,
+      "lb_median": 0.5767728484122773,
+      "lb_p10": 0.4166666666666667
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.465,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.364,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.2495,
+      "lb_median": 0.6111111111111112,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.319,
+      "lb_median": 0.6222222222222221,
+      "lb_p10": 0.3586870449632854
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.292,
+      "lb_median": 0.611111111111111,
+      "lb_p10": 0.40740740740740744
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.2885,
+      "lb_median": 0.6388888888888888,
+      "lb_p10": 0.4722222222222222
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.5765,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.4444444444444444
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.4705,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3333333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.3705,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.3888888888888889
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.44,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.4338907613011873
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.4485,
+      "lb_median": 0.6666666666666666,
+      "lb_p10": 0.4479971308758311
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.4265,
+      "lb_median": 0.6805555555555556,
+      "lb_p10": 0.513888888888889
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.6945,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.626,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.5555555555555556
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.5405,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.49999999999999994
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.587,
+      "lb_median": 0.711111111111111,
+      "lb_p10": 0.4666666666666667
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.614,
+      "lb_median": 0.7407407407407406,
+      "lb_p10": 0.537037037037037
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.658,
+      "lb_median": 0.7445023337063721,
+      "lb_p10": 0.5833333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.826,
+      "lb_median": 0.8888888888888888,
+      "lb_p10": 0.6666666666666666
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.7755,
+      "lb_median": 0.8888888888888888,
+      "lb_p10": 0.6666666666666666
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.714,
+      "lb_median": 0.7777777777777778,
+      "lb_p10": 0.569414456315541
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.796,
+      "lb_median": 0.8,
+      "lb_p10": 0.6222222222222221
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.8025,
+      "lb_median": 0.8148148148148148,
+      "lb_p10": 0.6295859713314741
+    },
+    {
+      "tau": "high_het",
+      "pairs": "3v3",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.869,
+      "lb_median": 0.8055555555555556,
+      "lb_p10": 0.6692306789107574
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.4555,
+      "lb_median": 0.68,
+      "lb_p10": 0.4
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.301,
+      "lb_median": 0.6,
+      "lb_p10": 0.36000000000000004
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.237,
+      "lb_median": 0.5900000000000001,
+      "lb_p10": 0.37000000000000005
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.237,
+      "lb_median": 0.6,
+      "lb_p10": 0.41600000000000004
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.2345,
+      "lb_median": 0.6066666666666668,
+      "lb_p10": 0.4533333333333334
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.202,
+      "lb_median": 0.62,
+      "lb_p10": 0.4833017752332854
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.5385,
+      "lb_median": 0.72,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.42,
+      "lb_median": 0.68,
+      "lb_p10": 0.4000000000000001
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.3595,
+      "lb_median": 0.64,
+      "lb_p10": 0.42000000000000004
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.358,
+      "lb_median": 0.6499406694742926,
+      "lb_p10": 0.46399999999999997
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.36,
+      "lb_median": 0.659165281394577,
+      "lb_p10": 0.49999999999999994
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.38,
+      "lb_median": 0.6699999999999999,
+      "lb_p10": 0.540570169099602
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.701,
+      "lb_median": 0.8,
+      "lb_p10": 0.5560000000000003
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.5545,
+      "lb_median": 0.7200000000000001,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.4985,
+      "lb_median": 0.7,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.5185,
+      "lb_median": 0.7040000000000001,
+      "lb_p10": 0.512
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.5685,
+      "lb_median": 0.7200000000000001,
+      "lb_p10": 0.5533333333333333
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.5905,
+      "lb_median": 0.725,
+      "lb_p10": 0.585
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.794,
+      "lb_median": 0.84,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.74,
+      "lb_median": 0.8000000000000002,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.686,
+      "lb_median": 0.77,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.72,
+      "lb_median": 0.768,
+      "lb_p10": 0.5974217215990082
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.7605,
+      "lb_median": 0.7799999999999999,
+      "lb_p10": 0.6278650444029196
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.818,
+      "lb_median": 0.78,
+      "lb_p10": 0.6599847021282754
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.93,
+      "lb_median": 0.92,
+      "lb_p10": 0.72
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.8815,
+      "lb_median": 0.88,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.8735,
+      "lb_median": 0.84,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.896,
+      "lb_median": 0.8400000000000001,
+      "lb_p10": 0.6960000000000001
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.9205,
+      "lb_median": 0.8466666666666667,
+      "lb_p10": 0.7133333333333334
+    },
+    {
+      "tau": "high_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.956,
+      "lb_median": 0.8545929447147957,
+      "lb_p10": 0.7495286134892398
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.6,
+      "power": 0.684,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.65,
+      "power": 0.603,
+      "lb_median": 0.72,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.487,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.6,
+      "power": 0.5605,
+      "lb_median": 0.64,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.65,
+      "power": 0.461,
+      "lb_median": 0.64,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.3485,
+      "lb_median": 0.64,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.6,
+      "power": 0.5765,
+      "lb_median": 0.6399999999999999,
+      "lb_p10": 0.44999999999999996
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.65,
+      "power": 0.466,
+      "lb_median": 0.64,
+      "lb_p10": 0.44
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.3075,
+      "lb_median": 0.64,
+      "lb_p10": 0.44000000000000006
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.6,
+      "power": 0.6225,
+      "lb_median": 0.6399999999999999,
+      "lb_p10": 0.48000000000000004
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.65,
+      "power": 0.4265,
+      "lb_median": 0.632,
+      "lb_p10": 0.472
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.2875,
+      "lb_median": 0.6320000000000001,
+      "lb_p10": 0.472
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.6,
+      "power": 0.6785,
+      "lb_median": 0.6466666666666667,
+      "lb_p10": 0.5133333333333333
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.65,
+      "power": 0.485,
+      "lb_median": 0.6466666666666667,
+      "lb_p10": 0.5115932857433234
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.287,
+      "lb_median": 0.6466666666666667,
+      "lb_p10": 0.5066666666666667
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.6,
+      "power": 0.7465,
+      "lb_median": 0.655,
+      "lb_p10": 0.5449999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.65,
+      "power": 0.526,
+      "lb_median": 0.655,
+      "lb_p10": 0.5424121401849947
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.78,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.3025,
+      "lb_median": 0.66,
+      "lb_p10": 0.545
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.6,
+      "power": 0.788,
+      "lb_median": 0.76,
+      "lb_p10": 0.52
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.65,
+      "power": 0.715,
+      "lb_median": 0.76,
+      "lb_p10": 0.52
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.63,
+      "lb_median": 0.76,
+      "lb_p10": 0.52
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.6,
+      "power": 0.6835,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.65,
+      "power": 0.603,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.4855,
+      "lb_median": 0.68,
+      "lb_p10": 0.48
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.6,
+      "power": 0.729,
+      "lb_median": 0.68,
+      "lb_p10": 0.5
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.65,
+      "power": 0.5795,
+      "lb_median": 0.68,
+      "lb_p10": 0.5
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.455,
+      "lb_median": 0.68,
+      "lb_p10": 0.52
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.6,
+      "power": 0.7745,
+      "lb_median": 0.6880000000000001,
+      "lb_p10": 0.5297452588087268
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.65,
+      "power": 0.621,
+      "lb_median": 0.688,
+      "lb_p10": 0.5356859541581054
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.4805,
+      "lb_median": 0.696,
+      "lb_p10": 0.5385900692681657
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.6,
+      "power": 0.8135,
+      "lb_median": 0.6999999999999998,
+      "lb_p10": 0.5599999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.65,
+      "power": 0.6615,
+      "lb_median": 0.6933333333333334,
+      "lb_p10": 0.5599999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.4895,
+      "lb_median": 0.6933333333333334,
+      "lb_p10": 0.5599999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.6,
+      "power": 0.8985,
+      "lb_median": 0.705,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.65,
+      "power": 0.758,
+      "lb_median": 0.71,
+      "lb_p10": 0.5995
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.82,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.516,
+      "lb_median": 0.705,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.6,
+      "power": 0.8845,
+      "lb_median": 0.8,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.65,
+      "power": 0.822,
+      "lb_median": 0.8,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.765,
+      "lb_median": 0.8,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.6,
+      "power": 0.829,
+      "lb_median": 0.7600000000000001,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.65,
+      "power": 0.7635,
+      "lb_median": 0.7600000000000001,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.653,
+      "lb_median": 0.7600000000000001,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.6,
+      "power": 0.851,
+      "lb_median": 0.74,
+      "lb_p10": 0.5643345018247984
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.65,
+      "power": 0.747,
+      "lb_median": 0.74,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.6225,
+      "lb_median": 0.74,
+      "lb_p10": 0.56
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.6,
+      "power": 0.8775,
+      "lb_median": 0.7405741126112744,
+      "lb_p10": 0.5840000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.65,
+      "power": 0.7815,
+      "lb_median": 0.744,
+      "lb_p10": 0.584
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.6715,
+      "lb_median": 0.744,
+      "lb_p10": 0.6
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.6,
+      "power": 0.927,
+      "lb_median": 0.7512509577728431,
+      "lb_p10": 0.62
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.65,
+      "power": 0.858,
+      "lb_median": 0.7533333333333334,
+      "lb_p10": 0.62
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.7095,
+      "lb_median": 0.7498933274659976,
+      "lb_p10": 0.6133333333333334
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.6,
+      "power": 0.9615,
+      "lb_median": 0.76,
+      "lb_p10": 0.65
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.65,
+      "power": 0.906,
+      "lb_median": 0.76,
+      "lb_p10": 0.655
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.86,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.78,
+      "lb_median": 0.76,
+      "lb_p10": 0.6566111139291981
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.6,
+      "power": 0.95,
+      "lb_median": 0.84,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.65,
+      "power": 0.9285,
+      "lb_median": 0.84,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.877,
+      "lb_median": 0.84,
+      "lb_p10": 0.68
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.6,
+      "power": 0.9305,
+      "lb_median": 0.8000000000000002,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.65,
+      "power": 0.8885,
+      "lb_median": 0.8000000000000002,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.8325,
+      "lb_median": 0.84,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.6,
+      "power": 0.9255,
+      "lb_median": 0.8,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.65,
+      "power": 0.8745,
+      "lb_median": 0.8,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.8145,
+      "lb_median": 0.8,
+      "lb_p10": 0.64
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.6,
+      "power": 0.9575,
+      "lb_median": 0.8,
+      "lb_p10": 0.664
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.65,
+      "power": 0.9295,
+      "lb_median": 0.8,
+      "lb_p10": 0.6799999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.8545,
+      "lb_median": 0.8000434888807778,
+      "lb_p10": 0.6719999999999999
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.6,
+      "power": 0.977,
+      "lb_median": 0.8066666666666666,
+      "lb_p10": 0.6932739608672159
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.65,
+      "power": 0.954,
+      "lb_median": 0.8133333333333334,
+      "lb_p10": 0.6933333333333334
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.879,
+      "lb_median": 0.8133333333333334,
+      "lb_p10": 0.6866666666666666
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.6,
+      "power": 0.993,
+      "lb_median": 0.81,
+      "lb_p10": 0.7147508226305868
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.65,
+      "power": 0.981,
+      "lb_median": 0.8132928842727201,
+      "lb_p10": 0.715
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.9,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.93,
+      "lb_median": 0.8128997183776216,
+      "lb_p10": 0.7150000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.6,
+      "power": 0.9875,
+      "lb_median": 0.92,
+      "lb_p10": 0.76
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.65,
+      "power": 0.977,
+      "lb_median": 0.92,
+      "lb_p10": 0.76
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 2,
+      "theta_LB": 0.7,
+      "power": 0.963,
+      "lb_median": 0.92,
+      "lb_p10": 0.76
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.6,
+      "power": 0.98,
+      "lb_median": 0.88,
+      "lb_p10": 0.7200000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.65,
+      "power": 0.9715,
+      "lb_median": 0.88,
+      "lb_p10": 0.7600000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 3,
+      "theta_LB": 0.7,
+      "power": 0.942,
+      "lb_median": 0.88,
+      "lb_p10": 0.7600000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.6,
+      "power": 0.9825,
+      "lb_median": 0.86,
+      "lb_p10": 0.76
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.65,
+      "power": 0.9655,
+      "lb_median": 0.86,
+      "lb_p10": 0.7204698862830294
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 4,
+      "theta_LB": 0.7,
+      "power": 0.94,
+      "lb_median": 0.88,
+      "lb_p10": 0.74
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.6,
+      "power": 0.9925,
+      "lb_median": 0.8640000000000001,
+      "lb_p10": 0.7545856148665703
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.65,
+      "power": 0.981,
+      "lb_median": 0.8639999999999999,
+      "lb_p10": 0.7440000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 5,
+      "theta_LB": 0.7,
+      "power": 0.945,
+      "lb_median": 0.8640000000000001,
+      "lb_p10": 0.744
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.6,
+      "power": 0.998,
+      "lb_median": 0.8666666666666667,
+      "lb_p10": 0.7666666666666667
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.65,
+      "power": 0.989,
+      "lb_median": 0.8666666666666666,
+      "lb_p10": 0.7600000000000001
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 6,
+      "theta_LB": 0.7,
+      "power": 0.9785,
+      "lb_median": 0.8666666666666667,
+      "lb_p10": 0.7666666666666667
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.6,
+      "power": 0.9995,
+      "lb_median": 0.8700000000000001,
+      "lb_p10": 0.79
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.65,
+      "power": 0.997,
+      "lb_median": 0.8732063428927916,
+      "lb_p10": 0.79
+    },
+    {
+      "tau": "moderate_het",
+      "pairs": "5v5",
+      "mean_auc": 0.94,
+      "K_test_families": 8,
+      "theta_LB": 0.7,
+      "power": 0.9895,
+      "lb_median": 0.875,
+      "lb_p10": 0.79
+    }
+  ],
+  "naive_inflation": [
+    {
+      "mean_auc": 0.82,
+      "K_test_families": 3,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.4866666666666667,
+      "naive_pair_level_power": 0.36666666666666664
+    },
+    {
+      "mean_auc": 0.82,
+      "K_test_families": 4,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.45666666666666667,
+      "naive_pair_level_power": 0.37666666666666665
+    },
+    {
+      "mean_auc": 0.82,
+      "K_test_families": 5,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.44333333333333336,
+      "naive_pair_level_power": 0.455
+    },
+    {
+      "mean_auc": 0.86,
+      "K_test_families": 3,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.6633333333333333,
+      "naive_pair_level_power": 0.5283333333333333
+    },
+    {
+      "mean_auc": 0.86,
+      "K_test_families": 4,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.62,
+      "naive_pair_level_power": 0.61
+    },
+    {
+      "mean_auc": 0.86,
+      "K_test_families": 5,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.66,
+      "naive_pair_level_power": 0.7066666666666667
+    },
+    {
+      "mean_auc": 0.9,
+      "K_test_families": 3,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.85,
+      "naive_pair_level_power": 0.7683333333333333
+    },
+    {
+      "mean_auc": 0.9,
+      "K_test_families": 4,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.8133333333333334,
+      "naive_pair_level_power": 0.86
+    },
+    {
+      "mean_auc": 0.9,
+      "K_test_families": 5,
+      "pairs": "5v5",
+      "theta_LB": 0.7,
+      "family_clustered_power": 0.83,
+      "naive_pair_level_power": 0.9316666666666666
+    }
+  ],
+  "rq4_spearman_power": [
+    {
+      "n_seed_families": 3,
+      "depth_levels": 4,
+      "slope_per_level": 0.25,
+      "noise_sd": 0.5,
+      "power": 0.0
+    },
+    {
+      "n_seed_families": 3,
+      "depth_levels": 4,
+      "slope_per_level": 0.4,
+      "noise_sd": 0.5,
+      "power": 0.0
+    },
+    {
+      "n_seed_families": 4,
+      "depth_levels": 4,
+      "slope_per_level": 0.25,
+      "noise_sd": 0.5,
+      "power": 0.0
+    },
+    {
+      "n_seed_families": 4,
+      "depth_levels": 4,
+      "slope_per_level": 0.4,
+      "noise_sd": 0.5,
+      "power": 0.0
+    },
+    {
+      "n_seed_families": 6,
+      "depth_levels": 4,
+      "slope_per_level": 0.25,
+      "noise_sd": 0.5,
+      "power": 0.333
+    },
+    {
+      "n_seed_families": 6,
+      "depth_levels": 4,
+      "slope_per_level": 0.4,
+      "noise_sd": 0.5,
+      "power": 0.729
+    },
+    {
+      "n_seed_families": 8,
+      "depth_levels": 4,
+      "slope_per_level": 0.25,
+      "noise_sd": 0.5,
+      "power": 0.612
+    },
+    {
+      "n_seed_families": 8,
+      "depth_levels": 4,
+      "slope_per_level": 0.4,
+      "noise_sd": 0.5,
+      "power": 0.924
+    }
+  ],
+  "calibration_se": [
+    {
+      "N": 20,
+      "brier_sd": 0.04397922040466483,
+      "ece_mean": 0.2077231668446768,
+      "ece_sd": 0.051331565903166
+    },
+    {
+      "N": 40,
+      "brier_sd": 0.031402872398503465,
+      "ece_mean": 0.15571341113324863,
+      "ece_sd": 0.03723232593274343
+    },
+    {
+      "N": 80,
+      "brier_sd": 0.02183146914317379,
+      "ece_mean": 0.1111882217683227,
+      "ece_sd": 0.02712023292736512
+    },
+    {
+      "N": 160,
+      "brier_sd": 0.015722008784638586,
+      "ece_mean": 0.07851224346263094,
+      "ece_sd": 0.019175708447591866
+    },
+    {
+      "N": 320,
+      "brier_sd": 0.010979521728226443,
+      "ece_mean": 0.05592887377054959,
+      "ece_sd": 0.013436121829351461
+    }
+  ]
+}
