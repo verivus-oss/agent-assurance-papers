@@ -51,7 +51,7 @@ decompose so each obligation has its own witness and its own non-claim:
 | C01 | `service_lifecycle`     | Full lifecycle: becomes ready → echoes byte-exact → exits 0 on SIGTERM → releases port. Load-bearing.        | PASS / SKIP / FAIL   |
 | C02 | `readiness`             | Becomes connectable on `127.0.0.1:8080` within a **readiness deadline** (default 5000 ms).                    | PASS/FAIL + MEASURED time-to-ready |
 | C03 | `echo_fidelity`         | Response status is exactly `200`; response body `cmp`-equal to the request body; `Content-Length` == body length. | PASS / FAIL |
-| C04 | `signal_handling`       | After SIGTERM: any **in-flight request completes** (no dropped/truncated response), the process exits `0` within a **shutdown deadline** (default 3000 ms), and the listener set **SO_REUSEADDR** so the port is **re-bindable** afterward (bounded retry, absorbing TIME_WAIT). SIGKILL fallback, a dropped in-flight response, or a non-re-bindable port ⇒ FAIL. **Well-formedness rule:** the test-injected in-flight delay MUST be strictly less than the shutdown deadline (we use 1000 ms ≪ 3000 ms) so a *correct* graceful server can both finish the request and exit in time. | PASS/FAIL + MEASURED time-to-shutdown |
+| C04 | `signal_handling`       | After SIGTERM: any **in-flight request completes** (no dropped/truncated response), the process exits `0` within a **shutdown deadline** (default 3000 ms), and the port is **re-bindable** afterward — verified by an independent re-bind probe that sets **SO_REUSEADDR** plus a bounded retry absorbing TIME_WAIT (the *server's own* SO_REUSEADDR is set by six of seven runtimes; Java is the documented exception, §3). SIGKILL fallback, a dropped in-flight response, or a non-re-bindable port ⇒ FAIL. **Well-formedness rule:** the test-injected in-flight delay MUST be strictly less than the shutdown deadline (we use 1000 ms ≪ 3000 ms) so a *correct* graceful server can both finish the request and exit in time. | PASS/FAIL + MEASURED time-to-shutdown |
 | C05 | `statefulness`          | A single long-lived process answers **≥2 sequential requests** (proves it is a daemon, not a one-shot exec). | PASS / FAIL          |
 | C06 | `signal_boundary`       | Declared boundary: a runtime that can serve C01/C03 but cannot install a clean SIGTERM handler is recorded as a **SKIP-with-rationale**, not a PASS and not a FAIL. (This is AWK.) | SKIP (declared)      |
 
@@ -117,14 +117,21 @@ exercised, with the spec hook it lands on.
    - **interpreter with no signal API** (AWK/gawk `/inet`: the declared
      boundary).
 
-   **Counting rule for the headline "six runtimes."** The §3 table lists
-   **eight languages**. Seven are PASS-candidates (Go, JavaScript/Node,
-   TypeScript, Python, C, Rust, Java); AWK is the declared C06 boundary and is
-   **not** counted as a passing runtime. Among the seven, TypeScript shares the
-   V8/Node runtime with JavaScript, leaving **six distinct passing runtimes**:
-   Go, V8/Node (JS + TS), CPython, natively-compiled C, natively-compiled Rust,
-   and the JVM. That is the number in the title — eight languages, six runtimes,
-   one boundary.
+   **Counting rule — the headline is "eight languages."** The firm, directly
+   verifiable number is the one in the §3 table: **eight languages**. Everything
+   else is a derived gloss. Of the eight, seven are PASS-candidates (Go,
+   JavaScript/Node, TypeScript, Python, C, Rust, Java); AWK is the declared C06
+   boundary and is **not** counted as a passing runtime. "Six runtimes" is then
+   a *defined* sub-count, where **"runtime" means a distinct language execution
+   stack**: TypeScript shares the V8/Node stack with JavaScript (so they collapse
+   to one), leaving **six** — Go, V8/Node (JS + TS), CPython, the JVM, and C and
+   Rust counted **separately**. We flag the soft edge honestly: C and Rust are
+   both bare natively-compiled binaries over libc with no managed VM, so under a
+   stricter "managed-runtime" definition one could collapse them into a single
+   "native" bucket and reach five; we count them separately because they are
+   distinct toolchains and execution stacks. The title therefore *leads with
+   eight languages* and treats "six runtimes, one boundary" as the explained
+   derivative, not the load-bearing claim.
 
 ---
 
@@ -177,13 +184,34 @@ Notes that change the design from a naive "just SKIP what's missing":
 - **SO_REUSEADDR is a cross-language C04 sub-requirement, not an afterthought.**
   Go (`net.Listen`) and Node (`http.Server`) set it by default; C sets it via
   `setsockopt`; Rust via the FFI path above; Python's `http.server` sets
-  `allow_reuse_address = True`; **Java**'s `com.sun.net.httpserver.HttpServer`
-  binds a `ServerSocket` whose `SO_REUSEADDR` defaults to on for a bound server
-  socket on this JDK/Linux — the build step asserts this (or creates the server
-  unbound and calls `setReuseAddress(true)` before `bind`) so Java carries the
-  same guarantee as the others. The witness additionally treats the post-exit
+  `allow_reuse_address = True`. **Java is the documented exception** — see the
+  Java-specific note below. The witness additionally treats the post-exit
   re-bind as a **bounded retry** (poll for up to ~2 s) so a lingering TIME_WAIT
-  socket never causes a false C04 FAIL.
+  socket never causes a false C04 FAIL *for the runtimes that set SO_REUSEADDR*.
+- **Java cannot set SO_REUSEADDR (empirically verified 2026-05-31, OpenJDK
+  25.0.3 / Linux `tcp_fin_timeout=60`).** A pre-build spike established that
+  `com.sun.net.httpserver.HttpServer` sets **no** `SO_REUSEADDR` and exposes
+  **no API to set it**: neither `HttpServer.create(addr, backlog)` nor the
+  unbound `HttpServer.create()` + `bind(addr, 0)` path surfaces the underlying
+  `ServerSocket`, so `setReuseAddress(true)`-before-`bind` is **not reachable**.
+  After the server serves a connection and closes it server-side, the port
+  holds a `TIME_WAIT` and a fresh `HttpServer` **cannot re-bind it** — every one
+  of six spike runs ended in `BindException: Address already in use` from
+  `HttpServer.create`, and with `TIME_WAIT ≈ 60 s` the ≤2 s bounded retry cannot
+  recover it. (A `ServerSocket` with `setReuseAddress(true)` binds the same port
+  immediately under the identical condition — which is why the witness's re-bind
+  *probe*, §5.1 step 7, is unaffected.) The earlier draft's claim that Java
+  "carries the same guarantee as the others" was **wrong** and is retracted.
+  **Consequences and mitigation (Java stays a PASS-candidate):**
+  (a) Java's own C04 *port-release* check still passes — that assertion is made
+  by the independent reuse-setting probe socket, not by Java re-binding.
+  (b) The real exposure is **cross-language serialization**: if Java is asked to
+  bind `:8080` *after another server left a `TIME_WAIT`*, Java alone fails where
+  the other six tolerate it. Therefore **Java is scheduled first** in the §4
+  serialized order (pristine port), and **Java's pre-flight (§5.1 step 1) uses a
+  no-reuse bind probe** that matches how `HttpServer` actually binds. A lingering
+  foreign `TIME_WAIT` at Java's turn ⇒ a legitimate **SKIP-with-rationale** (a
+  real resource gap, like a missing toolchain), never a false FAIL.
 
 ---
 
@@ -213,7 +241,11 @@ U10 verify-awk-boundary       (independent leaf: C06 SKIP-with-rationale witness
   this mapping explicit so the validators see consistent counts.
 - Layer 1: `U08` consumes every server `ART:`, runs the full lifecycle harness
   against each **one at a time** (port serialization), and produces
-  `OUT:service-contract-witness`.
+  `OUT:service-contract-witness`. **Run order is not arbitrary: Java runs first**
+  (pristine port) because, alone among the seven, its `HttpServer` cannot set
+  `SO_REUSEADDR` and so cannot bind `:8080` over a `TIME_WAIT` left by a prior
+  server — see the §3 Java SO_REUSEADDR note. This is a run-order constraint on
+  `U08`, independent of the build-order numbering `U01..U07`.
 - Independent leaves `U09`/`U10` are the behavioral sidecars (the analog of
   hello-world's source-analysis sidecars U07/U09).
 - **Validator-exactness note.** `validate_implementation_dag.py` recomputes the
@@ -240,7 +272,12 @@ Per language, **serialized**:
 1. **Pre-flight:** assert `127.0.0.1:8080` is free (`ss`/`/dev/tcp` probe). If
    occupied → SKIP the entire run with rationale (a real resource gap, exactly
    like a missing toolchain). Honor `PROOF_PORT` override for CI but default to
-   8080 to keep the contract literal.
+   8080 to keep the contract literal. **Java-specific (per the §3 SO_REUSEADDR
+   note):** Java is run **first** in the serialized order (pristine port), and
+   its pre-flight is a **no-reuse bind probe** — an actual `bind()` without
+   `SO_REUSEADDR`, matching how `HttpServer` binds — so a lingering foreign
+   `TIME_WAIT` is detected and yields a SKIP rather than a mid-run FAIL. The
+   six `SO_REUSEADDR`-setting runtimes use the ordinary connectivity probe.
 2. **Start:** launch the server in its own process group (`setsid`/`set -m`) in
    the background; capture `PID`, redirect its stdout/stderr to files. Install a
    `trap` that `kill -9`s the **whole process group** (`kill -9 -- -$PID`) on
@@ -354,7 +391,15 @@ framework absorbed asynchrony and timing.
 ## 7. The five DAG-TOML files (mirroring hello-world's proven-valid shapes)
 
 All five carry the empty-closure sentinel `sha256:e3b0…b855` and validate
-against the same reference validators in `../agent-assurance/validators/`:
+against the same reference validators in `../agent-assurance/validators/`.
+**Path-existence is opt-in in those validators** (`validate_traceability.py` and
+`validate_review_readiness.py` only stat `CODE`/`TEST`/`required_documents`
+paths when invoked with `--check-paths-exist --repo-root <root>`). So §7's "every
+`path` resolves on disk" guarantee is **only real if the build/validate step
+passes `--check-paths-exist --repo-root` explicitly** — the default invocation
+checks structure and links but not on-disk existence. The build harness (§10
+step 3) therefore runs every validator with those flags; a bare run is treated
+as not-yet-validated.
 
 - `contract_declaration.toml` — C01..C06 as in §1. New free-form domains
   (`service_lifecycle`, `readiness`, `echo_fidelity`, `signal_handling`,
@@ -454,7 +499,9 @@ future work without overclaiming here.
 2. `run_service_contract.sh`, `detect_graceful_shutdown.sh`,
    `detect_awk_boundary.sh` — executable witnesses.
 3. The five `*.toml` DAG-TOML files (§7), each validating against
-   `../agent-assurance/validators/`.
+   `../agent-assurance/validators/` — invoked with **`--check-paths-exist
+   --repo-root <repo>`** so the on-disk existence of every `CODE`/`TEST`/
+   `required_documents` path is actually enforced, not just structure/links.
 4. `proof-bundle/README.md` — the worked walkthrough (hello-world style).
 5. A real `run` on this runner → an **Observed Execution** table with actual
    PASS/SKIP/FAIL + MEASURED ms numbers (not invented).
@@ -469,11 +516,15 @@ workflow). The cross-model review gate (§12) is now satisfied.
 
 ## 11. Sign-off decisions (resolved 2026-05-31)
 
-1. **Title / framing — APPROVED.** *"A Stateful Executable Proof: Governing an
-   HTTP Echo Service Lifecycle Across Six Runtimes."* The "six runtimes" count
-   is reconciled with the eight-language table by the explicit counting rule in
-   §2 (eight languages → seven PASS-candidates → six distinct runtimes once
-   TS folds into V8/Node and AWK is excluded as the boundary).
+1. **Title / framing — APPROVED (leads with the firm number).** *"A Stateful
+   Executable Proof: Governing an HTTP Echo Service Lifecycle Across Eight
+   Languages (Six Runtimes, One Boundary)."* The headline noun is **eight
+   languages** — the number that is directly verifiable from the §3 table — with
+   "six runtimes, one boundary" as the derived gloss defined by the §2 counting
+   rule (eight languages → seven PASS-candidates → six distinct runtimes once TS
+   folds into V8/Node and AWK is excluded as the boundary). Leading with eight
+   languages avoids resting the title on "runtime," a word that does double duty
+   (managed VMs vs. native binaries) and is the softest term in the count.
 2. **Deadlines — APPROVED.** readiness = 5000 ms, shutdown = 3000 ms.
 3. **Rust `unsafe` libc FFI — APPROVED.** Stay crate-free/hermetic via a small
    `extern "C"` block declaring `signal`/`SIGTERM` **and**
