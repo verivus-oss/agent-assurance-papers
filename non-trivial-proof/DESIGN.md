@@ -723,3 +723,45 @@ the round rests on Codex.
 
 **Round-4 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
 approval. The three fixes land in the same commit as the bundle and this record.
+
+### 12.4 Round-5 review (2026-05-31): the manuscript
+
+The §10-step-6 manuscript (`manuscript/main.tex`, `references.bib`, `README.md`)
+was submitted to the gate, with reviewers asked to check numeric fidelity against
+the bundle/validators, claim correctness (the Java SO_REUSEADDR section, the
+eight-languages framing, the "first MEASURED use" scoping), witness-vs-paper
+rigor, citation accuracy, and non-claims.
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `fe3612ce` → `0ab94e38` → `5efa2a44` | **AWK-overclaim BLOCKERs → UNCONDITIONAL APPROVAL** (evidence-backed; validators re-run, citations spot-checked) |
+| Gemini (`gemini-2.5-pro`) | `99d2b738` | BLOCKER (**rejected — arithmetic error**) + 5 checks verified |
+
+**Codex — genuine, and persistent.** Across three iterations Codex caught the
+same real defect in three places: the manuscript swept **AWK into the full
+C01..C05 lifecycle** ("all eight servers must each…") even though the bundle holds
+only the seven PASS-candidates to it and treats AWK as the C06 SKIP boundary.
+`fe3612ce` flagged the abstract and intro; after those were fixed, `0ab94e38`
+flagged a residual overclaim in the conclusion; after that was fixed, `5efa2a44`
+ran an exhaustive sweep of every "eight" occurrence, ruled the **title** an
+acceptable study-breadth framing (the abstract immediately carves AWK out), and
+re-confirmed the numbers (7 PASS/1 SKIP/0 FAIL, critical-path LOC 327, layers
+{0:9,1:1}, traceability 29 entities with the code section = 11), all 11 cite keys,
+the two new citations (`twelvefactor`, `nygard2018release`) as real and not
+misused, and that the witness genuinely checks Content-Length + the header-flush
+sync point + the independent SO_REUSEADDR re-bind probe — then gave unconditional
+approval.
+
+**Gemini — a false-positive blocker.** Gemini's five other checks verified
+correctly, but its one BLOCKER ("traceability has 30 entities, the paper says
+29") was an **arithmetic miscount**: it counted 12 `[[code]]` entries when there
+are 11 (8 servers + 2 controls + 1 awk-boundary), so the true total is 29 — as
+the validator authoritatively reports and as Codex independently re-confirmed. The
+blocker was **rejected with evidence** (`validate_traceability.py` output:
+`entities: 29`; section sum 3+3+3+3+11+3+3 = 29), not by assertion. This is the
+same pattern as Rounds 3–4: Gemini's output is thorough-looking but the gate rests
+on Codex.
+
+**Round-5 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
+approval (`5efa2a44`). The three AWK-overclaim fixes land in the same commit as the
+manuscript and this record. This completes §10 (bundle + manuscript).

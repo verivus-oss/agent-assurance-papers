@@ -1,0 +1,603 @@
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+\usepackage[hidelinks,bookmarks=false]{hyperref}
+
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=*,nosep}
+
+\definecolor{codebg}{gray}{0.96}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  framerule=0pt,
+  xleftmargin=1em,
+  framexleftmargin=1em,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true
+}
+
+\newcommand{\dagtoml}{DAG-TOML}
+\newcommand{\measured}{\textsc{measured}}
+
+\title{\bfseries A Stateful Executable Proof: Governing an HTTP Echo
+Service Lifecycle Across Eight Languages}
+\author{Werner Kasselman\\Verivus OSS\\\texttt{werner@verivus.com}}
+\date{May 31, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A companion proof in this repository showed that a \dagtoml{} contract
+can govern an instant, deterministic, stdout-only program across
+languages. That contract could be checked by running each program to
+completion and diffing stdout. This paper reports the follow-up: the
+same \dagtoml{} machinery---contract declaration, implementation DAG,
+traceability, readiness gate, evidence matrix, and executable
+witnesses---pointed at a contract that \emph{cannot} be checked that
+way. The contract is stated over eight languages, of which seven
+(Go, Node/JavaScript, TypeScript, Python, C, Rust, Java) must each bind
+a port, stay alive, echo a \texttt{POST} body byte-for-byte, answer
+repeated requests, and shut down gracefully on
+\texttt{SIGTERM}---finishing any in-flight request, releasing the port,
+and exiting~0. The eighth language, AWK, is the declared signal boundary:
+gawk exposes no clean script-level \texttt{SIGTERM} handler, so it is
+held to the lifecycle contract only as a \textsc{skip}-with-rationale and
+its echo is left unasserted. On the runner used for this paper the
+load-bearing witness reported seven \textsc{pass} outcomes, one
+\textsc{skip} for AWK, and zero \textsc{fail}. A negative-control witness confirms the graceful-shutdown
+check is non-vacuous: it catches both a server that ignores
+\texttt{SIGTERM} and a server that drops an in-flight response while
+exiting~0. The contribution is not a benchmark or a production
+framework. It is a compact, falsifiable artifact that names precisely
+which parts of the proof structure had to grow for a process
+\emph{lifecycle}---a lifecycle-aware witness harness, the \measured{}
+result word used for real, and a port-as-shared-resource
+discipline---and which dynamic guarantees the static validators still
+cannot see. A pre-build runtime spike, reported in full, also corrects
+one design assumption: Java's bundled \texttt{HttpServer} cannot set
+\texttt{SO\_REUSEADDR}, which fixes the run order rather than the claim.
+\end{abstract}
+
+\section{Introduction}
+
+Artifact-centered papers are easiest to review when claims, commands,
+and files line up directly, and artifact-evaluation guidance makes the
+same point operationally: reviewers need enough structure to connect a
+paper's claims to executable scripts, source files, expected outputs,
+and limitations~\cite{acmBadging2020,poplArtifact2023}. A companion
+paper applied that structure to the smallest nontrivial instance: a
+``Hello, world!'' contract requiring exact stdout bytes and exit~0.
+That proof is honest but limited in one specific way---its contract is
+satisfiable by a program that runs to completion, so the witness is a
+single stdout \texttt{cmp}.
+
+Real assurance targets are not like that. Services bind ports, stay
+resident, answer over the network, and must shut down without dropping
+work. This paper asks whether the same inspectable, falsifiable
+\dagtoml{} proof structure survives that jump. The contract under study,
+declared in \path{non-trivial-proof/proof-bundle}, is an HTTP echo
+service. Each PASS-candidate implementation must bind
+\texttt{127.0.0.1:8080}, return \texttt{200 OK} whose body is the exact
+bytes of the request body, answer at least two sequential requests on one
+process, and, on \texttt{SIGTERM}, finish any in-flight request, release
+the port, and exit~0. AWK is exempted from this lifecycle contract as the
+declared C06 boundary (Section~\ref{sec:observed} and the C06 row of
+Table~\ref{tab:contracts}).
+
+The jump forces machinery the stdout proof never needed. The verify
+unit must background a server, poll for readiness, drive it over the
+network, signal it, and capture the post-signal exit status with
+guaranteed teardown. A bound port is shared mutable state on the runner,
+so the language runs must be serialized and the port proven released
+between them. Timing becomes a first-class observation, which is where
+the fourth result word, \measured{}, is used for the first time in this
+repository. And graceful shutdown is only meaningful against a negative
+control, so the proof includes a witness whose \textsc{pass} means the
+gate correctly classified a non-graceful server as \textsc{fail}.
+
+This remains a minimal proof, not a performance study. There is no
+throughput, latency percentile, or concurrency-under-load claim. The
+goal is the same as before: an artifact a reviewer can inspect in one
+sitting, with every dynamic guarantee tied to an executable witness and
+every non-claim stated.
+
+\section{Artifact}
+
+The proof pack lives under \path{non-trivial-proof/proof-bundle}. Its
+normative files are:
+
+\begin{itemize}
+  \item \path{contract_declaration.toml}: contracts C01 through C06.
+  \item \path{implementation_dag.toml}: ten units, all tier 1.
+  \item \path{traceability.toml}: three chains (service lifecycle,
+        graceful-vs-kill, AWK boundary).
+  \item \path{review_readiness.toml}: one gate for the service-witness pack.
+  \item \path{evidence_matrix.toml}: five claims mapped to seven
+        evidence artifacts.
+  \item \path{run_service_contract.sh}, \path{detect_graceful_shutdown.sh},
+        and \path{detect_awk_boundary.sh}: executable witnesses.
+\end{itemize}
+
+The eight servers are \path{src/go/server.go},
+\path{src/node/server.js}, \path{src/typescript/server.ts},
+\path{src/python/server.py}, \path{src/c/server.c},
+\path{src/rust/server.rs}, \path{src/java/Server.java}, and
+\path{src/awk/server.awk}. Two non-graceful negative controls live in
+\path{src/controls/}. The echo payload is a fixed 56-byte JSON file,
+\path{payload.json}.
+
+\textbf{Eight languages, six runtimes, one boundary.} The firm headline
+number is eight languages. ``Six runtimes'' is a derived figure under an
+explicit definition: a runtime is a distinct language execution stack.
+TypeScript folds into the V8/Node stack it shares with JavaScript, and
+AWK is the C06 boundary rather than a passing runtime, leaving six
+distinct stacks---Go, V8/Node (JS and TS), CPython, the JVM,
+natively-compiled C, and natively-compiled Rust. We flag the soft edge
+honestly: C and Rust are both bare native binaries over libc, so a
+stricter ``managed-runtime'' definition would merge them and reach five.
+The paper therefore leads with the number that is directly verifiable
+from the source tree.
+
+\section{Contract and Witnesses}
+
+Table~\ref{tab:contracts} lists the six declared contracts and the local
+witness that supports each. C01 is the load-bearing lifecycle contract.
+C02 through C05 narrow separable obligations that depend on C01. C06 is
+the declared AWK signal boundary with an explicit non-claim.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.10\linewidth}p{0.22\linewidth}X@{}}
+\toprule
+Contract & Domain & Witness and scope \\
+\midrule
+C01 & service\_lifecycle &
+\path{run_service_contract.sh}; bind, byte-exact echo, exit 0 on
+SIGTERM, port released. Load-bearing. \\
+C02 & readiness &
+Connectable on \texttt{127.0.0.1:8080} within 5000\,ms;
+\emph{time-to-ready} reported as \measured{}. \\
+C03 & echo\_fidelity &
+Status exactly 200, body \texttt{cmp}-equal to the request body,
+\texttt{Content-Length} equal to body length. \\
+C04 & signal\_handling &
+In-flight request completes, exit 0 within 3000\,ms, port re-bindable;
+\emph{time-to-shutdown} \measured{}. Backed by the negative control. \\
+C05 & statefulness &
+One long-lived process answers at least two sequential requests. \\
+C06 & signal\_boundary &
+\path{detect_awk_boundary.sh}; gawk has no clean script-level SIGTERM
+handler, so AWK C04 is a declared \textsc{skip}; its echo is
+\textsc{unassessable}. \\
+\bottomrule
+\end{tabularx}
+\caption{Contract-to-witness inventory.}
+\label{tab:contracts}
+\end{table}
+
+The C04 in-flight check is made race-free by an explicit synchronization
+point rather than a timing guess. The test-only \texttt{?delay\_ms=}
+request path makes a handler flush its status line and
+\texttt{Content-Length} headers immediately, then sleep before writing
+the body. The witness blocks on reading those headers off the socket
+(proof the handler has been entered and committed its response), and
+only then sends \texttt{SIGTERM}. ``The request is in flight'' is thus
+an observed fact, not an assumption about how fast the signal arrives.
+The injected delay is fixed at 1000\,ms, strictly less than the
+3000\,ms shutdown deadline, so a correct graceful server can both finish
+the request and exit in time; the only way to fail is to actually drop
+the in-flight response.
+
+\section{Implementation DAG}
+
+The implementation DAG is a fan-in graph, but here the fan-in is
+load-bearing for correctness rather than tidiness: a single verifier
+must own the shared port. Seven layer-0 build/prepare units fan into one
+layer-1 verification unit that runs each server one at a time on
+\texttt{:8080}. Two independent layer-0 leaves run the behavioural
+sidecar witnesses.
+
+\begin{lstlisting}
+U01 go-server      \
+U02 node/ts-server  \   (one Node/V8 unit, two source files)
+U03 python-server    \
+U04 c-server          > U08 verify-service-contract (Java first)
+U05 rust-server      /
+U06 java-server     /
+U07 awk-server     /
+
+U09 verify-graceful-vs-kill   (independent leaf)
+U10 verify-awk-boundary       (independent leaf)
+\end{lstlisting}
+
+The computed values checked by the repository's implementation-DAG
+validator are:
+
+\begin{itemize}
+  \item ten units;
+  \item layer counts \texttt{\{0: 9, 1: 1\}};
+  \item entry points \texttt{U01..U07, U09, U10} (empty \texttt{depends\_on});
+  \item leaf nodes \texttt{U08, U09, U10} (empty \texttt{blocks});
+        U09 and U10 are simultaneously entry points and leaves;
+  \item critical path \texttt{U05 -> U08} with node-weighted
+        critical-path LOC 327.
+\end{itemize}
+
+\textbf{Run order is not arbitrary.} U08 runs Java first, on a pristine
+port. The reason is a measured runtime fact, not a preference; it is
+discussed in Section~\ref{sec:java}.
+
+\section{The Witness Harness (the part that grew)}
+
+The stdout proof's harness ran each program to exit and compared bytes.
+This harness adds five primitives the stdout proof never needed: PID
+capture into a dedicated process group (so a failed assertion never
+orphans a daemon or its children on the port), readiness polling with a
+deadline, signal delivery, exit-after-signal capture, and guaranteed
+teardown on every exit path. Port \texttt{8080} is treated as a global,
+mutable, singleton resource: the verifier serializes the language runs,
+fails fast to \textsc{skip} if the port is already occupied, and proves
+the port is re-bindable after each server exits using an
+\emph{independent} re-bind probe that itself sets \texttt{SO\_REUSEADDR}
+and retries for up to two seconds to absorb \texttt{TIME\_WAIT}. Testing
+only that the \emph{server} set the option is not enough, because the
+probe is a fresh socket that can hit \texttt{TIME\_WAIT} on its own.
+
+\section{Observed Execution}
+\label{sec:observed}
+
+All commands were run from the repository root on May 31, 2026. The full
+toolchain was present: \texttt{go} 1.26.3, \texttt{node} v24.15.0,
+\texttt{python3} 3.13.13, \texttt{cc} (gcc) 15.2.0, \texttt{rustc}
+1.90.0, \texttt{java} 25.0.3 (runtime only; no \texttt{javac}), and
+\texttt{gawk} 5.3.2, with port 8080 free.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.46\linewidth}p{0.07\linewidth}X@{}}
+\toprule
+Command & Exit & Observed result \\
+\midrule
+\path{bash .../run_service_contract.sh} & 0 &
+7 pass, 1 skip, 0 fail. Go, Node, TS, Python, C, Rust, Java passed;
+AWK skipped as the declared C06 boundary. \\
+\path{bash .../detect_graceful_shutdown.sh} & 0 &
+Both non-graceful controls caught as C04 FAIL (ignore-SIGTERM and
+drop-in-flight). \\
+\path{bash .../detect_awk_boundary.sh} & 0 &
+gawk listener up; echo UNASSESSABLE; SIGTERM yields exit 143, confirming
+no clean handler. \\
+\path{validate_implementation_dag.py ... --check-paths-exist} & 0 &
+Passed; 10 units, layers \texttt{\{0:9,1:1\}}, critical-path LOC 327. \\
+\path{validate_traceability.py ... --check-paths-exist} & 0 &
+Passed; 29 entities, path checks enabled. \\
+\path{validate_review_readiness.py ...} (three files) & 0 &
+Contract-declaration, readiness-gate, and evidence-matrix passed. \\
+\bottomrule
+\end{tabularx}
+\caption{Observed command outcomes.}
+\label{tab:commands}
+\end{table}
+
+Table~\ref{tab:lifecycle} gives the per-language lifecycle results from
+one representative run. The two timing columns are \measured{} numbers,
+not gates (Section~\ref{sec:measured}).
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lllX@{}}
+\toprule
+Language & Result & time-to-ready & time-to-shutdown \\
+\midrule
+Java   & PASS & 566\,ms & 24\,ms\,$\dagger$ \\
+Go     & PASS & 4\,ms   & 1070\,ms \\
+Node   & PASS & 48\,ms  & 1024\,ms \\
+TS     & PASS & 71\,ms  & 1024\,ms \\
+Python & PASS & 47\,ms  & 1026\,ms \\
+C      & PASS & 3\,ms   & 1002\,ms \\
+Rust   & PASS & 3\,ms   & 1001\,ms \\
+AWK    & SKIP & ---     & C06 boundary; echo UNASSESSABLE \\
+\bottomrule
+\end{tabularx}
+\caption{Per-language lifecycle (one representative run; \measured{}
+timings vary run to run).}
+\label{tab:lifecycle}
+\end{table}
+
+The roughly 1000\,ms shutdown for six runtimes is the injected 1000\,ms
+in-flight delay being honoured: the server finishes the delayed request
+before exiting. $\dagger$~Java is the exception at 24\,ms because
+\texttt{server.stop(2)} interrupts the handler's sleep, so Java writes
+the full body immediately instead of waiting out the artificial delay.
+The in-flight response still arrives complete and byte-exact and the
+exit code is 0, so C04 holds---this is honest graceful completion, in
+direct contrast to the drop-in-flight control below.
+
+\section{The \measured{} Result Word}
+\label{sec:measured}
+
+The companion stdout proof used four result words but reported no
+\measured{} values, because nothing in that contract was a timed
+observation. This proof is the first in the repository to use the fourth
+word for real, and it is disciplined about what the word means. A
+\measured{} number---\emph{time-to-ready}, \emph{time-to-shutdown}, or
+bytes echoed---is descriptive evidence, never a \textsc{pass} on its
+own. ``Within the deadline'' is a \emph{separate} \textsc{pass}/\textsc{fail}
+contract: C02 fails if the server is not connectable within 5000\,ms,
+and C04 fails if it has not exited within 3000\,ms, regardless of the
+exact measured figure. The timings in Table~\ref{tab:lifecycle} vary
+from run to run; that variance is precisely why they are reported as
+measurements and not promoted to gates. (A scope note: the claim of
+``first \measured{} use'' is currently scoped to this papers repository,
+not the wider organization.)
+
+\section{Negative Control: Graceful versus Killed}
+
+A graceful-shutdown check that only inspects the exit code is vacuous: a
+server can \texttt{exit(0)} the instant it receives \texttt{SIGTERM} and
+look clean while dropping every in-flight request. The C04 definition is
+therefore the stronger one---an in-flight request must \emph{complete}
+---and \path{detect_graceful_shutdown.sh} proves the gate enforces it on
+both axes. It drives two deliberately broken Go servers:
+
+\begin{itemize}
+  \item \textbf{Control A} installs no \texttt{SIGTERM} handler. The
+        witness must find it still running after the deadline and
+        escalate to \texttt{SIGKILL}; that is a C04 \textsc{fail}.
+  \item \textbf{Control B} calls \texttt{exit(0)} on \texttt{SIGTERM}
+        while a slow request is mid-flight. Its exit code is a clean 0,
+        but the client receives a truncated body. The witness must read
+        the truncated response and classify it \textsc{fail} anyway.
+\end{itemize}
+
+On this runner both controls were caught: Control A timed out and needed
+\texttt{SIGKILL}; Control B exited 0 but delivered 0 of 56 expected body
+bytes. \textsc{pass} for this witness means the C04 check discriminates
+graceful from non-graceful on the exit-code axis \emph{and} the
+in-flight-completion axis. This is the single most important honesty
+witness in the bundle, and it is the lifecycle analogue of the stdout
+proof's ``a divergent implementation would fail'' control.
+
+\section{A Measured Runtime Correction: Java and SO\_REUSEADDR}
+\label{sec:java}
+
+Service proofs interact with the operating system in ways a static
+design document can get wrong, so the design was checked against a
+pre-build runtime spike before any server was written. The spike
+overturned one design assumption and is reported here in full because
+correcting it is part of the result.
+
+The draft design assumed Java's bundled
+\texttt{com.sun.net.httpserver.HttpServer} would carry the same
+\texttt{SO\_REUSEADDR} guarantee as the other runtimes. It does not. On
+this runner (OpenJDK 25.0.3, Linux, \texttt{tcp\_fin\_timeout}=60) the
+spike established that \texttt{HttpServer} sets no \texttt{SO\_REUSEADDR}
+and exposes no API to set it: neither \texttt{HttpServer.create(addr,
+backlog)} nor the unbound \texttt{create()} followed by \texttt{bind()}
+surfaces the underlying \texttt{ServerSocket}, so
+\texttt{setReuseAddress(true)} before \texttt{bind} is unreachable. Once
+the server has served a connection and closed it server-side, the port
+holds a \texttt{TIME\_WAIT} entry and a fresh \texttt{HttpServer} cannot
+re-bind it for the full timeout window; every spike run ended in
+\texttt{BindException: Address already in use}. A plain
+\texttt{ServerSocket} with \texttt{setReuseAddress(true)} binds the same
+port immediately.
+
+The correction is a run-order constraint, not a weakened claim. Java is
+scheduled \emph{first} in the serialized verify order, on a pristine
+port; its pre-flight is a \texttt{TIME\_WAIT}-aware probe rather than the
+connectivity probe used for the other six. A lingering foreign
+\texttt{TIME\_WAIT} when Java's turn comes is recorded as a legitimate
+\textsc{skip}, never a false \textsc{fail}. Java's own port-release check
+still passes, because that assertion is made by the independent
+\texttt{SO\_REUSEADDR}-setting probe socket, not by Java re-binding. The
+other six runtimes set \texttt{SO\_REUSEADDR} (Go and Node by default, C
+via \texttt{setsockopt}, Rust via a small \texttt{extern "C"} FFI block,
+Python via \texttt{allow\_reuse\_address}) and tolerate a prior
+\texttt{TIME\_WAIT}.
+
+\section{PASS, SKIP, FAIL, and MEASURED}
+
+The proof uses the four result words narrowly.
+
+\begin{itemize}
+  \item \textsc{pass} means the witness exited 0 and reported the checked
+        lifecycle condition held: ready, byte-exact echo over at least
+        two requests, in-flight completion, exit 0 within the deadline,
+        and port released.
+  \item \textsc{skip} means a declared check was not performed because a
+        toolchain was absent, the port was occupied, or the runtime is
+        the declared C06 boundary (AWK). \textsc{skip} is not evidence of
+        conformance.
+  \item \textsc{fail} means a bind failure, a missed deadline, a non-200
+        status, a body mismatch, a dropped in-flight response, a nonzero
+        exit on \texttt{SIGTERM}, or a port not released.
+  \item \measured{} is reserved for the timing and byte observations of
+        Section~\ref{sec:measured}; it is never promoted to a
+        \textsc{pass}.
+\end{itemize}
+
+\section{Claim Audit}
+
+Table~\ref{tab:claims} maps the paper's claims to evidence, separating
+direct observation from inference.
+
+\begin{longtable}{@{}p{0.26\linewidth}p{0.28\linewidth}p{0.18\linewidth}p{0.18\linewidth}@{}}
+\toprule
+Claim & Evidence source & Status & Counterexample boundary \\
+\midrule
+\endhead
+The proof pack is structurally complete for this example. &
+the five \path{*.toml} files and the repository validators. &
+Directly observed. &
+Does not imply production readiness. \\
+The seven available servers satisfy the C01--C05 lifecycle on this
+runner. &
+\path{run_service_contract.sh} and the observed run. &
+Directly observed; AWK skipped as the C06 boundary. &
+A runner missing a toolchain or port would produce more SKIPs. \\
+The C04 graceful check is non-vacuous. &
+\path{detect_graceful_shutdown.sh} and the two controls. &
+Directly observed. &
+Does not prove zero drops under arbitrary concurrency. \\
+Java's \texttt{HttpServer} cannot set \texttt{SO\_REUSEADDR}; Java is
+scheduled first. &
+the pre-build spike and the witness pre-flight. &
+Directly observed on this JDK and runner. &
+Does not characterize other JDKs or HTTP libraries. \\
+The AWK signal boundary is real and its echo is unasserted. &
+\path{detect_awk_boundary.sh}; SIGTERM exit 143. &
+Directly observed plus a declared non-claim. &
+Does not prove gawk \texttt{/inet} cannot echo byte-exact. \\
+Artifact organization follows current review expectations. &
+ACM badging, POPL artifact guidance, and SIGSOFT
+standards~\cite{acmBadging2020,poplArtifact2023,sigsoftStandards}. &
+Cited. &
+No formal artifact badge is claimed. \\
+\bottomrule
+\caption{Claim-to-evidence audit.}
+\label{tab:claims}
+\end{longtable}
+
+\section{Related Work}
+
+The proof's framing is an executable specification used as a consistency
+check rather than a benchmark, a line of work with precedent in trace
+specifications, where formal specifications are turned into executable
+models~\cite{hoffman1988trace}. The lifecycle contract itself encodes
+widely-recommended operational practice: disposable processes that start
+fast and shut down gracefully on \texttt{SIGTERM}, finishing in-flight
+work before exit, is the disposability principle of the twelve-factor
+methodology~\cite{twelvefactor}, and treating non-graceful termination
+as a first-class failure mode to be tested echoes stability-pattern
+guidance for production services~\cite{nygard2018release}.
+
+The artifact framing follows research-artifact guidance rather than
+benchmark methodology. ACM distinguishes artifact evaluation,
+availability, and result validation~\cite{acmBadging2020}; POPL's
+artifact guidance asks authors to map scripts and source files to paper
+claims~\cite{poplArtifact2023}; and SIGSOFT's empirical standards
+emphasize specific, technical review checklists for software-engineering
+research~\cite{sigsoftStandards,ralph2020empirical}.
+
+\section{Threats to Validity}
+
+The validity structure separates what was observed from the broader
+claims one might draw~\cite{runeson2009case,feldt2010validity}.
+
+\textbf{Construct validity.} The proof measures whether a stateful
+lifecycle contract is represented and checked, not whether \dagtoml{} is
+sufficient for a large assurance pipeline. The echo service is
+intentionally minimal: it is not a benchmark, not RFC-conformant HTTP,
+and has no TLS or keep-alive guarantees beyond the test.
+
+\textbf{Internal validity.} The strongest internal risks were addressed
+before the reported run. The in-flight check uses an explicit
+header-flush synchronization point rather than a timing guess; the
+port-release check uses an independent \texttt{SO\_REUSEADDR} re-bind
+probe rather than a mere listener-absence check; and the byte-exact
+comparison checks \texttt{Content-Length} as well as the body. Each of
+these was a real defect caught and corrected during review.
+
+\textbf{External validity.} The proof covers eight small servers on one
+POSIX runner. \texttt{SIGTERM}/\texttt{SIGKILL} semantics assume POSIX;
+Windows is out of scope. Port 8080 is a runner-global assumption, and a
+hostile environment racing for the port yields a legitimate \textsc{skip}.
+
+\textbf{Conclusion validity.} The results are categorical witness
+outcomes and descriptive \measured{} timings, not statistical estimates.
+The correct conclusion is that the declared witnesses passed, skipped, or
+failed as reported on this runner.
+
+\section{What the Static Validators Do Not Check}
+
+The five \dagtoml{} validators check structure, not runtime. They
+confirm that C01 is declared, wired to a test, and that the witness
+scripts exist; they cannot confirm that a server ever bound, echoed, or
+shut down. Every dynamic guarantee lives only in the shell witnesses and
+is surfaced into Section~\ref{sec:observed}. The readiness-gate
+validator, in particular, requires a gate identifier, an artifact class,
+and one of a small set of content fields, and resolves the artifact-class
+link and the required-document paths; it does \emph{not} interpret the
+human-readable pass and block conditions, which are enforced only by
+running the witness. Path existence is itself opt-in: every validator
+invocation in this paper passes \texttt{--check-paths-exist} with a
+repository root, or the existence guarantee would be hollow. There is no
+validator hook for \measured{}; it is a paper-level reporting discipline.
+This gap is the natural bridge to later follow-ups in the same arc,
+especially handing verification to enterprise static-analysis tools, and
+is noted here as future work without overclaiming.
+
+\section{arXiv and Artifact Packaging Notes}
+
+The public artifact repository for this paper is
+\url{https://github.com/verivus-oss/agent-assurance-papers}; the
+specification and validators are at
+\url{https://github.com/verivus-oss/agent-assurance}. The package is
+intentionally plain: \texttt{article}, \texttt{pdflatex}, BibTeX,
+\texttt{natbib}, and standard packages. arXiv processes TeX submissions
+automatically, expects authors to inspect the generated PDF, and asks
+that extraneous files such as logs and aux files be removed from the
+source package~\cite{arxivSubmitTex2026,arxivTexLive2026}. An arXiv
+source package for this paper should include only \path{main.tex},
+\path{references.bib}, and a precomputed \path{main.bbl}; the bundle code
+can be linked or attached as ancillary material.
+
+\section{Limitations and Non-Claims}
+
+This paper does not claim throughput, latency, or concurrency-under-load
+results; RFC-conformant HTTP, TLS, or keep-alive guarantees; correctness
+on non-POSIX runners; that gawk \texttt{/inet} cannot achieve byte-exact
+echo (only that this bundle does not assert it); or production readiness.
+The exact claim is narrower: the repository contains a multi-language
+stateful-service proof whose lifecycle contract, implementation graph,
+traceability chains, and review gate can be checked against executable
+witnesses; whose graceful-shutdown check is shown non-vacuous by negative
+controls; whose one declared signal boundary is explicit; and whose
+observed outcomes are reproducible by running the listed commands in an
+environment with the same toolchains.
+
+\section{Conclusion}
+
+The stdout proof showed that a \dagtoml{} contract can govern identical
+output bytes across languages. This proof shows the same structure
+governing an identical \emph{lifecycle}---ready, echo, graceful
+shutdown, port release---across seven of eight languages (six runtimes),
+with the eighth, AWK, held as the one declared signal boundary rather
+than to the lifecycle contract. What had to grow is named precisely: a
+lifecycle-aware witness harness, the \measured{} result word used for
+real, a port-as-shared-resource discipline, and a negative control that
+keeps the graceful-shutdown check honest. What did not change is the
+proof structure itself. The artifact is not evidence about performance or
+production assurance; it is a compact, executable proof that a stateful
+service contract can be tied to contracts, DAG nodes, code paths,
+witnesses, and review gates, and that the parts a static validator cannot
+see are stated rather than hidden.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
+
+\typeout{get arXiv to do 4 passes: Label(s) may have changed. Rerun to get cross-references right.}
