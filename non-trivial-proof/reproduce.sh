@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # reproduce.sh — the container entrypoint (DESIGN.md §10). Reproduces the whole
-# Stateful I/O proof on pinned toolchains and compiles the paper, inside the
-# hermetic image. Exits 0 only if every witness, every validator, and the PDF
-# build succeed. main.pdf and this log are copied to /out (bind-mount it to
+# Stateful I/O proof and compiles the paper inside the image. Pinning is partial:
+# go/node/rust are sha256-pinned and the base is digest-pinned, but the
+# zypper-provided tools (gcc, gawk, python3, java, TeX) are NOT — see the
+# Containerfile header. Exits 0 only if every witness, every validator, and the
+# PDF build succeed. main.pdf and this log are copied to /out (bind-mount it to
 # collect them on the host).
 set -u
 REPO=/work/agent-assurance-papers
@@ -12,7 +14,10 @@ V=/work/agent-assurance/validators
 OUT="${OUT_DIR:-/out}"
 mkdir -p "$OUT" 2>/dev/null || true
 
-echo "############ TOOLCHAINS (pinned) ############"
+echo "############ TOOLCHAINS ############"
+echo "  (go/node/rust pinned by version+sha256; gcc/python/java/gawk/TeX are"
+echo "   unpinned, from the digest-pinned base's LIVE zypper repos — versions"
+echo "   below are a snapshot of this build, not a guarantee)"
 go version
 printf 'node %s\n' "$(node --version)"
 python3 --version

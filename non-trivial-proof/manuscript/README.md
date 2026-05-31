@@ -28,13 +28,18 @@ relative to the repository root. Both checks pass for this package
 (11 cite keys resolve; all referenced bundle files exist; LaTeX
 environments balance).
 
-**Hermetic build (recommended).** `../build-and-run.sh` builds the
-pinned podman image (`../Containerfile`) and reproduces the whole proof
-*and* compiles this paper inside it, dropping the freshly-built
-`main.pdf` into this directory. The committed `main.pdf` (10 pages) was
-produced this way; that run also reported the witnesses 7 PASS / 1 SKIP /
-0 FAIL and all five validators passing on pinned toolchains
-(go 1.26.3, node 24.15.0, rust 1.90.0, java-25-openjdk, gcc 15.2.x).
+**Containerized build (recommended).** `../build-and-run.sh` builds the
+podman image (`../Containerfile`) and reproduces the whole proof *and*
+compiles this paper inside it, dropping the freshly-built `main.pdf` into
+this directory. The committed `main.pdf` (10 pages) was produced this way;
+that run also reported the witnesses 7 PASS / 1 SKIP / 0 FAIL and all five
+validators passing. Pinning is partial and honestly so: the base image is
+digest-pinned and go 1.26.3 / node 24.15.0 / rust 1.90.0 are sha256-pinned,
+but the zypper-provided tools (gcc, gawk, python3, java-25-openjdk, TeX,
+networkx) track live Tumbleweed repos and drift on rebuild. Versions
+observed in the committed build (snapshot, not a guarantee): JDK 25.0.3,
+python 3.13.13, gcc 15.2.1 (host 15.2.0), gawk 5.4.0 (host 5.3.2). See the
+`Containerfile` header for the full pinned-vs-unpinned breakdown.
 
 ## Verification commands
 

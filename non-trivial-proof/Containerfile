@@ -1,16 +1,25 @@
-# Hermetic reproduction environment for the Stateful I/O proof (DESIGN.md §10).
+# Reproduction environment for the Stateful I/O proof (DESIGN.md §10).
 #
-# Closes the honest "ran on this runner" gap: one `podman build` + `podman run`
-# reproduces the whole proof (the three witnesses + the five validators) AND
-# compiles the paper to main.pdf, on pinned toolchains.
+# One `podman build` + `podman run` reproduces the whole proof (the three
+# witnesses + the five validators) AND compiles the paper to main.pdf,
+# narrowing the honest "ran on this runner" gap to a single re-runnable image.
 #
-# Version fidelity to the authoring host (openSUSE, gcc "SUSE Linux" 15.2.0):
-#   - go 1.26.3, node 24.15.0, rust 1.90.0 are pinned by version + sha256 below.
-#   - JDK is java-25-openjdk from the same openSUSE family — the host's own JDK
-#     is the SUSE OpenJDK 25.0.3+9 build, so this matches exactly.
-#   - gcc, gawk, python3, and TeX come from the digest-pinned Tumbleweed base.
-#     One documented delta: gcc is 15.2.1 here vs 15.2.0 on the host (Tumbleweed
-#     rolled one patch forward); the proof is version-robust and unaffected.
+# What is actually pinned (and what is NOT — read before calling this "hermetic"):
+#   - PINNED: the base image is pinned by digest (below); go 1.26.3, node 24.15.0,
+#     and rust 1.90.0 are pinned by version + sha256.
+#   - NOT PINNED: every zypper-installed package (gcc, gawk, python3,
+#     java-25-openjdk, texlive-scheme-medium, python3-networkx). The `zypper
+#     refresh` step pulls LIVE Tumbleweed repo metadata, so these install at
+#     whatever version the rolling repos currently serve and WILL drift on a
+#     later rebuild. Pinning them too would require a Tumbleweed snapshot repo
+#     (http://download.opensuse.org/history/<date>/...), which this image does
+#     not yet do. So this is a working, version-honest reproducer, not a
+#     bit-reproducible one.
+#   - Versions OBSERVED in the green build vs the authoring host (a snapshot, not
+#     a guarantee): JDK 25.0.3 == 25.0.3 (matched THIS build); python 3.13.13 ==
+#     3.13.13; gcc 15.2.1 vs 15.2.0 (one patch newer); gawk 5.4.0 vs 5.3.2 (one
+#     minor newer). The proof is version-robust, so these deltas do not change the
+#     PASS/SKIP/FAIL outcome — but they are real and unpinned.
 FROM registry.opensuse.org/opensuse/tumbleweed@sha256:7e8c348c69c0e614c9741a85bfb52103fa1e67186be20c0e0d0e39903bcd64c6
 
 # --- distro toolchains + witness dependencies + TeX (scheme-medium covers the

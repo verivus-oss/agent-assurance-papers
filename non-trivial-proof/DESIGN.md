@@ -765,3 +765,39 @@ on Codex.
 **Round-5 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
 approval (`5efa2a44`). The three AWK-overclaim fixes land in the same commit as the
 manuscript and this record. This completes §10 (bundle + manuscript).
+
+### 12.5 Round-6 review (2026-05-31): the hermetic-reproduction container
+
+A podman reproduction (`Containerfile`, `reproduce.sh`, `build-and-run.sh`) was
+added beyond §10 to reproduce the proof + paper on pinned toolchains, and
+committed (`d9187d4`) on the strength of a fully green in-container run (witnesses
+7 PASS / 1 SKIP / 0 FAIL, all five validators, `main.pdf` built). It was then
+submitted to the gate specifically for **version-pinning honesty and
+reproducibility** — the run proves it *works*, not that its claims are honest.
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `b67e985d` → `4a6e9007` → `271ee865` | **8 honesty/repro BLOCKERs → all four files OK** (evidence-backed) |
+
+**Codex — six main + two residual honesty overclaims, all real.** The container
+built green but its *prose* overclaimed hermeticity:
+
+| # | Blocker | Fix |
+|---|---------|-----|
+| 1 | "pinned toolchains"/"hermetic" framing, while every zypper package (gcc, gawk, python3, java, TeX, networkx) tracks live Tumbleweed repos and drifts on rebuild | Containerfile header now separates PINNED (base digest + go/node/rust sha256) from NOT PINNED (the zypper layer) |
+| 2 | selective delta disclosure — only gcc 15.2.1-vs-15.2.0 documented; the larger gawk 5.4.0-vs-5.3.2 delta omitted | both deltas (gcc + gawk) now disclosed as a snapshot, not a guarantee |
+| 3 | JDK "matches exactly" stated as durable | scoped to "matched THIS build; unpinned, not guaranteed" |
+| 4 | `reproduce.sh` runtime header said "TOOLCHAINS (pinned)" over unpinned tools | relabeled + a note naming the unpinned tools |
+| 5 | README version summary implied all toolchains pinned / gcc the only delta | distinguishes sha256-pinned from drifting; lists the gawk delta |
+| 6 | validators copied from an unpinned sibling checkout at build time | `build-and-run.sh` documents this and stamps the validators' git rev into a `PROVENANCE.txt` |
+| 7–8 | residual top-of-file "on pinned toolchains"/"hermetic image" comments in `reproduce.sh` and `build-and-run.sh` | rewritten to state partial pinning |
+
+Re-review `271ee865` confirmed all four files OK with the three sha256 pins
+unchanged and still enforced, and **no functional build/run/install/TeX command
+changed** — every fix was prose/disclosure. The standing lesson holds: a green
+run proves the container *works*; only adversarial review caught that it was
+describing itself dishonestly. (sha256s independently cross-checked: node + go
+against official sources; rust well-formed.)
+
+**Round-6 gate status: SATISFIED** on Codex's blocker→fix→all-OK. The honesty
+fixes land in the same commit as this record.
