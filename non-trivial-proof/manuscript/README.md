@@ -28,6 +28,14 @@ relative to the repository root. Both checks pass for this package
 (11 cite keys resolve; all referenced bundle files exist; LaTeX
 environments balance).
 
+**Hermetic build (recommended).** `../build-and-run.sh` builds the
+pinned podman image (`../Containerfile`) and reproduces the whole proof
+*and* compiles this paper inside it, dropping the freshly-built
+`main.pdf` into this directory. The committed `main.pdf` (10 pages) was
+produced this way; that run also reported the witnesses 7 PASS / 1 SKIP /
+0 FAIL and all five validators passing on pinned toolchains
+(go 1.26.3, node 24.15.0, rust 1.90.0, java-25-openjdk, gcc 15.2.x).
+
 ## Verification commands
 
 Run these from the repository root (`agent-assurance-papers`):
