@@ -1,0 +1,240 @@
+# Traceability for the Stateful I/O HTTP echo-service proof (DESIGN.md §7).
+#
+# Chain 1 (service lifecycle): one intent, one feature, one normative
+# requirement, one implementation with EIGHT CODE references (one per language
+# source file — JS and TS distinct even though they share Node/V8 build unit
+# U02), and one TEST that runs run_service_contract.sh and enforces C01..C05.
+# Chain 2 (graceful-vs-kill): the C04 negative-control chain. Chain 3
+# (awk-boundary): the C06 signal-boundary chain.
+#
+# Every `path` resolves to a real file under repo root.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version   = "0.1.0"
+template_kind    = "traceability"
+docs             = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+ontology_version = 1
+title            = "Traceability for: Stateful I/O HTTP echo service across eight languages"
+source_spec      = "non-trivial-proof/proof-bundle/README.md"
+owners           = ["verivus-oss"]
+created          = "2026-05-31"
+confidentiality  = "public"
+license          = "Apache-2.0"
+
+[[intents]]
+id          = "INT:stateful-io-proof"
+name        = "Stateful I/O echo-service proof"
+statement   = "Demonstrate that the DAG-TOML contract machinery governs an identical behavioural lifecycle (ready, byte-exact echo, graceful SIGTERM, port release) across radically different runtimes, not just identical stdout bytes."
+realized_by = ["REQ:echo-service-lifecycle"]
+
+[[intents]]
+id          = "INT:graceful-shutdown-detection"
+name        = "Graceful-vs-kill detection"
+statement   = "Demonstrate that the C04 graceful-shutdown check is non-vacuous: a server that ignores SIGTERM, or one that drops an in-flight request while exiting 0, is caught as FAIL."
+realized_by = ["REQ:non-graceful-server-caught"]
+
+[[intents]]
+id          = "INT:awk-signal-boundary"
+name        = "AWK signal boundary"
+statement   = "Demonstrate that a runtime which can serve echo but cannot install a clean script-level SIGTERM handler is recorded as a declared SKIP-with-rationale, not a false PASS or FAIL."
+realized_by = ["REQ:awk-boundary-declared"]
+
+[[features]]
+id             = "FEAT:multilang-echo-service"
+name           = "Multi-language HTTP echo service"
+constrained_by = ["REQ:echo-service-lifecycle"]
+implemented_by = ["IMP:echo-servers"]
+produces       = ["OUT:service-contract-witness"]
+
+[[features]]
+id             = "FEAT:graceful-vs-kill"
+name           = "Graceful-vs-kill negative control"
+constrained_by = ["REQ:non-graceful-server-caught"]
+implemented_by = ["IMP:graceful-controls"]
+produces       = ["OUT:graceful-shutdown-witness"]
+
+[[features]]
+id             = "FEAT:awk-boundary"
+name           = "AWK C06 signal boundary"
+constrained_by = ["REQ:awk-boundary-declared"]
+implemented_by = ["IMP:awk-boundary"]
+produces       = ["OUT:awk-boundary-witness"]
+
+[[requirements]]
+id               = "REQ:echo-service-lifecycle"
+statement        = "Every PASS-candidate echo-server implementation MUST become ready on 127.0.0.1:8080, echo a POST body byte-exact with status 200 and matching Content-Length, answer at least two sequential requests, complete an in-flight request on SIGTERM, exit 0 within the shutdown deadline, and release the port (re-bindable via an SO_REUSEADDR probe). The AWK server is the declared C06 signal boundary and is recorded as SKIP, not held to the full lifecycle."
+requirement_kind = "functional"
+priority         = "must"
+source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C01"
+constrains       = ["IMP:echo-servers"]
+verified_by      = ["TEST:stateful-io-proof::service-contract"]
+
+[[requirements]]
+id               = "REQ:non-graceful-server-caught"
+statement        = "A server that ignores SIGTERM, or that drops an in-flight response while exiting 0, MUST be classified as a C04 FAIL by the gate — on both the exit-code axis and the in-flight-completion axis."
+requirement_kind = "functional"
+priority         = "must"
+source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C04"
+constrains       = ["IMP:graceful-controls"]
+verified_by      = ["TEST:stateful-io-proof::graceful-vs-kill"]
+
+[[requirements]]
+id               = "REQ:awk-boundary-declared"
+statement        = "The gawk /inet echo server, which exposes no clean script-level SIGTERM handler, MUST be recorded as a declared SKIP-with-rationale on C04, with its echo reported honestly as UNASSESSABLE."
+requirement_kind = "functional"
+priority         = "must"
+source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C06"
+constrains       = ["IMP:awk-boundary"]
+verified_by      = ["TEST:stateful-io-proof::awk-boundary"]
+
+[[implementations]]
+id         = "IMP:echo-servers"
+name       = "Eight-language HTTP echo servers"
+summary    = "Eight echo servers traced to the lifecycle requirement and exercised by run_service_contract.sh (serialized on :8080, Java first). The seven PASS-candidates (Go, Node/JS, TypeScript, Python, C, Rust, Java) are held to C01..C05; the AWK server is the declared C06 signal boundary, recorded as SKIP by that witness and detailed by detect_awk_boundary.sh."
+implements = ["REQ:echo-service-lifecycle"]
+code = [
+  "CODE:srv-go",
+  "CODE:srv-node-js",
+  "CODE:srv-ts",
+  "CODE:srv-python",
+  "CODE:srv-c",
+  "CODE:srv-rust",
+  "CODE:srv-java",
+  "CODE:srv-awk",
+]
+tests = ["TEST:stateful-io-proof::service-contract"]
+
+[[implementations]]
+id         = "IMP:graceful-controls"
+name       = "Non-graceful negative controls"
+summary    = "Two deliberately non-graceful Go servers — one ignoring SIGTERM, one dropping the in-flight response on exit — that the C04 check must catch as FAIL."
+implements = ["REQ:non-graceful-server-caught"]
+code = [
+  "CODE:control-ignore",
+  "CODE:control-drop",
+]
+tests = ["TEST:stateful-io-proof::graceful-vs-kill"]
+
+[[implementations]]
+id         = "IMP:awk-boundary"
+name       = "AWK signal-boundary server"
+summary    = "The gawk /inet echo server whose firm contract is only the C06 signal boundary (no clean SIGTERM handler); echo is UNASSESSABLE."
+implements = ["REQ:awk-boundary-declared"]
+code = ["CODE:awk-boundary-server"]
+tests = ["TEST:stateful-io-proof::awk-boundary"]
+
+[[code]]
+id       = "CODE:srv-go"
+path     = "non-trivial-proof/proof-bundle/src/go/server.go"
+symbol   = "main"
+language = "go"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-node-js"
+path     = "non-trivial-proof/proof-bundle/src/node/server.js"
+symbol   = "createServer"
+language = "javascript"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-ts"
+path     = "non-trivial-proof/proof-bundle/src/typescript/server.ts"
+symbol   = "createServer"
+language = "typescript"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-python"
+path     = "non-trivial-proof/proof-bundle/src/python/server.py"
+symbol   = "main"
+language = "python"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-c"
+path     = "non-trivial-proof/proof-bundle/src/c/server.c"
+symbol   = "main"
+language = "c"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-rust"
+path     = "non-trivial-proof/proof-bundle/src/rust/server.rs"
+symbol   = "main"
+language = "rust"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-java"
+path     = "non-trivial-proof/proof-bundle/src/java/Server.java"
+symbol   = "main"
+language = "java"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:srv-awk"
+path     = "non-trivial-proof/proof-bundle/src/awk/server.awk"
+symbol   = "BEGIN"
+language = "awk"
+realizes = ["IMP:echo-servers"]
+
+[[code]]
+id       = "CODE:control-ignore"
+path     = "non-trivial-proof/proof-bundle/src/controls/control_ignore.go"
+symbol   = "main"
+language = "go"
+realizes = ["IMP:graceful-controls"]
+
+[[code]]
+id       = "CODE:control-drop"
+path     = "non-trivial-proof/proof-bundle/src/controls/control_drop.go"
+symbol   = "main"
+language = "go"
+realizes = ["IMP:graceful-controls"]
+
+[[code]]
+id       = "CODE:awk-boundary-server"
+path     = "non-trivial-proof/proof-bundle/src/awk/server.awk"
+symbol   = "BEGIN"
+language = "awk"
+realizes = ["IMP:awk-boundary"]
+
+[[tests]]
+id        = "TEST:stateful-io-proof::service-contract"
+path      = "non-trivial-proof/proof-bundle/run_service_contract.sh"
+test_kind = "e2e"
+verifies  = ["REQ:echo-service-lifecycle"]
+command   = "bash non-trivial-proof/proof-bundle/run_service_contract.sh"
+
+[[tests]]
+id        = "TEST:stateful-io-proof::graceful-vs-kill"
+path      = "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh"
+test_kind = "smoke"
+verifies  = ["REQ:non-graceful-server-caught"]
+command   = "bash non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh"
+
+[[tests]]
+id        = "TEST:stateful-io-proof::awk-boundary"
+path      = "non-trivial-proof/proof-bundle/detect_awk_boundary.sh"
+test_kind = "smoke"
+verifies  = ["REQ:awk-boundary-declared"]
+command   = "bash non-trivial-proof/proof-bundle/detect_awk_boundary.sh"
+
+[[outputs]]
+id       = "OUT:service-contract-witness"
+name     = "Service-contract enforcement witness (C01..C05)"
+realizes = ["FEAT:multilang-echo-service", "INT:stateful-io-proof"]
+
+[[outputs]]
+id       = "OUT:graceful-shutdown-witness"
+name     = "Graceful-vs-kill negative-control witness"
+realizes = ["FEAT:graceful-vs-kill", "INT:graceful-shutdown-detection"]
+
+[[outputs]]
+id       = "OUT:awk-boundary-witness"
+name     = "AWK C06 signal-boundary witness"
+realizes = ["FEAT:awk-boundary", "INT:awk-signal-boundary"]

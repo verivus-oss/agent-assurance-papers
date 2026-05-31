@@ -686,3 +686,40 @@ effectively rested on Codex; Gemini's approval was real and cited but incomplete
 
 **Round-3 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
 approval. The fix (§5.1 step 7) lands in the same commit as this record.
+
+### 12.3 Round-4 review (2026-05-31): the built proof bundle
+
+The §10 bundle was built and submitted to the gate (servers + witnesses + the
+five TOMLs + README). Reviewers had read access to the bundle, the design, and
+the validators, and were asked specifically to hunt witness vacuity, server
+correctness, TOML-vs-reality fidelity, and README honesty.
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `f3cde9d8` → `bc430543` | **3 BLOCKERs → UNCONDITIONAL APPROVAL** (evidence-backed; all five validators re-run) |
+| Gemini (`gemini-2.5-pro`) | `32739d3d` | **UNCONDITIONAL APPROVAL** — but **missed all three blockers** |
+
+**Codex (`f3cde9d8`) — three genuine blockers, all real witness-vs-contract
+vacuity gaps:**
+
+| # | Blocker | Fix |
+|---|---------|-----|
+| 1 | C03 Content-Length never verified — the echo check did only status + `cmp`, so a wrong/missing Content-Length would PASS | `run_service_contract.sh` now captures headers (`curl -D`) and FAILs unless `Content-Length` equals the payload byte length |
+| 2 | C04 port-release not actually tested — the witness polled `ss` for listener-absence, not the SO_REUSEADDR re-bind probe the contract/§5.1-step-7 specify | added a `rebind_probe` that performs a real `bind()` with `SO_REUSEADDR` set, bounded-retried ~2 s (python3); the port-release step calls it |
+| 3 | traceability.toml overclaimed — IMP/REQ said all eight servers (incl. AWK) are held to C01..C05, but the witness records AWK as an unconditional SKIP | reworded so only the seven PASS-candidates are held to C01..C05; AWK is the declared C06 boundary recorded as SKIP |
+
+Re-review `bc430543` confirmed all three RESOLVED with line cites, re-ran the five
+validators (all pass), and cleared two fragility risks (the rebind probe does not
+create a TIME_WAIT that blocks the next language; the Content-Length parser is
+adequate). The load-bearing witness still runs 7 PASS / 1 SKIP / 0 FAIL with the
+stronger checks in place.
+
+**Gemini (`32739d3d`) — non-penetrating approval.** Gemini produced a thorough,
+evidence-cited pass across all four check areas and approved unconditionally, but
+**missed every one of Codex's three blockers** — it verified that the *servers*
+set Content-Length without checking that the *witness* asserts it, called the
+port-release logic "sound," and did not flag the AWK overclaim. Recorded honestly:
+the round rests on Codex.
+
+**Round-4 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
+approval. The three fixes land in the same commit as the bundle and this record.

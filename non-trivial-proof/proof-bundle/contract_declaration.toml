@@ -1,0 +1,111 @@
+# Contract declaration — the observable contracts the eight echo-server
+# implementations are held to (DESIGN.md §1). C01 is the load-bearing
+# lifecycle contract (becomes ready, echoes byte-exact, exits 0 on SIGTERM,
+# releases port). C02..C05 narrow specific obligations (readiness deadline,
+# echo fidelity, graceful signal handling with in-flight completion,
+# statefulness). C06 is the declared AWK signal boundary: a runtime that can
+# serve C01/C03 but cannot install a clean SIGTERM handler is a
+# SKIP-with-rationale, not a PASS and not a FAIL. The `domain` field is
+# free-form (validate_review_readiness.py does not constrain the vocabulary).
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "contract-declaration"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Contract declaration for: Stateful I/O HTTP echo-service proof"
+status          = "ready"
+created         = "2026-05-31"
+review_subject  = "non-trivial-proof/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[contracts]]
+id          = "C01"
+domain      = "service_lifecycle"
+statement   = "Each implementation, when started, MUST bind a TCP listener on 127.0.0.1:8080 (or $PROOF_PORT), accept an HTTP `POST /` carrying a request body, and return 200 OK whose response body is the EXACT byte sequence of the request body (a faithful echo). On SIGTERM it MUST stop accepting, finish any in-flight request, release the port, and exit with code 0. This is the load-bearing contract; C02..C05 narrow separable obligations."
+applies_to  = [
+  "non-trivial-proof/proof-bundle/src/go/server.go",
+  "non-trivial-proof/proof-bundle/src/node/server.js",
+  "non-trivial-proof/proof-bundle/src/typescript/server.ts",
+  "non-trivial-proof/proof-bundle/src/python/server.py",
+  "non-trivial-proof/proof-bundle/src/c/server.c",
+  "non-trivial-proof/proof-bundle/src/rust/server.rs",
+  "non-trivial-proof/proof-bundle/src/java/Server.java",
+]
+must_name   = ["binds 127.0.0.1:8080", "echoes request body byte-exact", "exits 0 on SIGTERM", "releases port"]
+verified_by = [
+  "TEST:stateful-io-proof::service-contract",
+  "non-trivial-proof/proof-bundle/run_service_contract.sh",
+]
+
+[[contracts]]
+id          = "C02"
+domain      = "readiness"
+statement   = "The server MUST become connectable on 127.0.0.1:8080 within a readiness deadline (default 5000 ms). time-to-ready is reported as a MEASURED number; 'within the deadline' is the separate PASS/FAIL contract."
+applies_to  = ["non-trivial-proof/proof-bundle/run_service_contract.sh"]
+depends_on  = ["C01"]
+verified_by = ["TEST:stateful-io-proof::service-contract"]
+
+[[contracts]]
+id          = "C03"
+domain      = "echo_fidelity"
+statement   = "The response status MUST be exactly 200, the response body MUST be cmp-equal to the request body, and Content-Length MUST equal the body length. The test-injected `?delay_ms=` path is EXCLUDED from the byte-exact echo accounting; the canonical server is the no-delay echo."
+applies_to  = [
+  "non-trivial-proof/proof-bundle/src/go/server.go",
+  "non-trivial-proof/proof-bundle/src/node/server.js",
+  "non-trivial-proof/proof-bundle/src/typescript/server.ts",
+  "non-trivial-proof/proof-bundle/src/python/server.py",
+  "non-trivial-proof/proof-bundle/src/c/server.c",
+  "non-trivial-proof/proof-bundle/src/rust/server.rs",
+  "non-trivial-proof/proof-bundle/src/java/Server.java",
+]
+depends_on  = ["C01"]
+verified_by = ["TEST:stateful-io-proof::service-contract"]
+
+[[contracts]]
+id          = "C04"
+domain      = "signal_handling"
+statement   = "After SIGTERM: any in-flight request MUST complete (no dropped/truncated response), the process MUST exit 0 within a shutdown deadline (default 3000 ms), and the port MUST be re-bindable afterward (verified by an independent re-bind probe that sets SO_REUSEADDR plus a bounded retry absorbing TIME_WAIT). SIGKILL fallback, a dropped in-flight response, or a non-re-bindable port are each a FAIL. Well-formedness: the test-injected in-flight delay (1000 ms) is strictly less than the 3000 ms shutdown deadline. The graceful-vs-kill negative control proves this check is non-vacuous."
+applies_to  = [
+  "non-trivial-proof/proof-bundle/run_service_contract.sh",
+  "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
+  "non-trivial-proof/proof-bundle/src/controls/control_ignore.go",
+  "non-trivial-proof/proof-bundle/src/controls/control_drop.go",
+]
+depends_on  = ["C01"]
+must_name   = ["in-flight request completes", "exit 0 within deadline", "port re-bindable", "non-graceful server caught as FAIL"]
+verified_by = [
+  "TEST:stateful-io-proof::service-contract",
+  "TEST:stateful-io-proof::graceful-vs-kill",
+]
+
+[[contracts]]
+id          = "C05"
+domain      = "statefulness"
+statement   = "A single long-lived process MUST answer at least two sequential requests on the same PID, proving it is a daemon and not a one-shot exec. bytes-echoed is reported as a MEASURED number."
+applies_to  = [
+  "non-trivial-proof/proof-bundle/src/go/server.go",
+  "non-trivial-proof/proof-bundle/src/node/server.js",
+  "non-trivial-proof/proof-bundle/src/typescript/server.ts",
+  "non-trivial-proof/proof-bundle/src/python/server.py",
+  "non-trivial-proof/proof-bundle/src/c/server.c",
+  "non-trivial-proof/proof-bundle/src/rust/server.rs",
+  "non-trivial-proof/proof-bundle/src/java/Server.java",
+]
+depends_on  = ["C01"]
+verified_by = ["TEST:stateful-io-proof::service-contract"]
+
+[[contracts]]
+id          = "C06"
+domain      = "signal_boundary"
+statement   = "Declared boundary: gawk exposes no clean script-level POSIX SIGTERM handler, so the AWK /inet echo server is recorded as a SKIP-with-rationale for the C04 signal contract — not a PASS and not a FAIL. Whether the gawk server also satisfies byte-exact C01/C03 echo with correct Content-Length framing over /inet is UNASSESSABLE and is reported honestly from the run, never asserted. The firm C06 claim is the signal boundary alone."
+applies_to  = [
+  "non-trivial-proof/proof-bundle/src/awk/server.awk",
+  "non-trivial-proof/proof-bundle/detect_awk_boundary.sh",
+]
+depends_on  = ["C01"]
+must_name   = ["gawk has no clean script-level SIGTERM handler", "AWK C04 declared SKIP", "AWK echo reported UNASSESSABLE", "C06 witness declared in contract file"]
+verified_by = ["TEST:stateful-io-proof::awk-boundary"]

@@ -1,0 +1,61 @@
+# Review readiness — the single gate the Stateful I/O proof must pass before it
+# claims "the DAG-TOML machinery governs an identical service lifecycle across
+# eight languages". The gate is keyed to one artifact class (the service-witness
+# pack) and blocks on any FAIL, an orphaned process on :8080, or a port that is
+# not released. NOTE (DESIGN.md §8): the static validator checks that the gate
+# has an id, an artifact_class, and one of checks/required_documents/criteria/
+# summary, and resolves the artifact_class link and required_documents paths. It
+# does NOT inspect pass_conditions/block_conditions — those are human-facing
+# narrative, enforced only by actually running run_service_contract.sh.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "readiness-gate"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Review readiness: Stateful I/O HTTP echo-service proof"
+status          = "ready"
+created         = "2026-05-31"
+review_subject  = "non-trivial-proof/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[artifact_classes]]
+id          = "A01"
+name        = "service_contract_witness_pack"
+description = "The artifacts a reviewer needs to confirm CONTRACT C01..C06 were enforced on every echo server: the four declaration TOMLs, the load-bearing service-contract witness, and the two behavioural sidecar witnesses (graceful-vs-kill and awk-boundary), plus the captured run output."
+
+[[gates]]
+id                 = "G01"
+artifact_class     = "A01"
+name               = "Service-contract gate"
+purpose            = "Block review until run_service_contract.sh has been executed and every per-language outcome is PASS or SKIP, the two negative controls are caught as FAIL, and the AWK C06 boundary is declared."
+required_documents = [
+  "non-trivial-proof/proof-bundle/contract_declaration.toml",
+  "non-trivial-proof/proof-bundle/implementation_dag.toml",
+  "non-trivial-proof/proof-bundle/traceability.toml",
+  "non-trivial-proof/proof-bundle/evidence_matrix.toml",
+  "non-trivial-proof/proof-bundle/run_service_contract.sh",
+  "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
+  "non-trivial-proof/proof-bundle/detect_awk_boundary.sh",
+]
+required_links     = [
+  "TRACEABILITY.IMP:echo-servers to CONTRACT_DECLARATION.C01",
+  "CONTRACT_DECLARATION.applies_to to TRACEABILITY.code.path",
+  "EVIDENCE_MATRIX.E02 to TRACEABILITY.tests.command",
+]
+pass_conditions    = [
+  "run_service_contract.sh exits 0 with no per-language FAIL",
+  "every PASS server echoed the payload byte-for-byte over at least two requests and exited 0 on SIGTERM",
+  "detect_graceful_shutdown.sh caught BOTH non-graceful controls as FAIL",
+  "detect_awk_boundary.sh observed the C06 boundary (no clean SIGTERM)",
+]
+block_conditions   = [
+  "any per-language outcome is FAIL",
+  "any server had to be SIGKILLed or left an orphaned process on :8080",
+  "the port was not released after a server exited",
+  "either negative control was NOT caught (the C04 check would be vacuous)",
+]
+next_step = "fix the failing implementation OR (if a real toolchain or port-resource gap) document the SKIP rationale and re-run on a clean runner"
