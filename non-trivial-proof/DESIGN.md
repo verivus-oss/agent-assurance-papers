@@ -309,10 +309,12 @@ Per language, **serialized**:
    **bounded retry** (attempt to bind in a short loop for up to ~2 s) so a
    lingering TIME_WAIT socket does not cause a false FAIL. The re-bind **probe
    socket itself MUST set `SO_REUSEADDR`** before binding — otherwise the probe,
-   a fresh socket, can hit TIME_WAIT even though the *server* set the option, so
-   testing the server's `SO_REUSEADDR` is not enough. This pairs with the
-   mandatory `SO_REUSEADDR` on every server (§3 notes); the retry covers the
-   residual window, both sockets setting SO_REUSEADDR covers the common case.
+   a fresh socket, can hit TIME_WAIT even though the server set the option, so
+   testing the server's `SO_REUSEADDR` is not enough. Because the probe sets
+   `SO_REUSEADDR` itself, this port-release check is valid for **all seven
+   runtimes including Java** — it does **not** depend on the server having set
+   the option (§3 records that Java cannot, and is handled by run-ordering, not
+   by this check); the retry covers the residual TIME_WAIT window.
 8. Tally PASS/SKIP/FAIL; print MEASURED numbers separately; exit nonzero on any
    FAIL.
 
@@ -641,3 +643,46 @@ deliberately **not** recorded here rather than paraphrased from memory.
 approval (every cite independently re-verified). Gemini corroborates only as a
 non-evidential approval; Grok was not run this round. The two fixes are confirmed
 correct and internally consistent.
+
+### 12.2 Round-3 re-review (2026-05-31): the Java SO_REUSEADDR + eight-languages fixes
+
+A third change set was submitted to the gate: (a) the **Java SO_REUSEADDR
+retraction** driven by an empirical pre-build spike (OpenJDK 25.0.3 / Linux —
+`com.sun.net.httpserver.HttpServer` sets no `SO_REUSEADDR` and exposes no API to
+set it; Java therefore runs first on a pristine port and SKIPs on a foreign
+`TIME_WAIT`), (b) leading the title/framing with **"eight languages"** (firm
+number) over "six runtimes" (defined gloss), and (c) requiring validators run
+with **`--check-paths-exist --repo-root`**. These shipped as commit `3437e30`;
+the gate then caught a defect in that commit, fixed below.
+
+| Reviewer (model) | Job ID | Verdict |
+|------------------|--------|---------|
+| Codex (`gpt-5.5`) | `376fb179` → `3b9f0b44` | **BLOCKER** (DESIGN.md:314) → after fix: **UNCONDITIONAL APPROVAL** (evidence-backed) |
+| Gemini (`gemini-2.5-pro`) | `f980ef49` | **UNCONDITIONAL APPROVAL** (evidence-backed) — **missed the blocker** |
+
+**Codex (`376fb179`) — genuine blocker.** Codex read commit `3437e30` and found
+that §5.1 step 7 still said the re-bind probe "pairs with the **mandatory
+`SO_REUSEADDR` on every server**" — a stale blanket assertion contradicting the
+new §3 Java exception (Java is one of the seven and cannot set it). §5.1 step 7
+was rewritten: the port-release check is valid for all seven runtimes **including
+Java** precisely because the *probe* socket sets `SO_REUSEADDR`, independent of
+the server; Java is handled by run-ordering, not by this check. Re-review
+`3b9f0b44` re-read the working tree, confirmed the stale phrase is gone, ran an
+exhaustive sweep finding **no** remaining "every server sets SO_REUSEADDR" / "Java
+same guarantee" assertion (lines 242/416 benign), verified §1 C04 / §3 / §4 U08 /
+§5.1 step 1 / §5.1 step 7 mutually consistent, re-confirmed the eight-languages
+and path-check items, and gave unconditional approval.
+
+**Supersession of the round-1 record.** This round retracts §12 round-1 finding
+#2's resolution (the line "§3 note now covers Java (`HttpServer` ServerSocket
+reuse / `setReuseAddress` before bind)"): the spike proved `setReuseAddress`
+before `bind` is **not reachable** through the `HttpServer` API, so that earlier
+resolution was based on a false premise. §3 now records the empirical truth.
+
+**Gemini (`f980ef49`) — evidence-backed but not exhaustive.** Gemini approved
+with file:line citations across all five requested checks, but **did not catch the
+line-314 contradiction** that Codex blocked on. Recorded honestly: the round
+effectively rested on Codex; Gemini's approval was real and cited but incomplete.
+
+**Round-3 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed
+approval. The fix (§5.1 step 7) lands in the same commit as this record.
