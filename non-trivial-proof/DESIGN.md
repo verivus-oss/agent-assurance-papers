@@ -433,10 +433,12 @@ implementation the others do not share.
 the body), `long-line-100k`, `large-1mib`, `whitespace-only`, `json-with-nul`.
 
 **Calibration control (`zctrl-broken`):** a deliberately-unfaithful echo that
-truncates the body to 16 bytes. The control's source is **materialized by the
-harness itself** (embedded + written to a temp path each run) so the calibration
-is reproducible and self-contained, not dependent on an external file. If the
-harness does not flag the control, the differential test is vacuous.
+truncates the body to 16 bytes. The control is a **committed, inspectable
+artifact** (`src/controls/broken_echo.py`) — a single source of truth, the
+differential channel's analog of the graceful-vs-kill controls — which the
+harness loads by its fixed bundle-relative path each run, so the calibration is
+reproducible and traceable. If the harness does not flag the control, the
+differential test is vacuous.
 
 **Result (`DIFFERENTIAL-AGREEMENT.md`, 2026-06-01):** the control is flagged on
 **6/10** requests (every body > 16 bytes) → the harness **demonstrably detects
@@ -653,8 +655,9 @@ output actually retrieved by job ID; failed, pending, or non-retrievable runs ar
 labelled as such and never counted as approvals. No reviewer verdict or finding is
 recorded here before its job output has been retrieved by ID.
 
-**Status: SATISFIED** (2026-06-01) for both the design+bundle round (§12.1) and the
-manuscript+container round (§12.2). Each rests on Codex's
+**Status: SATISFIED** (2026-06-01) across three rounds: the design+bundle round
+(§12.1), the manuscript+container round (§12.2), and a final holistic pre-merge
+round over the integrated PR (§12.3). Each rests on Codex's
 blocker(s)→fix→evidence-backed unconditional approval, with Gemini corroborating;
 only output retrieved by job ID is recorded.
 
@@ -755,3 +758,44 @@ gating.
 
 **Round-2 gate status: SATISFIED** on Codex's blockers→fixes→evidence-backed
 approval (`894dd9ec`), with Gemini's evidence-backed approval corroborating.
+
+### 12.3 Round 3 (final pre-merge): the integrated PR
+
+After the rebuild was committed (`2b694a9`) and opened as a pull request, the
+**entire committed PR diff** (base `origin/main` `6e88d91` … head `2b694a9`, 37
+files) was submitted to the gate one final time — a holistic pass over the
+integrated whole, re-verifying from scratch rather than resting on §12.1/§12.2.
+Reviewers were asked to check whole-study consistency across DESIGN.md, the five
+TOMLs, the witnesses, the manuscript, and the container; the absence of any live
+false-Java assertion; green + non-vacuous witnesses/validators; and that the
+commit-message and PR-body claims hold against the actual diff.
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `49a4a78f` → `9c318530` | **BLOCKER** (`DESIGN.md` §5.4) → after fix: **UNCONDITIONAL APPROVAL** (evidence-backed) |
+| Gemini (`gemini-2.5-pro`) | `02eaadeb` | **UNCONDITIONAL APPROVAL** (evidence-backed; ran validators + five witnesses, checked cross-document counts) |
+
+**Codex (`49a4a78f`) — one genuine cross-document contradiction.** §5.4 still
+described the differential calibration control as "materialized by the harness
+itself (embedded + written to a temp path each run)" — the *original* approach,
+abandoned mid-build in favour of a **committed** `src/controls/broken_echo.py`
+that the harness loads by its fixed bundle-relative path. The harness,
+traceability (`CODE:diff-broken-control`), evidence matrix (`E06`/`EV08`), and the
+manuscript had all been updated to the committed-control model; only §5.4 was
+stale. Fixed: §5.4 now describes the committed, inspectable control. Re-review
+`9c318530` confirmed §5.4 matches `differential_echo.py` (`BROKEN_CONTROL =
+BUNDLE / "src/controls/broken_echo.py"`), found no remaining
+materialized/embedded/temp-path description, re-ran the differential witness (exit
+0, 0 divergences, control caught 6/10), and re-confirmed the counts — then
+approved unconditionally. (Both prior rounds had missed this stale §5.4 line; the
+holistic integrated pass is what surfaced it.)
+
+**Gemini (`02eaadeb`) — evidence-backed approval.** Gemini independently re-ran
+the five validators and five witnesses, verified the counts across DESIGN.md /
+README / `main.tex` / the TOMLs, confirmed the Java retraction is correction-context
+only, and approved; it did not catch the §5.4 contradiction. The round rests on
+Codex.
+
+**Round-3 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed approval
+(`9c318530`), with Gemini's evidence-backed approval corroborating. The §5.4 fix
+and this record land in a follow-up commit on the PR branch.
