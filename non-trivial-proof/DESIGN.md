@@ -655,11 +655,11 @@ output actually retrieved by job ID; failed, pending, or non-retrievable runs ar
 labelled as such and never counted as approvals. No reviewer verdict or finding is
 recorded here before its job output has been retrieved by ID.
 
-**Status: SATISFIED** (2026-06-01) across three rounds: the design+bundle round
-(§12.1), the manuscript+container round (§12.2), and a final holistic pre-merge
-round over the integrated PR (§12.3). Each rests on Codex's
-blocker(s)→fix→evidence-backed unconditional approval, with Gemini corroborating;
-only output retrieved by job ID is recorded.
+**Status: SATISFIED** (2026-06-01) across four rounds: the design+bundle round
+(§12.1), the manuscript+container round (§12.2), a holistic pre-merge round over the
+integrated PR (§12.3), and the manuscript-expansion round (§12.4). Each rests on
+Codex's blocker(s)→fix→evidence-backed unconditional approval, with Gemini
+corroborating; only output retrieved by job ID is recorded.
 
 ### 12.0 Integrity note (why the prior §12 was discarded)
 
@@ -799,3 +799,43 @@ Codex.
 **Round-3 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed approval
 (`9c318530`), with Gemini's evidence-backed approval corroborating. The §5.4 fix
 and this record land in a follow-up commit on the PR branch.
+
+### 12.4 Round 4 (manuscript expansion): two new sections
+
+The manuscript was then expanded with two sections that surfaced contributions
+previously confined to the design docs: §"Differential Behavioural Equivalence
+Across Implementations" (with a results table) and §"Keeping the Proof Honest:
+Measure-First and Adversarial Cross-Model Review". The paper grew from 11 to 13
+pages; the container reproduction stayed green and the PDF compiled. The expansion
+was re-submitted to the gate.
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `610175e4` → `c7fd3345` | **BLOCKER** (`main.tex` review-scope overclaim) → after fix: **UNCONDITIONAL APPROVAL** (evidence-backed) |
+| Gemini (`gemini-2.5-pro`) | `01e67988` | **UNCONDITIONAL APPROVAL** (evidence-backed; verified the differential table byte-lengths + every §12 blocker reference) |
+
+**Self-caught before the gate.** The new honesty section's example-blocker list
+first mixed in defects from the *voided* pre-rebuild review log (a Content-Length
+omission, a listener-absence port check, a synthetic-only in-flight clause) rather
+than the documented §12.1–§12.3 rebuild-gate blockers. This was caught and
+corrected before dispatch — the list now cites only real, recorded rebuild-round
+blockers — so a section about honesty would not itself overclaim.
+
+**Codex (`610175e4`) — genuine overclaim.** The "Adversarial cross-model review"
+paragraph said "Before each milestone the design, the bundle, the manuscript, and
+the container were submitted…", implying all four artifacts were reviewed every
+round — but §12.1 reviewed design+bundle, §12.2 manuscript+container, and §12.3 the
+integrated PR. Fixed to state the accurate per-round scoping. Re-review
+`c7fd3345` confirmed the wording matches §12.1/§12.2/§12.3, re-ran the differential
+and Java witnesses, and re-verified the honesty section's blocker list,
+"approval-is-not-evidence" point, and §12.0 fabrication note — then approved
+unconditionally.
+
+**Gemini (`01e67988`) — evidence-backed approval.** Gemini re-ran the differential
+witness, checked the table's flagged-vs-≤16-byte rows against the actual corpus
+byte lengths and the committed control's truncation, and verified every honesty
+section blocker against §12.1–§12.3 — but did not catch the review-scope overclaim.
+The round rests on Codex.
+
+**Round-4 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed approval
+(`c7fd3345`), with Gemini's evidence-backed approval corroborating.

@@ -130,7 +130,13 @@ This remains a minimal proof, not a performance study. There is no
 throughput, latency percentile, or concurrency-under-load claim. The
 goal is the same as before: an artifact a reviewer can inspect in one
 sitting, with every dynamic guarantee tied to an executable witness and
-every non-claim stated.
+every non-claim stated. Two further results round out the artifact: a
+differential channel showing the seven implementations are
+byte-exact-equivalent under adversarial inputs
+(Section~\ref{sec:differential}), and an account of the measure-first and
+adversarial cross-model review discipline that kept the proof honest---
+including a case in which the proof falsified one of its own load-bearing
+claims (Section~\ref{sec:honest}).
 
 \section{Artifact}
 
@@ -401,6 +407,7 @@ used for \emph{timed lifecycle} observations rather than static signal
 magnitudes, and its first use in this stdout-to-lifecycle proof arc.)
 
 \section{Negative Control: Graceful versus Killed}
+\label{sec:control}
 
 A graceful-shutdown check that only inspects the exit code is vacuous: a
 server can \texttt{exit(0)} the instant it receives \texttt{SIGTERM} and
@@ -426,6 +433,84 @@ graceful from non-graceful on the exit-code axis \emph{and} the
 in-flight-completion axis. This is the single most important honesty
 witness in the bundle, and it is the lifecycle analogue of the stdout
 proof's ``a divergent implementation would fail'' control.
+
+\section{Differential Behavioural Equivalence Across Implementations}
+\label{sec:differential}
+
+The contract witness of Section~\ref{sec:observed} checks each server against a
+single fixed payload. That shows a server echoes \emph{one} body correctly, but it
+cannot reveal where two implementations \emph{diverge} on inputs the payload never
+exercises---precisely where hand-rolled HTTP parsers (here C and Rust) are most
+likely to differ. A fourth witness, \path{differential_echo.py}, closes that gap
+by turning the seven PASS-candidate servers into a differential oracle for one
+another.
+
+The harness launches each server in turn on one port (serialized exactly as the
+contract witness is) and sends a shared corpus of ten adversarial request bodies:
+an ordinary JSON object, the empty body, a body with no trailing newline, the full
+0--255 byte range including NUL, multibyte UTF-8, an embedded fake HTTP request
+used as the body, a 100\,kB single line, a 1\,MiB body, whitespace only, and JSON
+containing an embedded NUL. A faithful echo must return status~200 with the
+response body equal to the request body for \emph{every} input; any deviation
+---wrong status, an altered or truncated body, a hang---is a real bug one
+implementation has and the others do not.
+
+As with the graceful-shutdown control (Section~\ref{sec:control}), the differential
+test is only meaningful if it can fail. A committed calibration control,
+\path{src/controls/broken_echo.py}, is a deliberately unfaithful echo that
+truncates the response body to sixteen bytes; the harness must flag it on every
+corpus body longer than sixteen bytes, or the equivalence check is vacuous.
+Table~\ref{tab:differential} reports the run.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}lccX@{}}
+\toprule
+Request body & 7 real servers & Broken control & Verdict \\
+\midrule
+\texttt{simple-json}          & all 200, exact & flagged       & agree \\
+\texttt{empty}                & all 200, exact & ($\leq$16\,B) & agree \\
+\texttt{no-trailing-newline}  & all 200, exact & ($\leq$16\,B) & agree \\
+\texttt{nul-bytes} (0--255)   & all 200, exact & flagged       & agree \\
+\texttt{utf8-multibyte}       & all 200, exact & flagged       & agree \\
+\texttt{embedded-crlf-http}   & all 200, exact & flagged       & agree \\
+\texttt{long-line-100k}       & all 200, exact & flagged       & agree \\
+\texttt{large-1mib}           & all 200, exact & flagged       & agree \\
+\texttt{whitespace-only}      & all 200, exact & ($\leq$16\,B) & agree \\
+\texttt{json-with-nul}        & all 200, exact & ($\leq$16\,B) & agree \\
+\bottomrule
+\end{tabularx}
+\caption{Differential agreement on the adversarial corpus. ``flagged'' = the
+harness detected the control's 16-byte-truncated body; ``($\leq$16\,B)'' = the
+body is within the truncation length, so the broken control is indistinguishable
+from a faithful echo and is correctly not counted. Result: 0 divergences among the
+seven servers; the control is flagged on 6 of 10 (every body longer than 16 bytes)
+$\Rightarrow$ the check is non-vacuous.}
+\label{tab:differential}
+\end{table}
+
+The seven implementations agree on every input---zero divergences---including the
+full-byte-range and 1\,MiB bodies and the embedded fake-HTTP request, while the
+broken control is caught on the six bodies longer than sixteen bytes. The
+equivalence result is therefore both positive (the implementations behave
+identically on inputs the single payload never reaches) and non-vacuous (the check
+demonstrably detects an unfaithful echo).
+
+This channel is borrowed from the repository's code-derivation work, where the
+same construction---several implementations of one contract, run on a shared
+corpus, with a calibration control---is used to \emph{detect} derivation by
+behavioural agreement. Here the construction is inverted: agreement is the goal,
+and it \emph{strengthens} the proof rather than detecting anything, as the natural
+multi-implementation generalization of the single-payload witness. The honest
+limits are that echo is a near-identity contract, so agreement is expected---the
+value is in exercising the binary, large, and framing edge cases the single
+payload skips and showing the servers genuinely agree there; that differential
+agreement proves the implementations \emph{agree}, not that the shared decision is
+correct against an external specification (for echo the oracle ``output equals
+input'' \emph{is} the specification, so the two coincide here); and that the corpus
+is hand-chosen, not exhaustive---a property-based fuzzing front-end with the same
+oracle would extend coverage. AWK is excluded as the declared C06 boundary.
 
 \section{A Measured Runtime Correction: Java and SO\_REUSEADDR}
 \label{sec:java}
@@ -551,6 +636,63 @@ No formal artifact badge is claimed. \\
 \caption{Claim-to-evidence audit.}
 \label{tab:claims}
 \end{longtable}
+
+\section{Keeping the Proof Honest: Measure-First and Adversarial Cross-Model Review}
+\label{sec:honest}
+
+A proof of this kind is only as trustworthy as the discipline that produced it,
+and two practices did the load-bearing work here. Both are reproducible from the
+repository: the measurements are committed and re-runnable, and the review record
+cites only model output retrieved by job identifier.
+
+\textbf{Measure-first.} No runtime fact that drives load-bearing behaviour is
+asserted without a committed, re-runnable measurement, and every green check is
+paired with a calibration control that proves the check can fail---the
+graceful-shutdown controls of Section~\ref{sec:control} and the differential
+control of Section~\ref{sec:differential}. The sharpest evidence that this
+discipline is real rather than decorative is that it caught the proof falsifying
+\emph{its own} load-bearing claim. An earlier version asserted the Java
+\texttt{SO\_REUSEADDR} finding of Section~\ref{sec:java} and built a special run
+order on it; re-running the committed spike returned the opposite result, so the
+spike's own verdict refuted the claim it had been written to support. A
+falsifiable structure that actually falsifies one of its own claims is stronger
+evidence of falsifiability than any number of passing checks, and it is the reason
+the run order in this paper carries no privileged position.
+
+\textbf{Adversarial cross-model review.} At each milestone the artifacts produced
+in that milestone were submitted to independent external language models---the
+design and the proof bundle at the first round, the manuscript and the container
+reproduction at the second, and the integrated change set before merge at the
+third---each time instructed to verify every claim against the files and to re-run
+the witnesses and validators themselves---not to trust a summary---and to return
+either unconditional approval or one concrete, file-and-line blocker. The gate is
+recorded in the design document and cites only output retrieved by job identifier;
+failed or unretrievable runs are labelled and never counted as approvals. Across
+the rebuild's three review rounds it surfaced a series of genuine defects the
+static validators could not see, among them: the re-pointed Java reproducer
+reporting success on a partial finding when it could not establish a
+\texttt{TIME\_WAIT}, rather than skipping honestly; a retracted claim's wording
+surviving outside the correction section, in the abstract and the
+implementation-DAG discussion; stale unit and chain counts in an evidence summary;
+and a cross-document contradiction between the design's description of the
+calibration control and its committed implementation. Each was a real fault, fixed
+and re-confirmed against the artifact by the model that raised it.
+
+The review also produced a finding worth stating plainly, because it is a caution
+about using language models as reviewers at all: \emph{an approval verdict is not
+evidence}. In repeated rounds one model returned unconditional approval while
+missing every defect the other model blocked on. Approval was therefore treated
+not as proof but as one signal; the gate rested on blockers raised, fixed, and
+re-verified against the inspected artifact, and a clean ``looks good'' was never
+sufficient on its own. The same discipline is why the review record admits only
+job-identifier-retrieved output: two earlier drafts of an older review log had
+recorded reviewer findings that were never actually produced, and discarding them
+is what motivated the retrieved-by-identifier rule.
+
+These practices do not generalize beyond what was measured---one runner, two
+reviewer models, a single study---but they are the concrete reason the claims in
+this paper can be checked rather than taken on trust, and they are reported here so
+that the discipline, not only the result, transfers.
 
 \section{Related Work}
 
