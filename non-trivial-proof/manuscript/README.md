@@ -31,24 +31,27 @@ environments balance).
 **Containerized build (recommended).** `../build-and-run.sh` builds the
 podman image (`../Containerfile`) and reproduces the whole proof *and*
 compiles this paper inside it, dropping the freshly-built `main.pdf` into
-this directory. The committed `main.pdf` (10 pages) was produced this way;
-that run also reported the witnesses 7 PASS / 1 SKIP / 0 FAIL and all five
-validators passing. Pinning is partial and honestly so: the base image is
-digest-pinned and go 1.26.3 / node 24.15.0 / rust 1.90.0 are sha256-pinned,
-but the zypper-provided tools (gcc, gawk, python3, java-25-openjdk, TeX,
-networkx) track live Tumbleweed repos and drift on rebuild. Versions
-observed in the committed build (snapshot, not a guarantee): JDK 25.0.3,
-python 3.13.13, gcc 15.2.1 (host 15.2.0), gawk 5.4.0 (host 5.3.2). See the
-`Containerfile` header for the full pinned-vs-unpinned breakdown.
+this directory. **`main.pdf` is not committed** — it is a build product of
+this reproduction (the previously committed PDF predated this rewrite and
+was removed rather than left stale). Run the container to regenerate it.
+Pinning is partial and honestly so: the base image is digest-pinned and
+go 1.26.3 / node 24.15.0 / rust 1.90.0 are sha256-pinned, but the
+zypper-provided tools (gcc, gawk, python3, java-25-openjdk, TeX, networkx)
+track live Tumbleweed repos and drift on rebuild. Versions observed in the
+authoring build (snapshot, not a guarantee): JDK 25.0.3, python 3.13.13,
+gcc 15.2.1 (host 15.2.0), gawk 5.4.0 (host 5.3.2). See the `Containerfile`
+header for the full pinned-vs-unpinned breakdown.
 
 ## Verification commands
 
 Run these from the repository root (`agent-assurance-papers`):
 
 ```sh
-bash non-trivial-proof/proof-bundle/run_service_contract.sh
-bash non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh
-bash non-trivial-proof/proof-bundle/detect_awk_boundary.sh
+bash   non-trivial-proof/proof-bundle/run_service_contract.sh
+bash   non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh
+bash   non-trivial-proof/proof-bundle/detect_awk_boundary.sh
+python3 non-trivial-proof/proof-bundle/differential_echo.py
+bash   non-trivial-proof/proof-bundle/detect_java_reuseaddr.sh
 
 V=../agent-assurance/validators ; B=non-trivial-proof/proof-bundle
 python3 $V/validate_implementation_dag.py  $B/implementation_dag.toml   --repo-root . --check-paths-exist
@@ -62,14 +65,19 @@ The path-existence flags are mandatory: path checking is opt-in in the
 validators, so a bare invocation would not enforce that the witness
 scripts and source files actually exist on disk.
 
-## Observed outcome on the authoring runner (2026-05-31)
+## Observed outcome on the authoring runner (2026-06-01)
 
 `run_service_contract.sh` reported 7 PASS / 1 SKIP (AWK, the C06
 boundary) / 0 FAIL; `detect_graceful_shutdown.sh` caught both
 non-graceful controls; `detect_awk_boundary.sh` confirmed the C06
-boundary (SIGTERM yields exit 143). All five DAG-TOML files validate with
-path checks enabled. The MEASURED timings in the paper are one
-representative run and vary slightly between runs by design.
+boundary (SIGTERM yields exit 143); `differential_echo.py` found 0
+divergences among the seven servers and caught the broken calibration
+control on 6 of 10 inputs (non-vacuous); `detect_java_reuseaddr.sh`
+confirmed the corrected Java finding (started `HttpServer` tolerates
+`TIME_WAIT` and releases; never-started `stop()` leaks the listener). All
+five DAG-TOML files validate with path checks enabled. The MEASURED
+timings in the paper are one representative run and vary slightly between
+runs by design.
 
 ## arXiv packaging
 

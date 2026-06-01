@@ -50,11 +50,19 @@ Rust.
 | Java | `java Server.java` source-launch; `com.sun.net.httpserver` (`jdk.httpserver` module) | JDK-module |
 | AWK | gawk `/inet/tcp/8080/0/0` echo loop | **no clean SIGTERM** — C06 boundary |
 
-**Java runs first.** Verified by a pre-build spike (DESIGN.md §3), `com.sun`
-`HttpServer` sets no `SO_REUSEADDR` and exposes no API to set it, so it cannot
-bind over a `TIME_WAIT` left by a prior server. The witness therefore runs Java
-first on a pristine port; the other six set `SO_REUSEADDR` and tolerate a prior
-`TIME_WAIT`.
+**No privileged run position (Measured Runtime Correction, DESIGN.md §3.1).**
+The retired design ran Java *first* on a pristine port on the claim that `com.sun`
+`HttpServer` "cannot set `SO_REUSEADDR` / cannot re-bind a `TIME_WAIT`'d port."
+Direct re-measurement (MEASUREMENTS.md M1; the committed `ReuseSpike.java`, re-run
+6/6) **overturned that**: a `start()`ed `HttpServer` (NIO `ServerSocketChannel`,
+`SO_REUSEADDR` on by default) tolerates a prior `TIME_WAIT` and releases its port
+immediately on `stop(0)`. The witness therefore runs **all seven PASS-candidates
+in plain build order, with no privileged position**. Port release between
+languages is guaranteed uniformly by an independent re-bind probe that itself sets
+`SO_REUSEADDR` plus a bounded TIME_WAIT retry. The true, deterministic footgun — a
+*never-`start()`ed* `stop()` leaking the listener — is kept falsifiable by the
+re-pointed reproducer (`detect_java_reuseaddr.sh` + `src/spikes/ReuseSpike.java`)
+and does not affect the proof.
 
 ## Bundle layout
 
@@ -62,10 +70,14 @@ first on a pristine port; the other six set `SO_REUSEADDR` and tolerate a prior
 proof-bundle/
   payload.json                  fixed 56-byte deterministic echo payload
   src/{go,node,typescript,python,c,rust,java,awk}/   the eight echo servers
-  src/controls/                 control_ignore.go, control_drop.go (negative controls)
-  run_service_contract.sh       load-bearing witness: C01..C05, serialized, Java first
+  src/controls/                 control_ignore.go, control_drop.go (C04 negative controls),
+                                broken_echo.py (differential calibration control)
+  src/spikes/ReuseSpike.java    re-pointed Java reproducer (corrected finding, §3.1)
+  run_service_contract.sh       load-bearing witness: C01..C05, serialized, plain build order
   detect_graceful_shutdown.sh   C04 negative control: catches both non-graceful servers
   detect_awk_boundary.sh        C06 boundary witness
+  differential_echo.py          cross-implementation behavioural-equivalence witness (E06)
+  detect_java_reuseaddr.sh      re-pointed Java reproducer witness (§3.1)
   *.toml                        the five DAG-TOML files
 ```
 
@@ -76,25 +88,28 @@ cd non-trivial-proof/proof-bundle
 ./run_service_contract.sh        # C01..C05 across all servers (exits non-zero on any FAIL)
 ./detect_graceful_shutdown.sh    # C04 negative control
 ./detect_awk_boundary.sh         # C06 boundary
+python3 differential_echo.py     # cross-implementation behavioural equivalence (E06)
+./detect_java_reuseaddr.sh       # re-pointed Java reproducer (corrected finding, §3.1)
 # PROOF_PORT=18080 ./run_service_contract.sh   # override the port for CI
 ```
 
-## Observed Execution (this runner, 2026-05-31)
+## Observed Execution (this runner, 2026-06-01)
 
 Toolchain: `go` 1.26.3, `node` v24.15.0, `python3` 3.13.13, `cc` (gcc) 15.2.0,
 `rustc` 1.90.0, `java` 25.0.3 (runtime; no `javac`), `gawk` 5.3.2. Port 8080 free.
 
-**`run_service_contract.sh` → PASS=7, SKIP=1, FAIL=0:**
+**`run_service_contract.sh` → PASS=7, SKIP=1, FAIL=0** (plain build order, no
+privileged position):
 
 | Lang | Result | time-to-ready | time-to-shutdown | bytes |
 |------|--------|--------------:|-----------------:|------:|
-| java   | **PASS** | 468 ms | 26 ms † | 56 |
-| go     | **PASS** | 25 ms | 1111 ms | 56 |
-| node   | **PASS** | 24 ms | 1024 ms | 56 |
-| ts     | **PASS** | 69 ms | 1024 ms | 56 |
-| python | **PASS** | 46 ms | 1023 ms | 56 |
+| go     | **PASS** | 3 ms | 1089 ms | 56 |
+| node   | **PASS** | 25 ms | 1003 ms | 56 |
+| ts     | **PASS** | 93 ms | 1025 ms | 56 |
+| python | **PASS** | 48 ms | 1023 ms | 56 |
 | c      | **PASS** | 3 ms | 1002 ms | 56 |
-| rust   | **PASS** | 2 ms | 1002 ms | 56 |
+| rust   | **PASS** | 3 ms | 1002 ms | 56 |
+| java   | **PASS** | 493 ms | 27 ms † | 56 |
 | awk    | **SKIP** | — | — | C06 boundary; echo UNASSESSABLE |
 
 The `time-to-ready` and `time-to-shutdown` columns are **MEASURED** numbers, not
@@ -103,7 +118,7 @@ separate PASS/FAIL contract). The ~1000 ms shutdown for six runtimes is the
 injected 1000 ms in-flight delay being honoured — the server finishes the
 delayed request before exiting.
 
-† **Java 26 ms:** `server.stop(2)` interrupts the handler's `Thread.sleep(1000)`,
+† **Java 27 ms:** `server.stop(2)` interrupts the handler's `Thread.sleep(1000)`,
 so Java writes the full body immediately rather than waiting out the artificial
 delay. The in-flight response still arrives **complete and byte-exact** and the
 exit is **0**, so C04 holds; Java simply shuts down faster. This is honest
@@ -128,6 +143,23 @@ status **143** (128+15), confirming gawk has **no clean script-level SIGTERM
 handler**. AWK C04 is therefore a declared **SKIP-with-rationale** — the firm C06
 claim.
 
+**`differential_echo.py` → 0 divergences / control caught 6/10 (non-vacuous):**
+the seven PASS-candidate servers each return status `200` with body byte-equal to
+the request for **all 10** adversarial inputs (NUL/full-byte-range data, 1 MiB
+bodies, embedded fake-HTTP, UTF-8, etc.) — **zero divergences**. The committed
+broken calibration control (`src/controls/broken_echo.py`, truncates to 16 B) is
+flagged on **6/10** requests (every body > 16 B), proving the equivalence test is
+**non-vacuous**. This upgrades the single-payload contract to a calibrated
+cross-implementation byte-exact-equivalence result (DESIGN.md §5.4,
+`../DIFFERENTIAL-AGREEMENT.md`).
+
+**`detect_java_reuseaddr.sh` → OK (corrected finding CONFIRMED):** the re-pointed
+spike confirms the **measured** facts (DESIGN.md §3.1): `[A]` a `start()`ed
+`HttpServer` binds over a live `TIME_WAIT` and releases its port immediately on
+`stop(0)`; `[B]` a *never-`start()`ed* `stop()` leaks its listener (the real
+footgun). The retired design's false "HttpServer cannot re-bind a TIME_WAIT'd
+port" claim is thereby retracted and kept falsifiable on the record.
+
 ## How to validate the DAG-TOML
 
 Path existence is **opt-in** in the validators, so every invocation passes
@@ -143,9 +175,9 @@ python3 $V/validate_review_readiness.py   $B/review_readiness.toml    --repo-roo
 python3 $V/validate_review_readiness.py   $B/evidence_matrix.toml     --repo-root . --check-paths-exist
 ```
 
-All five **PASS** on this runner. `implementation_dag.toml` reports 10 units,
-layers `{0: 9, 1: 1}`, and node-weighted `critical_path_loc: 327` (U05 rust →
-U08).
+All five **PASS** on this runner. `implementation_dag.toml` reports 11 units,
+layers `{0: 10, 1: 1}`, and node-weighted `critical_path_loc: 327` (U05 rust →
+U08); `traceability.toml` reports 36 entities (the four chains).
 
 ## What the static validators do NOT check (and non-claims)
 

@@ -5,7 +5,9 @@
 # source file — JS and TS distinct even though they share Node/V8 build unit
 # U02), and one TEST that runs run_service_contract.sh and enforces C01..C05.
 # Chain 2 (graceful-vs-kill): the C04 negative-control chain. Chain 3
-# (awk-boundary): the C06 signal-boundary chain.
+# (awk-boundary): the C06 signal-boundary chain. Chain 4 (differential-agreement):
+# cross-implementation behavioural equivalence with a committed broken calibration
+# control (DESIGN.md §5.4).
 #
 # Every `path` resolves to a real file under repo root.
 
@@ -42,6 +44,12 @@ name        = "AWK signal boundary"
 statement   = "Demonstrate that a runtime which can serve echo but cannot install a clean script-level SIGTERM handler is recorded as a declared SKIP-with-rationale, not a false PASS or FAIL."
 realized_by = ["REQ:awk-boundary-declared"]
 
+[[intents]]
+id          = "INT:differential-equivalence"
+name        = "Cross-implementation behavioural equivalence"
+statement   = "Demonstrate that the seven PASS-candidate echo implementations are byte-exact-equivalent across an adversarial input corpus the single-payload witness cannot reach, and that the equivalence test is non-vacuous (a deliberately-broken control is caught)."
+realized_by = ["REQ:differential-equivalence-nonvacuous"]
+
 [[features]]
 id             = "FEAT:multilang-echo-service"
 name           = "Multi-language HTTP echo service"
@@ -62,6 +70,13 @@ name           = "AWK C06 signal boundary"
 constrained_by = ["REQ:awk-boundary-declared"]
 implemented_by = ["IMP:awk-boundary"]
 produces       = ["OUT:awk-boundary-witness"]
+
+[[features]]
+id             = "FEAT:differential-agreement"
+name           = "Differential behavioural-agreement channel"
+constrained_by = ["REQ:differential-equivalence-nonvacuous"]
+implemented_by = ["IMP:differential-harness"]
+produces       = ["OUT:differential-agreement-witness"]
 
 [[requirements]]
 id               = "REQ:echo-service-lifecycle"
@@ -90,10 +105,19 @@ source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C06
 constrains       = ["IMP:awk-boundary"]
 verified_by      = ["TEST:stateful-io-proof::awk-boundary"]
 
+[[requirements]]
+id               = "REQ:differential-equivalence-nonvacuous"
+statement        = "The seven PASS-candidate echo servers MUST return status 200 with body byte-equal to the request for EVERY request in the adversarial corpus (zero divergences), AND a deliberately-broken calibration control that truncates the body MUST be flagged on every body longer than its truncation length (proving the equivalence test is non-vacuous)."
+requirement_kind = "functional"
+priority         = "must"
+source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C03"
+constrains       = ["IMP:differential-harness"]
+verified_by      = ["TEST:stateful-io-proof::differential-agreement"]
+
 [[implementations]]
 id         = "IMP:echo-servers"
 name       = "Eight-language HTTP echo servers"
-summary    = "Eight echo servers traced to the lifecycle requirement and exercised by run_service_contract.sh (serialized on :8080, Java first). The seven PASS-candidates (Go, Node/JS, TypeScript, Python, C, Rust, Java) are held to C01..C05; the AWK server is the declared C06 signal boundary, recorded as SKIP by that witness and detailed by detect_awk_boundary.sh."
+summary    = "Eight echo servers traced to the lifecycle requirement and exercised by run_service_contract.sh (serialized on :8080 in plain build order, no privileged position). The seven PASS-candidates (Go, Node/JS, TypeScript, Python, C, Rust, Java) are held to C01..C05; the AWK server is the declared C06 signal boundary, recorded as SKIP by that witness and detailed by detect_awk_boundary.sh."
 implements = ["REQ:echo-service-lifecycle"]
 code = [
   "CODE:srv-go",
@@ -125,6 +149,14 @@ summary    = "The gawk /inet echo server whose firm contract is only the C06 sig
 implements = ["REQ:awk-boundary-declared"]
 code = ["CODE:awk-boundary-server"]
 tests = ["TEST:stateful-io-proof::awk-boundary"]
+
+[[implementations]]
+id         = "IMP:differential-harness"
+name       = "Differential behavioural-agreement harness + broken control"
+summary    = "differential_echo.py runs the seven PASS-candidate servers on a shared adversarial corpus and asserts byte-exact equivalence; a committed deliberately-broken calibration control (src/controls/broken_echo.py, truncates to 16 B) proves the equivalence test can fail (non-vacuity)."
+implements = ["REQ:differential-equivalence-nonvacuous"]
+code = ["CODE:diff-broken-control"]
+tests = ["TEST:stateful-io-proof::differential-agreement"]
 
 [[code]]
 id       = "CODE:srv-go"
@@ -203,6 +235,13 @@ symbol   = "BEGIN"
 language = "awk"
 realizes = ["IMP:awk-boundary"]
 
+[[code]]
+id       = "CODE:diff-broken-control"
+path     = "non-trivial-proof/proof-bundle/src/controls/broken_echo.py"
+symbol   = "H.do_POST"
+language = "python"
+realizes = ["IMP:differential-harness"]
+
 [[tests]]
 id        = "TEST:stateful-io-proof::service-contract"
 path      = "non-trivial-proof/proof-bundle/run_service_contract.sh"
@@ -224,6 +263,13 @@ test_kind = "smoke"
 verifies  = ["REQ:awk-boundary-declared"]
 command   = "bash non-trivial-proof/proof-bundle/detect_awk_boundary.sh"
 
+[[tests]]
+id        = "TEST:stateful-io-proof::differential-agreement"
+path      = "non-trivial-proof/proof-bundle/differential_echo.py"
+test_kind = "e2e"
+verifies  = ["REQ:differential-equivalence-nonvacuous"]
+command   = "python3 non-trivial-proof/proof-bundle/differential_echo.py"
+
 [[outputs]]
 id       = "OUT:service-contract-witness"
 name     = "Service-contract enforcement witness (C01..C05)"
@@ -238,3 +284,8 @@ realizes = ["FEAT:graceful-vs-kill", "INT:graceful-shutdown-detection"]
 id       = "OUT:awk-boundary-witness"
 name     = "AWK C06 signal-boundary witness"
 realizes = ["FEAT:awk-boundary", "INT:awk-signal-boundary"]
+
+[[outputs]]
+id       = "OUT:differential-agreement-witness"
+name     = "Differential behavioural-agreement witness"
+realizes = ["FEAT:differential-agreement", "INT:differential-equivalence"]

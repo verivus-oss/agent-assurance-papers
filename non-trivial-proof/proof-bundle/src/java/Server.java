@@ -6,11 +6,16 @@
 // server (waits up to 2s for the in-flight exchange to finish) then halt(0)s
 // for a deterministic exit code 0.
 //
-// IMPORTANT (DESIGN.md §3 Java SO_REUSEADDR note, verified by spike): com.sun
-// HttpServer sets NO SO_REUSEADDR and exposes no API to set it. This server is
-// therefore scheduled FIRST on a pristine port; it cannot bind over a foreign
-// TIME_WAIT. `?delay_ms=N` is TEST-ONLY: sendResponseHeaders commits the status
-// line + Content-Length before the sleep, giving the witness a sync point.
+// NOTE (DESIGN.md §3.1, Measured Runtime Correction): Java is an ORDINARY
+// PASS-candidate with no special port-ordering or pre-flight. The retired
+// design's claim that HttpServer cannot set SO_REUSEADDR / cannot re-bind a
+// TIME_WAIT'd port was FALSE: a start()ed HttpServer (NIO ServerSocketChannel,
+// SO_REUSEADDR on by default) tolerates a prior TIME_WAIT and releases its port
+// immediately on stop(0). The true, measured footgun — a never-start()ed
+// stop() leaking the listener — does not apply here because this server always
+// start()s, and proof-side port release is verified cross-process anyway.
+// `?delay_ms=N` is TEST-ONLY: sendResponseHeaders commits the status line +
+// Content-Length before the sleep, giving the witness a sync point.
 import com.sun.net.httpserver.HttpServer;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;

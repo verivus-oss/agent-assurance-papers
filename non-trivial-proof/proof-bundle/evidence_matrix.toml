@@ -24,8 +24,8 @@ license         = "Apache-2.0"
 id    = "E01"
 claim = "structurally_complete_pack"
 scope_covered = [
-  "implementation-dag declares seven build/prepare units fanning into one verify unit plus two independent sidecar leaves (fan-in DAG)",
-  "traceability declares the service-lifecycle chain plus the graceful-vs-kill and awk-boundary chains",
+  "implementation-dag declares seven build/prepare units fanning into one verify unit plus three independent sidecar leaves (fan-in DAG)",
+  "traceability declares the service-lifecycle chain plus the graceful-vs-kill, awk-boundary, and differential-agreement chains",
   "contract-declaration declares C01 lifecycle plus C02..C06 narrowings and the AWK boundary",
   "review-readiness gate names the service-witness pack as the gating artifact",
 ]
@@ -39,12 +39,12 @@ status = "ready"
 id    = "E02"
 claim = "lifecycle_contract_enforced_across_languages"
 scope_covered = [
-  "run_service_contract.sh executes each per-language server one at a time on :8080 (Java first) and asserts C01..C05",
+  "run_service_contract.sh executes each per-language server one at a time on :8080 in plain build order (no privileged position) and asserts C01..C05",
   "PASS witnesses show byte-exact echo over at least two requests, exit 0 on SIGTERM, and port release",
   "SKIP downgrades are toolchain-availability or port-resource gaps, explicitly distinct from FAIL",
 ]
 known_exclusions = [
-  "SKIP does not prove the per-language implementation conforms; it states the toolchain or a pristine port was not available on this run",
+  "SKIP does not prove the per-language implementation conforms; it states the toolchain or a free port was not available on this run",
   "AWK is a declared C06 SKIP, not a passing runtime; its echo is UNASSESSABLE",
 ]
 status = "ready"
@@ -88,15 +88,28 @@ known_exclusions = [
 ]
 status = "ready"
 
+[[claims]]
+id    = "E06"
+claim = "cross_implementation_behavioural_equivalence"
+scope_covered = [
+  "differential_echo.py runs the seven PASS-candidate servers on a shared adversarial corpus (NUL/binary, 1 MiB, embedded fake-HTTP, etc.) and finds zero divergences — all return status 200 with byte-equal bodies",
+  "a committed deliberately-broken calibration control (src/controls/broken_echo.py, truncates to 16 B) is flagged on every body longer than 16 B, proving the equivalence test is non-vacuous",
+]
+known_exclusions = [
+  "proves agreement, not external correctness; for echo the oracle out==in is the spec, so they coincide here",
+  "the corpus is hand-chosen, not exhaustive; AWK is excluded as the declared C06 boundary",
+]
+status = "ready"
+
 [[evidence]]
 id            = "EV01"
 artifact_path = "non-trivial-proof/proof-bundle/implementation_dag.toml"
-summary       = "Ten-unit implementation DAG: seven layer-0 build/prepare units fan into one layer-1 verify unit, with two independent behavioural sidecar leaves; node-weighted critical path 327 LoC (U05 rust then U08)."
+summary       = "Eleven-unit implementation DAG: seven layer-0 build/prepare units fan into one layer-1 verify unit, with three independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary, differential-agreement); node-weighted critical path 327 LoC (U05 rust then U08)."
 
 [[evidence]]
 id            = "EV02"
 artifact_path = "non-trivial-proof/proof-bundle/traceability.toml"
-summary       = "Service-lifecycle chain (eight CODE entries, JS and TS distinct) plus the graceful-vs-kill and awk-boundary chains. Every code and test path resolves on disk."
+summary       = "Service-lifecycle chain (eight CODE entries, JS and TS distinct) plus the graceful-vs-kill, awk-boundary, and differential-agreement chains. Every code and test path resolves on disk."
 
 [[evidence]]
 id            = "EV03"
@@ -111,7 +124,7 @@ summary       = "Single G01 gate keyed to the service-witness pack; pass conditi
 [[evidence]]
 id            = "EV05"
 artifact_path = "non-trivial-proof/proof-bundle/run_service_contract.sh"
-summary       = "Load-bearing witness for C01..C05: serializes each server on :8080 (Java first), asserts readiness, byte-exact echo, statefulness, graceful in-flight shutdown and port release; reports MEASURED ms; downgrades missing toolchains and the AWK boundary to SKIP."
+summary       = "Load-bearing witness for C01..C05: serializes each server on :8080 in plain build order (no privileged position), asserts readiness, byte-exact echo, statefulness, graceful in-flight shutdown and port release; reports MEASURED ms; downgrades missing toolchains and the AWK boundary to SKIP."
 
 [[evidence]]
 id            = "EV06"
@@ -123,18 +136,23 @@ id            = "EV07"
 artifact_path = "non-trivial-proof/proof-bundle/detect_awk_boundary.sh"
 summary       = "Boundary witness for C06: starts the gawk /inet server, reports its echo as UNASSESSABLE, and observes that SIGTERM does not yield a clean exit 0 (no script-level handler)."
 
+[[evidence]]
+id            = "EV08"
+artifact_path = "non-trivial-proof/proof-bundle/differential_echo.py"
+summary       = "Differential-agreement witness for C03/E06: runs the seven PASS-candidate servers on a shared adversarial corpus, asserts byte-exact cross-implementation equivalence (zero divergences), and proves non-vacuity by catching the committed broken calibration control."
+
 [[matrix]]
 id               = "M01"
 claim_id         = "E01"
 evidence_id      = "EV01"
-scope_covered    = "implementation-dag declares the fan-in build plus verify shape and the two sidecar leaves"
+scope_covered    = "implementation-dag declares the fan-in build plus verify shape and the three sidecar leaves"
 known_exclusions = ["does not address runtime contract enforcement"]
 
 [[matrix]]
 id               = "M02"
 claim_id         = "E01"
 evidence_id      = "EV02"
-scope_covered    = "traceability declares the lifecycle REQ, eight CODE entries, and the TEST, plus the two sidecar chains"
+scope_covered    = "traceability declares the lifecycle REQ, eight CODE entries, and the TEST, plus the three sidecar chains"
 known_exclusions = ["does not address runtime contract enforcement"]
 
 [[matrix]]
@@ -142,7 +160,7 @@ id               = "M03"
 claim_id         = "E02"
 evidence_id      = "EV05"
 scope_covered    = "run_service_contract.sh enforces C01..C05 on each server byte-for-byte and serialized on :8080"
-known_exclusions = ["SKIP outcomes leave per-language enforcement to a later runner with the toolchain or a pristine port"]
+known_exclusions = ["SKIP outcomes leave per-language enforcement to a later runner with the toolchain or a free port"]
 
 [[matrix]]
 id               = "M04"
@@ -178,3 +196,10 @@ claim_id         = "E01"
 evidence_id      = "EV04"
 scope_covered    = "review-readiness gate keyed to the service-witness pack"
 known_exclusions = ["does not contain a pass result; the gate declares the conditions, the witness enforces them"]
+
+[[matrix]]
+id               = "M09"
+claim_id         = "E06"
+evidence_id      = "EV08"
+scope_covered    = "differential_echo.py proves byte-exact cross-implementation equivalence on the adversarial corpus and catches the broken calibration control (non-vacuous)"
+known_exclusions = ["proves agreement not external correctness; corpus is hand-chosen, not exhaustive; AWK excluded"]

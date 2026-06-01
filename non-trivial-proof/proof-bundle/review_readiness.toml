@@ -25,7 +25,7 @@ license         = "Apache-2.0"
 [[artifact_classes]]
 id          = "A01"
 name        = "service_contract_witness_pack"
-description = "The artifacts a reviewer needs to confirm CONTRACT C01..C06 were enforced on every echo server: the four declaration TOMLs, the load-bearing service-contract witness, and the two behavioural sidecar witnesses (graceful-vs-kill and awk-boundary), plus the captured run output."
+description = "The artifacts a reviewer needs to confirm CONTRACT C01..C06 were enforced on every echo server: the four declaration TOMLs, the load-bearing service-contract witness, and the three behavioural sidecar witnesses (graceful-vs-kill, awk-boundary, and differential-agreement), plus the captured run output."
 
 [[gates]]
 id                 = "G01"
@@ -40,6 +40,7 @@ required_documents = [
   "non-trivial-proof/proof-bundle/run_service_contract.sh",
   "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
   "non-trivial-proof/proof-bundle/detect_awk_boundary.sh",
+  "non-trivial-proof/proof-bundle/differential_echo.py",
 ]
 required_links     = [
   "TRACEABILITY.IMP:echo-servers to CONTRACT_DECLARATION.C01",
@@ -51,6 +52,7 @@ pass_conditions    = [
   "every PASS server echoed the payload byte-for-byte over at least two requests and exited 0 on SIGTERM",
   "detect_graceful_shutdown.sh caught BOTH non-graceful controls as FAIL",
   "detect_awk_boundary.sh observed the C06 boundary (no clean SIGTERM)",
+  "differential_echo.py found zero divergences among the seven PASS-candidates AND flagged the broken calibration control (non-vacuous)",
 ]
 block_conditions   = [
   "any per-language outcome is FAIL",

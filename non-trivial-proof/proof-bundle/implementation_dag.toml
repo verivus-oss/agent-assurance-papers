@@ -1,13 +1,14 @@
 # Implementation DAG — seven layer-0 build/prepare units fan into one layer-1
-# verification unit (the load-bearing service-contract witness), plus two
-# independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary).
-# DESIGN.md §4. U02 is the single Node/V8 unit that prepares BOTH the JavaScript
-# and the TypeScript servers (they share the runtime). The fan-in into U08 is
-# load-bearing for correctness here, not just tidy: U08 serializes the language
-# runs on :8080 (Java first — its HttpServer cannot set SO_REUSEADDR, §3).
+# verification unit (the load-bearing service-contract witness), plus three
+# independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary,
+# differential-agreement). DESIGN.md §4. U02 is the single Node/V8 unit that
+# prepares BOTH the JavaScript and the TypeScript servers (they share the
+# runtime). The fan-in into U08 is load-bearing for correctness here, not just
+# tidy: U08 serializes the language runs on :8080 in plain build order, with NO
+# privileged position (the retracted Java SO_REUSEADDR special case is gone, §3.1).
 #
-# leaf_nodes are the three units with empty `blocks`: U08 (verifier) + U09/U10
-# (sidecars). U09/U10 have empty depends_on AND empty blocks, so they are both
+# leaf_nodes are the four units with empty `blocks`: U08 (verifier) + U09/U10/U11
+# (sidecars). U09/U10/U11 have empty depends_on AND empty blocks, so they are both
 # entry_points and leaf_nodes (the validator allows a node to be both).
 
 # Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
@@ -22,8 +23,8 @@ spec            = "non-trivial-proof/proof-bundle/README.md"
 created         = "2026-05-31"
 confidentiality = "public"
 license         = "Apache-2.0"
-total_units     = 10
-tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10"]
+total_units     = 11
+tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10", "U11"]
 tier2_units     = []
 tier3_units     = []
 
@@ -97,7 +98,7 @@ consumes      = []
 
 [units.U06]
 name          = "prepare-java-server"
-summary       = "Prepare src/java/Server.java for single-file source launch (java Server.java; jdk.httpserver module). No javac on this runner. Scheduled FIRST by U08 because HttpServer cannot set SO_REUSEADDR."
+summary       = "Prepare src/java/Server.java for single-file source launch (java Server.java; jdk.httpserver module). No javac on this runner. An ordinary PASS-candidate with no privileged run position (the retracted Java SO_REUSEADDR special case is gone, §3.1)."
 layer         = 0
 tier          = 1
 status        = "done"
@@ -123,7 +124,7 @@ consumes      = []
 
 [units.U08]
 name          = "verify-service-contract"
-summary       = "Execute every per-language echo server ONE AT A TIME on :8080 (Java first) and enforce contract_declaration.toml C01..C05: readiness, byte-exact echo, statefulness, graceful in-flight shutdown, port release. AWK recorded SKIP (C06). Implemented by run_service_contract.sh."
+summary       = "Execute every per-language echo server ONE AT A TIME on :8080 in plain build order (no privileged position) and enforce contract_declaration.toml C01..C05: readiness, byte-exact echo, statefulness, graceful in-flight shutdown, port release. AWK recorded SKIP (C06). Implemented by run_service_contract.sh."
 layer         = 1
 tier          = 1
 status        = "done"
@@ -172,13 +173,26 @@ files_modify  = ["non-trivial-proof/proof-bundle/detect_awk_boundary.sh"]
 produces      = ["OUT:awk-boundary-witness"]
 consumes      = []
 
+[units.U11]
+name          = "verify-differential-agreement"
+summary       = "Run differential_echo.py: launch the seven PASS-candidate echo servers in turn on one port, send a shared adversarial corpus (NUL/binary, 1 MiB, embedded fake-HTTP, etc.), and prove byte-exact cross-implementation equivalence — with a deliberately-broken calibration control (truncates to 16 B) that MUST be flagged, proving the equivalence test is non-vacuous. Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 199
+files_modify  = ["non-trivial-proof/proof-bundle/differential_echo.py"]
+produces      = ["OUT:differential-agreement-witness"]
+consumes      = []
+
 [computed]
-entry_points      = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U09", "U10"]
-leaf_nodes        = ["U08", "U09", "U10"]
+entry_points      = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U09", "U10", "U11"]
+leaf_nodes        = ["U08", "U09", "U10", "U11"]
 critical_path     = ["U05", "U08"]
 critical_path_loc = 327
-loc_totals        = { tier1 = 952 }
+loc_totals        = { tier1 = 1151 }
 
 [computed.max_parallel]
-layer0 = 9
+layer0 = 10
 layer1 = 1

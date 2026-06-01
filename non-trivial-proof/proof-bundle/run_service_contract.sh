@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # run_service_contract.sh — the load-bearing witness (DESIGN.md §5.1).
 # Enforces CONTRACT C01..C05 against every per-language echo server, ONE AT A
-# TIME on 127.0.0.1:$PROOF_PORT (default 8080). Java runs FIRST on a pristine
-# port (its HttpServer cannot set SO_REUSEADDR — §3), and its pre-flight is a
-# TIME_WAIT-aware probe; the other runtimes set SO_REUSEADDR and tolerate a
-# prior TIME_WAIT. Prints PASS/SKIP/FAIL per language plus MEASURED ms, and
-# exits non-zero if any language FAILs.
+# TIME on 127.0.0.1:$PROOF_PORT (default 8080), in plain build order with NO
+# privileged position (the retracted Java SO_REUSEADDR finding — DESIGN.md §3.1
+# — is gone; Java is an ordinary PASS-candidate). Port release between languages
+# is guaranteed by an INDEPENDENT re-bind probe that itself sets SO_REUSEADDR
+# plus a bounded TIME_WAIT retry, uniformly for all runtimes. Prints
+# PASS/SKIP/FAIL per language plus MEASURED ms, and exits non-zero on any FAIL.
 set -u
 
 BUNDLE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +26,6 @@ cleanup() { [ -n "$RUN_PID" ] && kill -9 -- -"$RUN_PID" 2>/dev/null; rm -rf "$TM
 trap cleanup EXIT
 
 now_ms() { date +%s%3N; }
-port_has_any()   { ss -tan 2>/dev/null | grep -q "[:.]$PORT\b"; }      # LISTEN or TIME_WAIT
 port_listening() { ss -ltn 2>/dev/null | grep -q "[:.]$PORT\b"; }
 wait_port_free() { for _ in $(seq 1 100); do port_listening || return 0; sleep 0.05; done; return 1; }
 
@@ -69,12 +69,9 @@ lifecycle() { # name run_cmd...
   local -a run=("$@")
   local detail=""
 
-  # --- pre-flight (§5.1 step 1): Java needs a TIME_WAIT-clear port; others just need no listener
-  if [ "$name" = java ]; then
-    if port_has_any; then record "$name" SKIP "C04 pre-flight: :$PORT not TIME_WAIT-clear (Java cannot SO_REUSEADDR, §3)"; return 1; fi
-  else
-    wait_port_free || { record "$name" SKIP "port :$PORT occupied"; return 1; }
-  fi
+  # --- pre-flight (§5.1 step 1): ordinary connectivity probe for EVERY runtime;
+  #     no language-specific pre-flight (the retracted Java special case is gone, §3.1).
+  wait_port_free || { record "$name" SKIP "port :$PORT occupied"; return 1; }
 
   # --- start in its own process group (set -m => PGID==PID) ---
   set -m
@@ -158,35 +155,36 @@ build_or_skip() { # name tool build_cmd...
   return 0
 }
 
-echo "== run_service_contract.sh :: C01..C05 on $HOST:$PORT (Java first) =="
+echo "== run_service_contract.sh :: C01..C05 on $HOST:$PORT (plain build order) =="
 
-# 1) JAVA FIRST — pristine port (DESIGN.md §3/§4)
-if build_or_skip java java; then
-  lifecycle java java "$BUNDLE/src/java/Server.java"
-fi
-# 2) Go
+# Plain build order, no privileged position (DESIGN.md §3.1/§4).
+# 1) Go
 if build_or_skip go go go build -o "$TMP/go-echo" "$BUNDLE/src/go/server.go"; then
   lifecycle go "$TMP/go-echo"
 fi
-# 3) Node (JavaScript)
+# 2) Node (JavaScript)
 if build_or_skip node node; then
   lifecycle node node "$BUNDLE/src/node/server.js"
 fi
-# 4) TypeScript (same V8/Node runtime)
+# 3) TypeScript (same V8/Node runtime)
 if build_or_skip ts node; then
   lifecycle ts node --experimental-strip-types "$BUNDLE/src/typescript/server.ts"
 fi
-# 5) Python
+# 4) Python
 if build_or_skip python python3; then
   lifecycle python python3 "$BUNDLE/src/python/server.py"
 fi
-# 6) C
+# 5) C
 if build_or_skip c cc cc -O2 -o "$TMP/c-echo" "$BUNDLE/src/c/server.c"; then
   lifecycle c "$TMP/c-echo"
 fi
-# 7) Rust
+# 6) Rust
 if build_or_skip rust rustc rustc -O -o "$TMP/rust-echo" "$BUNDLE/src/rust/server.rs"; then
   lifecycle rust "$TMP/rust-echo"
+fi
+# 7) Java — ordinary PASS-candidate, source-launched (no javac); §3.1
+if build_or_skip java java; then
+  lifecycle java java "$BUNDLE/src/java/Server.java"
 fi
 # 8) AWK — declared C06 boundary; echo UNASSESSABLE. Delegated to detect_awk_boundary.sh.
 record awk SKIP "C06 signal boundary (no clean SIGTERM); echo UNASSESSABLE — see detect_awk_boundary.sh"

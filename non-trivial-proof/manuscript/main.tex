@@ -39,7 +39,7 @@
 \title{\bfseries A Stateful Executable Proof: Governing an HTTP Echo
 Service Lifecycle Across Eight Languages}
 \author{Werner Kasselman\\Verivus OSS\\\texttt{werner@verivus.com}}
-\date{May 31, 2026}
+\date{June 1, 2026}
 
 \begin{document}
 \maketitle
@@ -65,15 +65,26 @@ load-bearing witness reported seven \textsc{pass} outcomes, one
 \textsc{skip} for AWK, and zero \textsc{fail}. A negative-control witness confirms the graceful-shutdown
 check is non-vacuous: it catches both a server that ignores
 \texttt{SIGTERM} and a server that drops an in-flight response while
-exiting~0. The contribution is not a benchmark or a production
-framework. It is a compact, falsifiable artifact that names precisely
-which parts of the proof structure had to grow for a process
+exiting~0. A further witness runs all seven PASS-candidate servers on a
+shared adversarial input corpus and shows they are byte-exact-equivalent,
+with a deliberately-broken calibration control proving that
+equivalence test can fail. The contribution is not a benchmark or a
+production framework. It is a compact, falsifiable artifact that names
+precisely which parts of the proof structure had to grow for a process
 \emph{lifecycle}---a lifecycle-aware witness harness, the \measured{}
-result word used for real, and a port-as-shared-resource
-discipline---and which dynamic guarantees the static validators still
-cannot see. A pre-build runtime spike, reported in full, also corrects
-one design assumption: Java's bundled \texttt{HttpServer} cannot set
-\texttt{SO\_REUSEADDR}, which fixes the run order rather than the claim.
+result word used for real, a port-as-shared-resource discipline, and a
+cross-implementation behavioural-equivalence channel---and which dynamic
+guarantees the static validators still cannot see. The paper also reports,
+in full, a \emph{measured runtime correction}: a prior version of this
+proof asserted a socket-option limitation in Java's bundled
+\texttt{HttpServer} and built a special run order around it. Direct
+measurement overturned that claim---a started \texttt{HttpServer} in fact
+tolerates a prior \texttt{TIME\_WAIT} and releases its port immediately---so
+the special-casing was removed and the reproducer re-pointed at the real,
+deterministic footgun (a never-started \texttt{stop()} leaking its
+listener). The full retraction is in Section~\ref{sec:java}. Correcting a
+false runtime claim with a committed, re-runnable measurement is itself
+part of the result.
 \end{abstract}
 
 \section{Introduction}
@@ -109,7 +120,9 @@ guaranteed teardown. A bound port is shared mutable state on the runner,
 so the language runs must be serialized and the port proven released
 between them. Timing becomes a first-class observation, which is where
 the fourth result word, \measured{}, is used for the first time in this
-repository. And graceful shutdown is only meaningful against a negative
+stdout-to-lifecycle proof arc (the scope note in
+Section~\ref{sec:measured} states precisely what is and is not new). And
+graceful shutdown is only meaningful against a negative
 control, so the proof includes a witness whose \textsc{pass} means the
 gate correctly classified a non-graceful server as \textsc{fail}.
 
@@ -126,23 +139,26 @@ normative files are:
 
 \begin{itemize}
   \item \path{contract_declaration.toml}: contracts C01 through C06.
-  \item \path{implementation_dag.toml}: ten units, all tier 1.
-  \item \path{traceability.toml}: three chains (service lifecycle,
-        graceful-vs-kill, AWK boundary).
+  \item \path{implementation_dag.toml}: eleven units, all tier 1.
+  \item \path{traceability.toml}: four chains (service lifecycle,
+        graceful-vs-kill, AWK boundary, differential-agreement).
   \item \path{review_readiness.toml}: one gate for the service-witness pack.
-  \item \path{evidence_matrix.toml}: five claims mapped to seven
+  \item \path{evidence_matrix.toml}: six claims mapped to eight
         evidence artifacts.
   \item \path{run_service_contract.sh}, \path{detect_graceful_shutdown.sh},
-        and \path{detect_awk_boundary.sh}: executable witnesses.
+        \path{detect_awk_boundary.sh}, \path{differential_echo.py}, and
+        \path{detect_java_reuseaddr.sh}: executable witnesses.
 \end{itemize}
 
 The eight servers are \path{src/go/server.go},
 \path{src/node/server.js}, \path{src/typescript/server.ts},
 \path{src/python/server.py}, \path{src/c/server.c},
 \path{src/rust/server.rs}, \path{src/java/Server.java}, and
-\path{src/awk/server.awk}. Two non-graceful negative controls live in
-\path{src/controls/}. The echo payload is a fixed 56-byte JSON file,
-\path{payload.json}.
+\path{src/awk/server.awk}. The \path{src/controls/} directory holds two
+non-graceful lifecycle controls and the broken-echo calibration control
+used by the differential witness; \path{src/spikes/ReuseSpike.java} is the
+re-pointed Java runtime reproducer (Section~\ref{sec:java}). The echo
+payload is a fixed 56-byte JSON file, \path{payload.json}.
 
 \textbf{Eight languages, six runtimes, one boundary.} The firm headline
 number is eight languages. ``Six runtimes'' is a derived figure under an
@@ -213,38 +229,42 @@ The implementation DAG is a fan-in graph, but here the fan-in is
 load-bearing for correctness rather than tidiness: a single verifier
 must own the shared port. Seven layer-0 build/prepare units fan into one
 layer-1 verification unit that runs each server one at a time on
-\texttt{:8080}. Two independent layer-0 leaves run the behavioural
+\texttt{:8080}. Three independent layer-0 leaves run the behavioural
 sidecar witnesses.
 
 \begin{lstlisting}
 U01 go-server      \
 U02 node/ts-server  \   (one Node/V8 unit, two source files)
 U03 python-server    \
-U04 c-server          > U08 verify-service-contract (Java first)
-U05 rust-server      /
+U04 c-server          > U08 verify-service-contract
+U05 rust-server      /     (serialized on :8080, plain build order)
 U06 java-server     /
 U07 awk-server     /
 
-U09 verify-graceful-vs-kill   (independent leaf)
-U10 verify-awk-boundary       (independent leaf)
+U09 verify-graceful-vs-kill        (independent leaf)
+U10 verify-awk-boundary            (independent leaf)
+U11 verify-differential-agreement  (independent leaf)
 \end{lstlisting}
 
 The computed values checked by the repository's implementation-DAG
 validator are:
 
 \begin{itemize}
-  \item ten units;
-  \item layer counts \texttt{\{0: 9, 1: 1\}};
-  \item entry points \texttt{U01..U07, U09, U10} (empty \texttt{depends\_on});
-  \item leaf nodes \texttt{U08, U09, U10} (empty \texttt{blocks});
-        U09 and U10 are simultaneously entry points and leaves;
+  \item eleven units;
+  \item layer counts \texttt{\{0: 10, 1: 1\}};
+  \item entry points \texttt{U01..U07, U09, U10, U11} (empty \texttt{depends\_on});
+  \item leaf nodes \texttt{U08, U09, U10, U11} (empty \texttt{blocks});
+        U09, U10, and U11 are simultaneously entry points and leaves;
   \item critical path \texttt{U05 -> U08} with node-weighted
         critical-path LOC 327.
 \end{itemize}
 
-\textbf{Run order is not arbitrary.} U08 runs Java first, on a pristine
-port. The reason is a measured runtime fact, not a preference; it is
-discussed in Section~\ref{sec:java}.
+\textbf{Run order carries no privileged position.} U08 runs the seven
+PASS-candidates in plain build order. An earlier design gave one runtime a
+special slot for a reason that direct measurement later overturned; the
+special-casing was removed, and the correction is reported in full in
+Section~\ref{sec:java}. Port release between languages is guaranteed
+uniformly by the independent re-bind probe described next.
 
 \section{The Witness Harness (the part that grew)}
 
@@ -262,10 +282,28 @@ and retries for up to two seconds to absorb \texttt{TIME\_WAIT}. Testing
 only that the \emph{server} set the option is not enough, because the
 probe is a fresh socket that can hit \texttt{TIME\_WAIT} on its own.
 
+A fourth witness, \path{differential_echo.py}, adds a
+cross-implementation channel the single-payload contract cannot reach.
+The contract witness checks each server against one fixed payload, so it
+cannot reveal where the hand-rolled HTTP parsers (C, Rust) might
+\emph{diverge} on edge cases. The differential witness launches each of
+the seven PASS-candidate servers in turn on one port and sends a shared
+corpus of ten adversarial bodies---empty, no trailing newline, the full
+0--255 byte range including NUL, multibyte UTF-8, an embedded fake HTTP
+request, a 100\,kB line, a 1\,MiB body, whitespace only, and JSON
+containing a NUL. A faithful echo must return status 200 with body equal
+to the request for every input; any divergence is a real bug one
+implementation has and the others do not. A committed calibration
+control (\path{src/controls/broken_echo.py}, which truncates the body to
+sixteen bytes) must be flagged on every body longer than sixteen bytes,
+or the equivalence test would be vacuous. This is the behavioural-channel
+methodology of the repository's code-derivation work applied to
+\emph{strengthen} this proof rather than to detect derivation.
+
 \section{Observed Execution}
 \label{sec:observed}
 
-All commands were run from the repository root on May 31, 2026. The full
+All commands were run from the repository root on June 1, 2026. The full
 toolchain was present: \texttt{go} 1.26.3, \texttt{node} v24.15.0,
 \texttt{python3} 3.13.13, \texttt{cc} (gcc) 15.2.0, \texttt{rustc}
 1.90.0, \texttt{java} 25.0.3 (runtime only; no \texttt{javac}), and
@@ -287,10 +325,16 @@ drop-in-flight). \\
 \path{bash .../detect_awk_boundary.sh} & 0 &
 gawk listener up; echo UNASSESSABLE; SIGTERM yields exit 143, confirming
 no clean handler. \\
+\path{python3 .../differential_echo.py} & 0 &
+0 divergences among the seven servers on all 10 adversarial inputs;
+broken calibration control caught on 6 of 10 (non-vacuous). \\
+\path{bash .../detect_java_reuseaddr.sh} & 0 &
+Corrected finding confirmed: started \texttt{HttpServer} tolerates
+\texttt{TIME\_WAIT} and releases; never-started \texttt{stop()} leaks. \\
 \path{validate_implementation_dag.py ... --check-paths-exist} & 0 &
-Passed; 10 units, layers \texttt{\{0:9,1:1\}}, critical-path LOC 327. \\
+Passed; 11 units, layers \texttt{\{0:10,1:1\}}, critical-path LOC 327. \\
 \path{validate_traceability.py ... --check-paths-exist} & 0 &
-Passed; 29 entities, path checks enabled. \\
+Passed; 36 entities, path checks enabled. \\
 \path{validate_review_readiness.py ...} (three files) & 0 &
 Contract-declaration, readiness-gate, and evidence-matrix passed. \\
 \bottomrule
@@ -310,13 +354,13 @@ not gates (Section~\ref{sec:measured}).
 \toprule
 Language & Result & time-to-ready & time-to-shutdown \\
 \midrule
-Java   & PASS & 566\,ms & 24\,ms\,$\dagger$ \\
-Go     & PASS & 4\,ms   & 1070\,ms \\
-Node   & PASS & 48\,ms  & 1024\,ms \\
-TS     & PASS & 71\,ms  & 1024\,ms \\
-Python & PASS & 47\,ms  & 1026\,ms \\
+Go     & PASS & 3\,ms   & 1089\,ms \\
+Node   & PASS & 25\,ms  & 1003\,ms \\
+TS     & PASS & 93\,ms  & 1025\,ms \\
+Python & PASS & 48\,ms  & 1023\,ms \\
 C      & PASS & 3\,ms   & 1002\,ms \\
-Rust   & PASS & 3\,ms   & 1001\,ms \\
+Rust   & PASS & 3\,ms   & 1002\,ms \\
+Java   & PASS & 493\,ms & 27\,ms\,$\dagger$ \\
 AWK    & SKIP & ---     & C06 boundary; echo UNASSESSABLE \\
 \bottomrule
 \end{tabularx}
@@ -327,7 +371,7 @@ timings vary run to run).}
 
 The roughly 1000\,ms shutdown for six runtimes is the injected 1000\,ms
 in-flight delay being honoured: the server finishes the delayed request
-before exiting. $\dagger$~Java is the exception at 24\,ms because
+before exiting. $\dagger$~Java is the exception at 27\,ms because
 \texttt{server.stop(2)} interrupts the handler's sleep, so Java writes
 the full body immediately instead of waiting out the artificial delay.
 The in-flight response still arrives complete and byte-exact and the
@@ -339,8 +383,8 @@ direct contrast to the drop-in-flight control below.
 
 The companion stdout proof used four result words but reported no
 \measured{} values, because nothing in that contract was a timed
-observation. This proof is the first in the repository to use the fourth
-word for real, and it is disciplined about what the word means. A
+observation. This proof is the first in this proof arc to use the fourth
+word for \emph{timing}, and it is disciplined about what the word means. A
 \measured{} number---\emph{time-to-ready}, \emph{time-to-shutdown}, or
 bytes echoed---is descriptive evidence, never a \textsc{pass} on its
 own. ``Within the deadline'' is a \emph{separate} \textsc{pass}/\textsc{fail}
@@ -348,9 +392,13 @@ contract: C02 fails if the server is not connectable within 5000\,ms,
 and C04 fails if it has not exited within 3000\,ms, regardless of the
 exact measured figure. The timings in Table~\ref{tab:lifecycle} vary
 from run to run; that variance is precisely why they are reported as
-measurements and not promoted to gates. (A scope note: the claim of
-``first \measured{} use'' is currently scoped to this papers repository,
-not the wider organization.)
+measurements and not promoted to gates. (Scope note, stated to avoid
+overclaiming: the \measured{} word is \emph{not} new to the wider
+repository---the chardet-relicensing proof bundle already reports
+\measured{} \emph{static-signal} values, such as the C06a--e structural
+similarity numbers in its bundle README. What is new here is \measured{}
+used for \emph{timed lifecycle} observations rather than static signal
+magnitudes, and its first use in this stdout-to-lifecycle proof arc.)
 
 \section{Negative Control: Graceful versus Killed}
 
@@ -383,39 +431,55 @@ proof's ``a divergent implementation would fail'' control.
 \label{sec:java}
 
 Service proofs interact with the operating system in ways a static
-design document can get wrong, so the design was checked against a
-pre-build runtime spike before any server was written. The spike
-overturned one design assumption and is reported here in full because
-correcting it is part of the result.
+design document can get wrong. This section reports a case where one did,
+because the correction---and how it was caught---is part of the result.
 
-The draft design assumed Java's bundled
-\texttt{com.sun.net.httpserver.HttpServer} would carry the same
-\texttt{SO\_REUSEADDR} guarantee as the other runtimes. It does not. On
-this runner (OpenJDK 25.0.3, Linux, \texttt{tcp\_fin\_timeout}=60) the
-spike established that \texttt{HttpServer} sets no \texttt{SO\_REUSEADDR}
-and exposes no API to set it: neither \texttt{HttpServer.create(addr,
-backlog)} nor the unbound \texttt{create()} followed by \texttt{bind()}
-surfaces the underlying \texttt{ServerSocket}, so
-\texttt{setReuseAddress(true)} before \texttt{bind} is unreachable. Once
-the server has served a connection and closed it server-side, the port
-holds a \texttt{TIME\_WAIT} entry and a fresh \texttt{HttpServer} cannot
-re-bind it for the full timeout window; every spike run ended in
-\texttt{BindException: Address already in use}. A plain
-\texttt{ServerSocket} with \texttt{setReuseAddress(true)} binds the same
-port immediately.
+A prior version of this proof asserted that Java's bundled
+\texttt{com.sun.net.httpserver.HttpServer} ``sets no \texttt{SO\_REUSEADDR}
+and cannot re-bind a \texttt{TIME\_WAIT}'d port,'' and built a
+load-bearing mitigation on it: Java was scheduled \emph{first} on a
+pristine port, given a special no-reuse pre-flight, and any foreign
+\texttt{TIME\_WAIT} at Java's turn was a \textsc{skip}. Direct
+re-measurement on this runner (OpenJDK 25.0.3, Linux,
+\texttt{tcp\_fin\_timeout}=60) overturned the premise. The committed
+spike \path{src/spikes/ReuseSpike.java}, re-run six times out of six,
+reports \texttt{HttpServer.create rebind: OK} over a live
+\texttt{TIME\_WAIT}: \texttt{HttpServer} binds through an NIO
+\texttt{ServerSocketChannel}, which has \texttt{SO\_REUSEADDR} enabled by
+default, so a started server \emph{tolerates} a prior \texttt{TIME\_WAIT}
+and releases its port immediately on \texttt{stop(0)}, even after serving
+a connection.
 
-The correction is a run-order constraint, not a weakened claim. Java is
-scheduled \emph{first} in the serialized verify order, on a pristine
-port; its pre-flight is a \texttt{TIME\_WAIT}-aware probe rather than the
-connectivity probe used for the other six. A lingering foreign
-\texttt{TIME\_WAIT} when Java's turn comes is recorded as a legitimate
-\textsc{skip}, never a false \textsc{fail}. Java's own port-release check
-still passes, because that assertion is made by the independent
-\texttt{SO\_REUSEADDR}-setting probe socket, not by Java re-binding. The
-other six runtimes set \texttt{SO\_REUSEADDR} (Go and Node by default, C
-via \texttt{setsockopt}, Rust via a small \texttt{extern "C"} FFI block,
-Python via \texttt{allow\_reuse\_address}) and tolerate a prior
-\texttt{TIME\_WAIT}.
+The root cause of the original false reading is deterministic, and it is
+a genuine---but different---footgun. The old spike's bind helper called
+\texttt{HttpServer.create()} followed by \texttt{stop(0)} \emph{without
+ever calling \texttt{start()}}. A never-started \texttt{stop()} does not
+release the bound listener socket; that leaked listener, not any
+\texttt{SO\_REUSEADDR} deficiency, is what made the subsequent bind fail.
+The earlier finding had been flipped twice and rested on that un-rerun
+spike. It was never a property of the real lifecycle, which always
+\texttt{start()}s.
+
+The correction removes special-casing rather than adding it. There is no
+Java-first ordering and no no-reuse pre-flight; Java runs in plain build
+order like the other six PASS-candidates and passes (Table~\ref{tab:lifecycle}).
+The C04 port-release check is uniform across all seven, including Java,
+precisely because the \emph{probe} socket sets \texttt{SO\_REUSEADDR} and
+bounded-retries \texttt{TIME\_WAIT}; it never depends on a server's
+socket-option choice. The reproducer pair (\path{detect_java_reuseaddr.sh}
+and the re-pointed \path{ReuseSpike.java}) is kept in the bundle to make
+the corrected finding independently re-executable: it confirms both the
+tolerance fact and the never-started-\texttt{stop()} leak, and---because
+the tolerance half is the direct refutation of the old claim---it reports
+an honest \textsc{skip} (exit 2) when the kernel cannot hold a
+\texttt{TIME\_WAIT}, rather than ever claiming the finding on the leak
+alone. The standing lesson is the one that should have prevented the
+error: a runtime fact that drives load-bearing behaviour must rest on a
+committed, re-runnable measurement, not on narrative carried across
+drafts. (The other runtimes set \texttt{SO\_REUSEADDR} too---Go and Node
+by default, C via \texttt{setsockopt}, Rust via a small \texttt{extern
+"C"} FFI block, Python via \texttt{allow\_reuse\_address}---but, as above,
+none of those settings is load-bearing for the cross-process check.)
 
 \section{PASS, SKIP, FAIL, and MEASURED}
 
@@ -461,11 +525,19 @@ The C04 graceful check is non-vacuous. &
 \path{detect_graceful_shutdown.sh} and the two controls. &
 Directly observed. &
 Does not prove zero drops under arbitrary concurrency. \\
-Java's \texttt{HttpServer} cannot set \texttt{SO\_REUSEADDR}; Java is
-scheduled first. &
-the pre-build spike and the witness pre-flight. &
-Directly observed on this JDK and runner. &
-Does not characterize other JDKs or HTTP libraries. \\
+The seven PASS-candidate servers are byte-exact-equivalent across an
+adversarial corpus, and that equivalence test is non-vacuous. &
+\path{differential_echo.py} and the broken calibration control. &
+Directly observed: 0 divergences; control caught 6 of 10. &
+Proves agreement, not external correctness; corpus is hand-chosen. \\
+A started Java \texttt{HttpServer} tolerates a prior \texttt{TIME\_WAIT}
+and releases its port on \texttt{stop(0)}; the prior socket-option claim
+(Section~\ref{sec:java}) is retracted. &
+the re-pointed spike (\path{ReuseSpike.java}, 6/6) and
+\path{detect_java_reuseaddr.sh}. &
+Directly observed on this JDK and runner; correction recorded. &
+Does not characterize other JDKs; the never-started-\texttt{stop()} leak
+is in-process only. \\
 The AWK signal boundary is real and its echo is unasserted. &
 \path{detect_awk_boundary.sh}; SIGTERM exit 143. &
 Directly observed plus a declared non-claim. &
@@ -518,7 +590,13 @@ header-flush synchronization point rather than a timing guess; the
 port-release check uses an independent \texttt{SO\_REUSEADDR} re-bind
 probe rather than a mere listener-absence check; and the byte-exact
 comparison checks \texttt{Content-Length} as well as the body. Each of
-these was a real defect caught and corrected during review.
+these was a real defect caught and corrected during review. The largest
+such correction was the Java \texttt{SO\_REUSEADDR} retraction of
+Section~\ref{sec:java}: a runtime claim that had driven a special run
+order was overturned by re-running the committed spike, and the offending
+special-casing was removed rather than patched---the concrete reason the
+design discipline is ``assert no runtime fact without a committed,
+re-runnable measurement.''
 
 \textbf{External validity.} The proof covers eight small servers on one
 POSIX runner. \texttt{SIGTERM}/\texttt{SIGKILL} semantics assume POSIX;
@@ -587,9 +665,10 @@ shutdown, port release---across seven of eight languages (six runtimes),
 with the eighth, AWK, held as the one declared signal boundary rather
 than to the lifecycle contract. What had to grow is named precisely: a
 lifecycle-aware witness harness, the \measured{} result word used for
-real, a port-as-shared-resource discipline, and a negative control that
-keeps the graceful-shutdown check honest. What did not change is the
-proof structure itself. The artifact is not evidence about performance or
+real, a port-as-shared-resource discipline, a negative control that
+keeps the graceful-shutdown check honest, and a differential channel that
+shows the seven implementations are byte-exact-equivalent under
+adversarial inputs. What did not change is the proof structure itself. The artifact is not evidence about performance or
 production assurance; it is a compact, executable proof that a stateful
 service contract can be tied to contracts, DAG nodes, code paths,
 witnesses, and review gates, and that the parts a static validator cannot
