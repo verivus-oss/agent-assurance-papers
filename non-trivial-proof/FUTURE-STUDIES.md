@@ -4,19 +4,20 @@ The `hello-world` proof governs an instant, deterministic, stdout-only contract.
 To show the DAG-TOML assurance framework is a real software-engineering tool and
 not a party trick, each follow-up escalates the baseline contract from a static
 string into a dynamic, environment-interacting behaviour that breaks a standard
-verification assumption. Four scenarios make up the arc; **#1 is in progress**
-(this directory's `DESIGN.md`), #2–#4 are recorded here as future studies.
+verification assumption. Four scenarios make up the arc; **#1 is complete**
+(this directory's `DESIGN.md`, `proof-bundle/`, `manuscript/`, and container),
+#2–#4 are recorded here as future studies.
 
 | # | Scenario | Breaks | Status |
 |---|----------|--------|--------|
-| 1 | Stateful I/O — HTTP echo server | run-to-completion ⇒ process lifecycle | **In progress** — see `DESIGN.md` (design-first, cross-model gate satisfied; bundle not yet built) |
+| 1 | Stateful I/O — HTTP echo server | run-to-completion ⇒ process lifecycle | **Complete** — bundle built and green (7 PASS / 1 SKIP / 0 FAIL + 6 witnesses + 5 validators), manuscript written, container reproduction green; cross-model gate satisfied across rounds (`DESIGN.md` §12) |
 | 2 | Non-determinism — concurrent sort | deterministic stdout ⇒ races + filesystem state | Future study |
 | 3 | Dependency graph — third-party ecosystems | stdlib-only ⇒ hermetic external deps | Future study |
 | 4 | Semantic verification — Semgrep/CodeQL | bespoke AST scripts ⇒ enterprise SAST hand-off | Future study |
 
 ---
 
-## #1 — The Stateful I/O Test: an HTTP echo server (IN PROGRESS)
+## #1 — The Stateful I/O Test: an HTTP echo server (COMPLETE)
 
 **Contract.** Bind `127.0.0.1:8080`, accept `POST /` with a JSON body, return
 `200 OK` echoing the exact bytes, and on `SIGTERM` stop accepting, finish

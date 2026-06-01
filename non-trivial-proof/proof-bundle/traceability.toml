@@ -7,7 +7,9 @@
 # Chain 2 (graceful-vs-kill): the C04 negative-control chain. Chain 3
 # (awk-boundary): the C06 signal-boundary chain. Chain 4 (differential-agreement):
 # cross-implementation behavioural equivalence with a committed broken calibration
-# control (DESIGN.md §5.4).
+# control (DESIGN.md §5.4). Chain 5 (inflight-window): the C04 timing guard that
+# proves the in-flight window is genuinely exercised, not collapsed by response-
+# header buffering (DESIGN.md §5.5).
 #
 # Every `path` resolves to a real file under repo root.
 
@@ -50,6 +52,12 @@ name        = "Cross-implementation behavioural equivalence"
 statement   = "Demonstrate that the seven PASS-candidate echo implementations are byte-exact-equivalent across an adversarial input corpus the single-payload witness cannot reach, and that the equivalence test is non-vacuous (a deliberately-broken control is caught)."
 realized_by = ["REQ:differential-equivalence-nonvacuous"]
 
+[[intents]]
+id          = "INT:inflight-window-genuine"
+name        = "Genuine C04 in-flight window"
+statement   = "Demonstrate that C04's in-flight-completion clause is GENUINELY exercised — the response body completes strictly after SIGTERM — and is not silently collapsed by a runtime that buffers its response headers until body bytes flow (the measured com.sun HttpServer case)."
+realized_by = ["REQ:inflight-window-genuine"]
+
 [[features]]
 id             = "FEAT:multilang-echo-service"
 name           = "Multi-language HTTP echo service"
@@ -77,6 +85,13 @@ name           = "Differential behavioural-agreement channel"
 constrained_by = ["REQ:differential-equivalence-nonvacuous"]
 implemented_by = ["IMP:differential-harness"]
 produces       = ["OUT:differential-agreement-witness"]
+
+[[features]]
+id             = "FEAT:inflight-timing-guard"
+name           = "C04 in-flight timing guard"
+constrained_by = ["REQ:inflight-window-genuine"]
+implemented_by = ["IMP:inflight-window"]
+produces       = ["OUT:inflight-window-witness"]
 
 [[requirements]]
 id               = "REQ:echo-service-lifecycle"
@@ -113,6 +128,15 @@ priority         = "must"
 source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C03"
 constrains       = ["IMP:differential-harness"]
 verified_by      = ["TEST:stateful-io-proof::differential-agreement"]
+
+[[requirements]]
+id               = "REQ:inflight-window-genuine"
+statement        = "For each PASS-candidate, the in-flight response body MUST complete STRICTLY AFTER SIGTERM by a margin (at least half the injected delay), proving C04's in-flight window is genuinely exercised and not collapsed by response-header buffering. The Java handler MUST flush a sync byte before the delay so com.sun HttpServer transmits its headers early; without it the window collapses (body already sent when SIGTERM arrives)."
+requirement_kind = "functional"
+priority         = "must"
+source           = "non-trivial-proof/proof-bundle/contract_declaration.toml#C04"
+constrains       = ["IMP:inflight-window"]
+verified_by      = ["TEST:stateful-io-proof::inflight-window"]
 
 [[implementations]]
 id         = "IMP:echo-servers"
@@ -157,6 +181,14 @@ summary    = "differential_echo.py runs the seven PASS-candidate servers on a sh
 implements = ["REQ:differential-equivalence-nonvacuous"]
 code = ["CODE:diff-broken-control"]
 tests = ["TEST:stateful-io-proof::differential-agreement"]
+
+[[implementations]]
+id         = "IMP:inflight-window"
+name       = "C04 in-flight timing guard + Java header-flush fix"
+summary    = "detect_inflight_window.py times each PASS-candidate's in-flight body completion against the SIGTERM timestamp and requires completion strictly after SIGTERM by a margin. The measured artifact is the Java server's test-only delay path (src/java/Server.java), which flushes a sync byte before the delay to defeat com.sun's response-header buffering so Java's in-flight window is genuine like the other six."
+implements = ["REQ:inflight-window-genuine"]
+code = ["CODE:srv-java-inflight"]
+tests = ["TEST:stateful-io-proof::inflight-window"]
 
 [[code]]
 id       = "CODE:srv-go"
@@ -242,6 +274,13 @@ symbol   = "H.do_POST"
 language = "python"
 realizes = ["IMP:differential-harness"]
 
+[[code]]
+id       = "CODE:srv-java-inflight"
+path     = "non-trivial-proof/proof-bundle/src/java/Server.java"
+symbol   = "Server.main"
+language = "java"
+realizes = ["IMP:inflight-window"]
+
 [[tests]]
 id        = "TEST:stateful-io-proof::service-contract"
 path      = "non-trivial-proof/proof-bundle/run_service_contract.sh"
@@ -270,6 +309,13 @@ test_kind = "e2e"
 verifies  = ["REQ:differential-equivalence-nonvacuous"]
 command   = "python3 non-trivial-proof/proof-bundle/differential_echo.py"
 
+[[tests]]
+id        = "TEST:stateful-io-proof::inflight-window"
+path      = "non-trivial-proof/proof-bundle/detect_inflight_window.py"
+test_kind = "e2e"
+verifies  = ["REQ:inflight-window-genuine"]
+command   = "python3 non-trivial-proof/proof-bundle/detect_inflight_window.py"
+
 [[outputs]]
 id       = "OUT:service-contract-witness"
 name     = "Service-contract enforcement witness (C01..C05)"
@@ -289,3 +335,8 @@ realizes = ["FEAT:awk-boundary", "INT:awk-signal-boundary"]
 id       = "OUT:differential-agreement-witness"
 name     = "Differential behavioural-agreement witness"
 realizes = ["FEAT:differential-agreement", "INT:differential-equivalence"]
+
+[[outputs]]
+id       = "OUT:inflight-window-witness"
+name     = "C04 in-flight timing-guard witness"
+realizes = ["FEAT:inflight-timing-guard", "INT:inflight-window-genuine"]

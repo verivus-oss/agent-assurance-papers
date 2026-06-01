@@ -68,18 +68,20 @@ verified_by = ["TEST:stateful-io-proof::service-contract"]
 [[contracts]]
 id          = "C04"
 domain      = "signal_handling"
-statement   = "After SIGTERM: any in-flight request MUST complete (no dropped/truncated response), the process MUST exit 0 within a shutdown deadline (default 3000 ms), and the port MUST be re-bindable afterward (verified by an independent re-bind probe that sets SO_REUSEADDR plus a bounded retry absorbing TIME_WAIT). SIGKILL fallback, a dropped in-flight response, or a non-re-bindable port are each a FAIL. Well-formedness: the test-injected in-flight delay (1000 ms) is strictly less than the 3000 ms shutdown deadline. The graceful-vs-kill negative control proves this check is non-vacuous."
+statement   = "After SIGTERM: any in-flight request MUST complete (no dropped/truncated response), the process MUST exit 0 within a shutdown deadline (default 3000 ms), and the port MUST be re-bindable afterward (verified by an independent re-bind probe that sets SO_REUSEADDR plus a bounded retry absorbing TIME_WAIT). SIGKILL fallback, a dropped in-flight response, or a non-re-bindable port are each a FAIL. Well-formedness: the test-injected in-flight delay (1000 ms) is strictly less than the 3000 ms shutdown deadline. The in-flight clause depends on the server flushing its response headers before the body so the witness can sync; com.sun HttpServer buffers them (MEASURED), so the Java handler flushes a sync byte first — the in-flight timing guard (detect_inflight_window.py) asserts the body completes strictly after SIGTERM for every PASS-candidate, catching that vacuity. The graceful-vs-kill negative control proves the check is non-vacuous on the drop axis."
 applies_to  = [
   "non-trivial-proof/proof-bundle/run_service_contract.sh",
   "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
+  "non-trivial-proof/proof-bundle/detect_inflight_window.py",
   "non-trivial-proof/proof-bundle/src/controls/control_ignore.go",
   "non-trivial-proof/proof-bundle/src/controls/control_drop.go",
 ]
 depends_on  = ["C01"]
-must_name   = ["in-flight request completes", "exit 0 within deadline", "port re-bindable", "non-graceful server caught as FAIL"]
+must_name   = ["in-flight request completes", "exit 0 within deadline", "port re-bindable", "non-graceful server caught as FAIL", "in-flight body completes strictly after SIGTERM"]
 verified_by = [
   "TEST:stateful-io-proof::service-contract",
   "TEST:stateful-io-proof::graceful-vs-kill",
+  "TEST:stateful-io-proof::inflight-window",
 ]
 
 [[contracts]]

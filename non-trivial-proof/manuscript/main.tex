@@ -100,6 +100,14 @@ That proof is honest but limited in one specific way---its contract is
 satisfiable by a program that runs to completion, so the witness is a
 single stdout \texttt{cmp}.
 
+Throughout, ``proof'' denotes an \emph{executable, falsifiable evidence
+artifact}: a contract wired to witnesses whose outcomes can be re-run and
+which fail loudly when violated. It is deliberately \emph{not} a mathematical
+or machine-checked proof---no theorem, no exhaustive state coverage, and no
+formal verification is claimed. The contribution is the discipline that keeps
+such an artifact honest, not a guarantee of correctness in the formal-methods
+sense.
+
 Real assurance targets are not like that. Services bind ports, stay
 resident, answer over the network, and must shut down without dropping
 work. This paper asks whether the same inspectable, falsifiable
@@ -145,14 +153,15 @@ normative files are:
 
 \begin{itemize}
   \item \path{contract_declaration.toml}: contracts C01 through C06.
-  \item \path{implementation_dag.toml}: eleven units, all tier 1.
-  \item \path{traceability.toml}: four chains (service lifecycle,
-        graceful-vs-kill, AWK boundary, differential-agreement).
+  \item \path{implementation_dag.toml}: twelve units, all tier 1.
+  \item \path{traceability.toml}: five chains (service lifecycle,
+        graceful-vs-kill, AWK boundary, differential-agreement, in-flight-window).
   \item \path{review_readiness.toml}: one gate for the service-witness pack.
-  \item \path{evidence_matrix.toml}: six claims mapped to eight
+  \item \path{evidence_matrix.toml}: seven claims mapped to nine
         evidence artifacts.
   \item \path{run_service_contract.sh}, \path{detect_graceful_shutdown.sh},
-        \path{detect_awk_boundary.sh}, \path{differential_echo.py}, and
+        \path{detect_awk_boundary.sh}, \path{differential_echo.py},
+        \path{detect_inflight_window.py}, and
         \path{detect_java_reuseaddr.sh}: executable witnesses.
 \end{itemize}
 
@@ -173,8 +182,9 @@ TypeScript folds into the V8/Node stack it shares with JavaScript, and
 AWK is the C06 boundary rather than a passing runtime, leaving six
 distinct stacks---Go, V8/Node (JS and TS), CPython, the JVM,
 natively-compiled C, and natively-compiled Rust. We flag the soft edge
-honestly: C and Rust are both bare native binaries over libc, so a
-stricter ``managed-runtime'' definition would merge them and reach five.
+honestly: C and Rust are both natively-compiled binaries with no managed VM
+(C directly on libc; Rust's standard library links libc but abstracts it), so
+a stricter ``managed-runtime'' definition would merge them and reach five.
 The paper therefore leads with the number that is directly verifiable
 from the source tree.
 
@@ -250,20 +260,34 @@ U07 awk-server     /
 U09 verify-graceful-vs-kill        (independent leaf)
 U10 verify-awk-boundary            (independent leaf)
 U11 verify-differential-agreement  (independent leaf)
+U12 verify-inflight-window         (independent leaf)
 \end{lstlisting}
 
 The computed values checked by the repository's implementation-DAG
 validator are:
 
 \begin{itemize}
-  \item eleven units;
-  \item layer counts \texttt{\{0: 10, 1: 1\}};
-  \item entry points \texttt{U01..U07, U09, U10, U11} (empty \texttt{depends\_on});
-  \item leaf nodes \texttt{U08, U09, U10, U11} (empty \texttt{blocks});
-        U09, U10, and U11 are simultaneously entry points and leaves;
-  \item critical path \texttt{U05 -> U08} with node-weighted
-        critical-path LOC 327.
+  \item twelve units;
+  \item layer counts \texttt{\{0: 11, 1: 1\}};
+  \item entry points \texttt{U01..U07, U09, U10, U11, U12} (empty \texttt{depends\_on});
+  \item leaf nodes \texttt{U08, U09, U10, U11, U12} (empty \texttt{blocks});
+        U09--U12 are simultaneously entry points and leaves;
+  \item ``critical path'' \texttt{U05 -> U08} with node-weighted LOC 327.
 \end{itemize}
+
+This DAG is deliberately shallow---depth one. Every path has length two (a
+build leaf into the single verifier), so the ``critical path'' is not a
+scheduling claim: 327 is simply the LOC of the heaviest build leaf (Rust)
+plus the verifier, and the fan-in exists for a correctness reason, not a
+dependency one---one verifier must hold \emph{sole} ownership of the shared
+port \texttt{:8080}. What the declarative layer buys over a bare test suite is
+therefore not orchestration depth but four checkable properties the shell
+witnesses alone do not provide: that every contract is \emph{declared} and
+\emph{wired} to a witness (no claim may exist without one), that claims trace
+to code and tests by construction, that the gate's required documents and
+links resolve, and that a reviewer can navigate claim~$\to$~witness~$\to$~code
+mechanically. It provides nothing \emph{dynamic}: the runtime guarantees live
+entirely in the witnesses (Section~\ref{sec:nostatic}).
 
 \textbf{Run order carries no privileged position.} U08 runs the seven
 PASS-candidates in plain build order. An earlier design gave one runtime a
@@ -312,8 +336,10 @@ methodology of the repository's code-derivation work applied to
 All commands were run from the repository root on June 1, 2026. The full
 toolchain was present: \texttt{go} 1.26.3, \texttt{node} v24.15.0,
 \texttt{python3} 3.13.13, \texttt{cc} (gcc) 15.2.0, \texttt{rustc}
-1.90.0, \texttt{java} 25.0.3 (runtime only; no \texttt{javac}), and
-\texttt{gawk} 5.3.2, with port 8080 free.
+1.90.0, \texttt{java} 25.0.3 (runtime only; no \texttt{javac}---the Java
+server runs via single-file source-code execution, JEP~330, so the
+\texttt{.java} files need no separate compile step), and \texttt{gawk}
+5.3.2, with port 8080 free.
 
 \begin{table}[htbp]
 \centering
@@ -334,13 +360,16 @@ no clean handler. \\
 \path{python3 .../differential_echo.py} & 0 &
 0 divergences among the seven servers on all 10 adversarial inputs;
 broken calibration control caught on 6 of 10 (non-vacuous). \\
+\path{python3 .../detect_inflight_window.py} & 0 &
+All seven servers' in-flight body completes strictly after SIGTERM by
+$\geq$500\,ms (the C04 in-flight window is genuinely exercised, incl. Java). \\
 \path{bash .../detect_java_reuseaddr.sh} & 0 &
 Corrected finding confirmed: started \texttt{HttpServer} tolerates
 \texttt{TIME\_WAIT} and releases; never-started \texttt{stop()} leaks. \\
 \path{validate_implementation_dag.py ... --check-paths-exist} & 0 &
-Passed; 11 units, layers \texttt{\{0:10,1:1\}}, critical-path LOC 327. \\
+Passed; 12 units, layers \texttt{\{0:11,1:1\}}, critical-path LOC 327. \\
 \path{validate_traceability.py ... --check-paths-exist} & 0 &
-Passed; 36 entities, path checks enabled. \\
+Passed; 43 entities, path checks enabled. \\
 \path{validate_review_readiness.py ...} (three files) & 0 &
 Contract-declaration, readiness-gate, and evidence-matrix passed. \\
 \bottomrule
@@ -361,12 +390,12 @@ not gates (Section~\ref{sec:measured}).
 Language & Result & time-to-ready & time-to-shutdown \\
 \midrule
 Go     & PASS & 3\,ms   & 1089\,ms \\
-Node   & PASS & 25\,ms  & 1003\,ms \\
-TS     & PASS & 93\,ms  & 1025\,ms \\
-Python & PASS & 48\,ms  & 1023\,ms \\
-C      & PASS & 3\,ms   & 1002\,ms \\
-Rust   & PASS & 3\,ms   & 1002\,ms \\
-Java   & PASS & 493\,ms & 27\,ms\,$\dagger$ \\
+Node   & PASS & 26\,ms  & 1026\,ms \\
+TS     & PASS & 69\,ms  & 1025\,ms \\
+Python & PASS & 48\,ms  & 1024\,ms \\
+C      & PASS & 2\,ms   & 1001\,ms \\
+Rust   & PASS & 3\,ms   & 1001\,ms \\
+Java   & PASS & 474\,ms & 1024\,ms\,$\dagger$ \\
 AWK    & SKIP & ---     & C06 boundary; echo UNASSESSABLE \\
 \bottomrule
 \end{tabularx}
@@ -375,14 +404,34 @@ timings vary run to run).}
 \label{tab:lifecycle}
 \end{table}
 
-The roughly 1000\,ms shutdown for six runtimes is the injected 1000\,ms
-in-flight delay being honoured: the server finishes the delayed request
-before exiting. $\dagger$~Java is the exception at 27\,ms because
-\texttt{server.stop(2)} interrupts the handler's sleep, so Java writes
-the full body immediately instead of waiting out the artificial delay.
-The in-flight response still arrives complete and byte-exact and the
-exit code is 0, so C04 holds---this is honest graceful completion, in
-direct contrast to the drop-in-flight control below.
+The roughly 1000\,ms shutdown across all seven runtimes is the injected
+1000\,ms in-flight delay being honoured: the server completes the delayed
+request before exiting, exactly the graceful behaviour C04 demands.
+$\dagger$~Java required a measured correction to reach this figure. An
+earlier draft reported Java shutting down in \emph{27\,ms} and explained it
+as \texttt{server.stop(2)} interrupting the handler's sleep. A
+referee-driven measurement (Section~\ref{sec:java}, Section~\ref{sec:honest})
+showed both the figure and the mechanism were artifacts of a different fault:
+\texttt{com.sun}'s \texttt{HttpServer} buffers its response headers until body
+bytes flow, so the witness's header-flush synchronization point silently
+failed for Java and SIGTERM landed on an \emph{already-complete} request---the
+in-flight window was never exercised. With the Java handler flushing a sync
+byte before the delay (so the remainder is genuinely in flight), Java now
+honours the delay like the other six and the in-flight window is real; the
+27\,ms figure and its explanation are retracted.
+
+\textbf{A second environment.} Beyond the host runner, the bundle ships a
+container reproduction (\path{Containerfile}, \path{build-and-run.sh}) that one
+\texttt{podman build} + \texttt{run} re-executes end to end: all six witnesses,
+all five validators, and a compile of this paper, gated on every one succeeding.
+On that image the witnesses again report 7~\textsc{pass}~/~1~\textsc{skip}~/~0~\textsc{fail}
+and the validators pass---a second, mostly-pinned environment confirming the
+result rather than a single runner. The pinning is partial and disclosed as
+such: the base image is digest-pinned and Go/Node/Rust are \texttt{sha256}-pinned,
+but the distribution-provided tools (gcc, gawk, \texttt{python3}, the JDK, \TeX)
+track rolling repositories and drift on rebuild (e.g.\ gcc 15.2.1 vs.\ 15.2.0,
+gawk 5.4.0 vs.\ 5.3.2 on the build observed here). It is therefore a working,
+version-honest reproducer, not a bit-reproducible one.
 
 \section{The \measured{} Result Word}
 \label{sec:measured}
@@ -529,11 +578,16 @@ re-measurement on this runner (OpenJDK 25.0.3, Linux,
 \texttt{tcp\_fin\_timeout}=60) overturned the premise. The committed
 spike \path{src/spikes/ReuseSpike.java}, re-run six times out of six,
 reports \texttt{HttpServer.create rebind: OK} over a live
-\texttt{TIME\_WAIT}: \texttt{HttpServer} binds through an NIO
-\texttt{ServerSocketChannel}, which has \texttt{SO\_REUSEADDR} enabled by
-default, so a started server \emph{tolerates} a prior \texttt{TIME\_WAIT}
-and releases its port immediately on \texttt{stop(0)}, even after serving
-a connection.
+\texttt{TIME\_WAIT}: a started \texttt{HttpServer} \emph{tolerates} a prior
+\texttt{TIME\_WAIT} and releases its port immediately on \texttt{stop(0)},
+even after serving a connection. That rebind is the measured fact and
+carries the claim. The \emph{mechanism} is reported as an inference, not a
+contract: \texttt{HttpServer} likely binds through an NIO
+\texttt{ServerSocketChannel} whose \texttt{SO\_REUSEADDR} is enabled on this
+JDK build, but the JDK documents channel option defaults as
+implementation-specific (and a plain \texttt{ServerSocket}'s initial setting
+as undefined), so a paper retracting an over-confident causal Java claim must
+not reintroduce one in the opposite direction.
 
 The root cause of the original false reading is deterministic, and it is
 a genuine---but different---footgun. The old spike's bind helper called
@@ -580,8 +634,10 @@ The proof uses the four result words narrowly.
         the declared C06 boundary (AWK). \textsc{skip} is not evidence of
         conformance.
   \item \textsc{fail} means a bind failure, a missed deadline, a non-200
-        status, a body mismatch, a dropped in-flight response, a nonzero
-        exit on \texttt{SIGTERM}, or a port not released.
+        status, a body mismatch, a dropped in-flight response, an in-flight
+        body that completed at or before the SIGTERM timestamp (the in-flight
+        window collapsed, Section~\ref{sec:java}), a nonzero exit on
+        \texttt{SIGTERM}, or a port not released.
   \item \measured{} is reserved for the timing and byte observations of
         Section~\ref{sec:measured}; it is never promoted to a
         \textsc{pass}.
@@ -615,6 +671,11 @@ adversarial corpus, and that equivalence test is non-vacuous. &
 \path{differential_echo.py} and the broken calibration control. &
 Directly observed: 0 divergences; control caught 6 of 10. &
 Proves agreement, not external correctness; corpus is hand-chosen. \\
+C04's in-flight window is genuinely exercised for all seven (the body
+completes strictly after SIGTERM), incl.\ Java after the header-flush fix. &
+\path{detect_inflight_window.py} (timing) and the Go-vs-Java contrast. &
+Directly observed: body completes $\geq$500\,ms after SIGTERM for each. &
+One deterministic in-flight request per server; not a concurrency test. \\
 A started Java \texttt{HttpServer} tolerates a prior \texttt{TIME\_WAIT}
 and releases its port on \texttt{stop(0)}; the prior socket-option claim
 (Section~\ref{sec:java}) is retracted. &
@@ -740,10 +801,17 @@ special-casing was removed rather than patched---the concrete reason the
 design discipline is ``assert no runtime fact without a committed,
 re-runnable measurement.''
 
-\textbf{External validity.} The proof covers eight small servers on one
-POSIX runner. \texttt{SIGTERM}/\texttt{SIGKILL} semantics assume POSIX;
-Windows is out of scope. Port 8080 is a runner-global assumption, and a
-hostile environment racing for the port yields a legitimate \textsc{skip}.
+\textbf{External validity.} The proof covers eight small servers and the
+headline run is a single representative execution on one POSIX runner; the
+\measured{} timings vary run to run, and no statistical distribution is
+claimed. The container reproduction (Section~\ref{sec:observed}) re-runs the
+whole pack green in a second, mostly-pinned environment, which mitigates the
+single-runner risk but does not eliminate it---both environments are Linux,
+and the Java surprises of Section~\ref{sec:java} are a reminder that a second
+OS or JDK could expose behaviour neither run did; that is cheap insurance worth
+adding. \texttt{SIGTERM}/\texttt{SIGKILL} semantics assume POSIX; Windows is
+out of scope. Port 8080 is a runner-global assumption, and a hostile
+environment racing for the port yields a legitimate \textsc{skip}.
 
 \textbf{Conclusion validity.} The results are categorical witness
 outcomes and descriptive \measured{} timings, not statistical estimates.
@@ -751,6 +819,7 @@ The correct conclusion is that the declared witnesses passed, skipped, or
 failed as reported on this runner.
 
 \section{What the Static Validators Do Not Check}
+\label{sec:nostatic}
 
 The five \dagtoml{} validators check structure, not runtime. They
 confirm that C01 is declared, wired to a test, and that the witness

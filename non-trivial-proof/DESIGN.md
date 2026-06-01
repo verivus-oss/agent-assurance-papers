@@ -211,9 +211,11 @@ Notes that change the design from a naive "just SKIP what's missing":
   load-bearing for the C04 port-release check** — see §3.1 and §5.1 step 7. Go
   (`net.Listen`) and Node (`http.Server`) set it by default; C sets it via
   `setsockopt`; Rust via the FFI path above; Python's `http.server` sets
-  `allow_reuse_address = True`; and Java's `HttpServer` binds via an NIO
-  `ServerSocketChannel`, which has `SO_REUSEADDR` on by default. Port release is
-  nevertheless verified **cross-process** by an independent probe (§5.1 step 7)
+  `allow_reuse_address = True`; and Java's `HttpServer` rebinds over a `TIME_WAIT`
+  in measurement (the likely mechanism is that its NIO `ServerSocketChannel` has
+  `SO_REUSEADDR` enabled on this JDK build, but the JDK documents channel option
+  defaults as implementation-specific, so that is an inference, not a contract).
+  Port release is nevertheless verified **cross-process** by an independent probe (§5.1 step 7)
   that sets `SO_REUSEADDR` *itself* plus a bounded TIME_WAIT retry, so the proof
   never depends on any one server's socket-option choice.
 
@@ -227,9 +229,15 @@ special no-reuse bind pre-flight, and any foreign `TIME_WAIT` at Java's turn was
 SKIP. **None of that is needed, because the premise is false.** The committed
 spike (`proof-bundle/src/spikes/ReuseSpike.java`), re-run 6/6 on this runner,
 shows `HttpServer.create rebind: OK` over a live `TIME_WAIT` (`MEASUREMENTS.md`
-M1). HttpServer's NIO `ServerSocketChannel` has `SO_REUSEADDR` on by default, so
-it tolerates a prior `TIME_WAIT`, and a properly-`start()`ed server releases its
-port immediately on `stop(0)` — even after serving a connection.
+M1). A properly-`start()`ed HttpServer **tolerates a prior `TIME_WAIT` and
+releases its port immediately on `stop(0)`** — even after serving a connection.
+The measured rebind is what carries the claim; the *mechanism* is an inference:
+HttpServer likely binds via an NIO `ServerSocketChannel` whose `SO_REUSEADDR` is
+enabled on this JDK build, but since the JDK documents channel option defaults as
+implementation-specific (and a plain `ServerSocket`'s initial setting as
+undefined), this is reported as an inference about the observed implementation,
+not a contractual guarantee — a retraction of an over-confident causal Java claim
+must not reintroduce one in the opposite direction.
 
 **Root cause of the old false finding (deterministic, 6/6):**
 `HttpServer.create()` binds the port; calling `stop()` on a server that was
@@ -277,6 +285,7 @@ U07 awk-server    /
 U09 verify-graceful-vs-kill        (independent leaf: negative control for C04)
 U10 verify-awk-boundary            (independent leaf: C06 SKIP-with-rationale witness)
 U11 verify-differential-agreement  (independent leaf: cross-impl behavioural equivalence)
+U12 verify-inflight-window         (independent leaf: C04 in-flight timing guard, §5.6)
 ```
 
 - Layer 0: seven build/prepare units. Six are one-language units (Go, Python, C,
@@ -294,8 +303,9 @@ U11 verify-differential-agreement  (independent leaf: cross-impl behavioural equ
   TS, Python, C, Rust, Java; AWK is the declared SKIP). There is **no privileged
   position** — the §3.1 correction removed the old Java-first constraint. Port
   release between languages is guaranteed by the §5.1-step-7 probe, uniformly.
-- Independent leaves `U09`/`U10`/`U11` are the behavioural sidecars (the analog of
-  hello-world's source-analysis sidecars, extended with the differential channel).
+- Independent leaves `U09`/`U10`/`U11`/`U12` are the behavioural sidecars (the
+  analog of hello-world's source-analysis sidecars, extended with the differential
+  channel and the C04 in-flight timing guard).
 - **Validator-exactness note.** `validate_implementation_dag.py` recomputes the
   node-weighted longest path by `estimated_loc` (`longest_path_loc`) and checks
   `entry_points` == units with empty `depends_on`, `leaf_nodes` == units with
@@ -303,11 +313,12 @@ U11 verify-differential-agreement  (independent leaf: cross-impl behavioural equ
   So **every** unit MUST carry an `estimated_loc`, and `critical_path` /
   `critical_path_loc` are declared explicitly (mirroring
   `hello-world/proof-bundle/implementation_dag.toml`) to match the computed
-  values. `U09`/`U10`/`U11` have empty `depends_on` **and** empty `blocks`, so they
-  are **simultaneously `entry_points` and `leaf_nodes`** (the validator allows a
-  node to be both); the TOML lists them in both computed sets. `entry_points` =
-  all layer-0 units + `U09` + `U10` + `U11`; `leaf_nodes` = `{U08, U09, U10, U11}`;
-  `critical_path` = the longest layer-0 build → `U08`.
+  values. `U09`/`U10`/`U11`/`U12` have empty `depends_on` **and** empty `blocks`, so
+  they are **simultaneously `entry_points` and `leaf_nodes`** (the validator allows
+  a node to be both); the TOML lists them in both computed sets. `entry_points` =
+  all layer-0 units + `U09` + `U10` + `U11` + `U12`; `leaf_nodes` =
+  `{U08, U09, U10, U11, U12}`; `critical_path` = the longest layer-0 build → `U08`
+  (12 units, layers `{0: 11, 1: 1}`, node-weighted critical-path LOC 327).
 
 ---
 
@@ -343,14 +354,26 @@ Per language, **serialized** in plain build order (no privileged position):
    against the synthetic controls in §5.2. Open a `?delay_ms=1000` request and use
    an **explicit synchronization point** to guarantee the request is genuinely in
    flight before signalling: the delayed handler flushes the HTTP **status line +
-   `Content-Length` headers immediately**, then sleeps 1000 ms before writing the
-   body. The witness blocks on reading those headers (proof the handler has been
-   entered — no timing guess), and only **then** sends `SIGTERM`. It asserts (a)
-   the in-flight response body arrives **complete and byte-exact** (not
-   reset/truncated), (b) the process exits `0`, and (c) shutdown happens within the
-   deadline; record `time-to-shutdown` as MEASURED. Not-exited-in-time ⇒ escalate
-   to `SIGKILL` and mark **FAIL**; a truncated/dropped in-flight body ⇒ **FAIL**
-   even if the exit code is `0`.
+   `Content-Length` headers**, then sleeps 1000 ms before writing the body. The
+   witness blocks on reading those headers (proof the handler has been entered — no
+   timing guess), and only **then** sends `SIGTERM`. It asserts (a) the in-flight
+   response body arrives **complete and byte-exact** (not reset/truncated), (b) the
+   process exits `0`, and (c) shutdown happens within the deadline; record
+   `time-to-shutdown` as MEASURED. Not-exited-in-time ⇒ escalate to `SIGKILL` and
+   mark **FAIL**; a truncated/dropped in-flight body ⇒ **FAIL** even if the exit
+   code is `0`.
+   **Header-flush caveat (MEASURED, referee-driven — see §5.6):** this sync point
+   assumes the server transmits its response headers to the client *before* writing
+   the body. Six runtimes do; `com.sun.net.httpserver.HttpServer` does **not** — it
+   buffers the headers until body bytes flow, so the witness would receive
+   headers+body together only *after* the Java handler returned and the in-flight
+   window would silently **collapse** (the body already complete when SIGTERM
+   lands). The Java handler therefore flushes the first body byte before the delay
+   to force its headers onto the wire; the remainder stays genuinely in flight. The
+   `time-to-shutdown` this step records for Java is consequently ~1000 ms like the
+   others (not the spuriously fast figure an un-synced run produces), and the
+   independent timing guard of §5.6 asserts the in-flight window is genuine for
+   every PASS-candidate.
 7. **Port release (C04):** after exit, assert 8080 is re-bindable via an
    **independent probe that itself sets `SO_REUSEADDR`** and bounded-retries for up
    to ~2 s to absorb TIME_WAIT. The probe sets the option **itself** — otherwise
@@ -471,6 +494,39 @@ mis-measured; the reproducer caught it" note inline. It is an auxiliary witness,
 not part of the load-bearing C01..C05 gate — its purpose is to keep the retracted
 finding falsifiable and on the record.
 
+### 5.6 `detect_inflight_window.py` (C04 in-flight timing guard — referee-driven)
+
+The §5.1-step-6 in-flight check asserts the in-flight body arrives **complete and
+byte-exact**, which is necessary but **not sufficient**: it silently assumes the
+server flushes its response headers *before* the body, so that "the request is in
+flight" is an observed fact when SIGTERM is sent. A pre-submission referee read
+demanded that assumption be measured rather than narrated, and the measurement
+**overturned a confident claim**: `com.sun.net.httpserver.HttpServer` (default
+null executor) does **not** transmit the response headers until body bytes flow.
+Without a work-around the witness receives Java's headers+body together only after
+the handler returns, so SIGTERM lands on an **already-complete** request and the
+in-flight window **collapses** — C04's in-flight clause was, for Java, *vacuous*.
+A Go control confirmed the contrast: with the header-flush sync working, Go's body
+arrives ~1001 ms after SIGTERM (genuinely in flight); Java's arrived 0 ms after
+(already sent). The earlier "Java shuts down in ~27 ms because `stop(2)` interrupts
+the handler's sleep" reading was doubly wrong — the sleep **completes normally**,
+and the fast exit was only because the handler had finished before the witness
+could signal.
+
+Two things came out of that measurement. First, the Java server's test-only delay
+path now **flushes the first body byte before sleeping** (§5.1 step 6), forcing the
+headers onto the wire so the remainder is genuinely in flight; Java's measured
+shutdown is now ~1000 ms like the others. Second, this witness makes the in-flight
+window an **explicit timed assertion**: for each PASS-candidate it records the
+SIGTERM-delivery timestamp against the client-side body-**completion** timestamp
+and requires completion **strictly after SIGTERM by a margin** (≥ half the injected
+delay). A server whose window collapses (body already sent) finishes in ~0 ms and
+**FAILs**; a genuine in-flight finishes ~`delay` ms later and **PASSes** — so the
+guard is non-vacuous by construction (Java *pre-fix* would fail it). AWK is
+excluded (the C06 boundary). This is the measure-first discipline (§3.1) applied
+one more time, to the place it had not been: a runtime fact that the proof's
+correctness depends on must rest on a committed, re-runnable measurement.
+
 ---
 
 ## 6. New result-word semantics for stateful services
@@ -507,17 +563,17 @@ not-yet-validated.
   `validate_review_readiness.py` does not constrain the vocabulary, so new domains
   validate without spec changes. `verified_by` points at the witness scripts + a
   TEST: id.
-- `implementation_dag.toml` — the §4 graph (**11 units**, fan-in, **four leaf
-  nodes** = the fan-in verifier `U08` + three independent sidecars
-  `U09`/`U10`/`U11`, matching the validator-computed `leaf_nodes` set in §4), with
-  `estimated_loc` on every unit and an explicit `[computed]` block. (hello-world's
-  three-leaf shape is the precedent; this proof adds the differential sidecar as a
-  fourth leaf.)
-- `traceability.toml` — four chains: the service-lifecycle chain
+- `implementation_dag.toml` — the §4 graph (**12 units**, fan-in, **five leaf
+  nodes** = the fan-in verifier `U08` + four independent sidecars
+  `U09`/`U10`/`U11`/`U12`, matching the validator-computed `leaf_nodes` set in §4),
+  with `estimated_loc` on every unit and an explicit `[computed]` block.
+  (hello-world's three-leaf shape is the precedent; this proof adds the
+  differential and in-flight-timing sidecars.)
+- `traceability.toml` — five chains: the service-lifecycle chain
   (INT→FEAT→REQ→IMP→**8×CODE**→TEST; one CODE per language source file, JS and TS
   distinct even though they share build unit `U02`), the graceful-vs-kill
-  negative-control chain, the AWK-boundary chain, and the
-  differential-equivalence chain. Every `path` resolves on disk.
+  negative-control chain, the AWK-boundary chain, the differential-equivalence
+  chain, and the in-flight-window chain (§5.6). Every `path` resolves on disk.
 - `review_readiness.toml` — one gate `G01` with the `required_documents` field
   (the field the validator actually requires) listing the service-witness pack.
   Its `pass_conditions`/`block_conditions` are **human-facing narrative the static
@@ -526,8 +582,8 @@ not-yet-validated.
 - `evidence_matrix.toml` — claims E01 structural, E02 contract-enforced-across-
   languages, E03 non-graceful-server-is-caught, E04 readiness/shutdown-within-
   deadline (MEASURED→gated), E05 awk-boundary-is-declared, **E06
-  cross-implementation-behavioural-equivalence** — each linked to the witness
-  evidence files.
+  cross-implementation-behavioural-equivalence**, **E07 C04-in-flight-window-
+  genuinely-exercised** (§5.6) — each linked to the witness evidence files.
 
 ---
 
@@ -603,8 +659,8 @@ work without overclaiming here.
    — eight smallest-reasonable echo servers (+ the non-graceful control variants in
    `src/controls/`, + the re-pointed Java spike in `src/spikes/`).
 2. `run_service_contract.sh`, `detect_graceful_shutdown.sh`,
-   `detect_awk_boundary.sh`, `differential_echo.py`, `detect_java_reuseaddr.sh` —
-   executable witnesses.
+   `detect_awk_boundary.sh`, `differential_echo.py`, `detect_inflight_window.py`,
+   `detect_java_reuseaddr.sh` — executable witnesses.
 3. The five `*.toml` DAG-TOML files (§7), each validating against
    `../agent-assurance/validators/` — invoked with **`--check-paths-exist
    --repo-root <repo>`** so the on-disk existence of every `CODE`/`TEST`/
@@ -655,11 +711,12 @@ output actually retrieved by job ID; failed, pending, or non-retrievable runs ar
 labelled as such and never counted as approvals. No reviewer verdict or finding is
 recorded here before its job output has been retrieved by ID.
 
-**Status: SATISFIED** (2026-06-01) across four rounds: the design+bundle round
+**Status: SATISFIED** (2026-06-01) across five rounds: the design+bundle round
 (§12.1), the manuscript+container round (§12.2), a holistic pre-merge round over the
-integrated PR (§12.3), and the manuscript-expansion round (§12.4). Each rests on
-Codex's blocker(s)→fix→evidence-backed unconditional approval, with Gemini
-corroborating; only output retrieved by job ID is recorded.
+integrated PR (§12.3), the manuscript-expansion round (§12.4), and an external
+referee-driven round that measured and fixed a vacuous Java in-flight check
+(§12.5). Each rests on Codex's blocker(s)→fix→evidence-backed unconditional
+approval, with Gemini corroborating; only output retrieved by job ID is recorded.
 
 ### 12.0 Integrity note (why the prior §12 was discarded)
 
@@ -839,3 +896,57 @@ The round rests on Codex.
 
 **Round-4 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed approval
 (`c7fd3345`), with Gemini's evidence-backed approval corroborating.
+
+### 12.5 Round 5 (external referee): the Java in-flight measured correction
+
+An external pre-submission referee report raised two BLOCKERs (M1a, M1b): the
+paper made **un-measured Java runtime claims**, the very sin the measure-first
+discipline exists to prevent. The response was to **measure**, and the
+measurement was significant.
+
+**M1a — C04's in-flight clause was vacuous for Java.** The Table-3 footnote
+claimed Java shut down in 27 ms because `server.stop(2)` "interrupts the handler's
+sleep." Direct measurement (instrumented server + a Go control) overturned both
+the figure and the mechanism: `com.sun` `HttpServer` (default null executor) does
+**not** transmit response headers to the client until body bytes flow, so the
+witness's header-flush sync point silently failed for Java — SIGTERM landed on an
+*already-complete* request and the in-flight window never opened (Java body 0 ms
+after SIGTERM vs. Go's ~1001 ms; the sleep completed normally). The fix:
+`src/java/Server.java`'s test-only delay path now flushes the first body byte
+before sleeping, forcing the headers onto the wire so the remainder is genuinely
+in flight; Java's measured shutdown is now ~1000 ms like the others. A new
+permanent guard, `detect_inflight_window.py` (U12 / chain 5 / E07), asserts each
+PASS-candidate's in-flight body completes **strictly after SIGTERM** by ≥ half the
+delay — non-vacuous by construction (Java *pre-fix* would fail it). This is §3.1's
+discipline applied one more time, to the place it had not been (§5.6).
+
+**M1b — causal hedge.** §3.1 and the manuscript's §"A Measured Runtime Correction"
+no longer assert HttpServer's NIO `ServerSocketChannel` "has `SO_REUSEADDR` on by
+default" as fact; the measured rebind carries the claim and the mechanism is
+reported as an inference about this JDK build (the JDK documents channel option
+defaults as implementation-specific). **M3** — §1 now defines "proof" narrowly
+(executable falsifiable evidence artifact, not a formal/machine-checked proof).
+**M2** — the "critical path" framing is corrected (the DAG is depth-1; 327 is the
+heaviest leaf, not a scheduling claim) and the section now states what the
+declarative layer adds over a bare test suite. **M5** — the paper now reports the
+podman container reproduction as a second, mostly-pinned environment. Plus minors
+(JEP 330 clause for "no javac", softened Rust/libc phrasing).
+
+| Reviewer (model) | Job IDs | Verdict |
+|------------------|---------|---------|
+| Codex (`gpt-5.5`) | `c122fe8c` → `3a4dcdda` | **BLOCKER** (stale §2 artifact counts) → after fix: **UNCONDITIONAL APPROVAL** (ran the full podman reproduction itself: 6 witnesses + 5 validators + 14-page PDF) |
+| Gemini (`gemini-2.5-pro`) | `8088a07e` | **BLOCKER** (same §2 counts + a stale `FUTURE-STUDIES.md` status) → both fixed; evidence-backed verification of the core fix |
+
+**Both reviewers independently confirmed the core fix** — `detect_inflight_window.py`
+all 7 PASS with Java ~1000 ms after SIGTERM, `run_service_contract.sh` 7/1/0 with
+Java shutdown ~1024 ms, differential still 0 divergences / control 6/10, the Java
+source correct. This round each then caught the **same** live stale count (the §2
+Artifact inventory still read 11 units / four chains / six claims / eight evidence
+and omitted the new witness) — notable because for once Gemini penetrated as well,
+and additionally flagged `FUTURE-STUDIES.md` marking scenario #1 "in progress."
+Both were corrected; the historical §12.1–§12.4 counts are intentionally
+point-in-time and unchanged.
+
+**Round-5 gate status: SATISFIED** on Codex's blocker→fix→evidence-backed approval
+(`3a4dcdda`), with Gemini's evidence-backed verification corroborating. The
+container reproduction stays green with all six witnesses and a 14-page PDF.

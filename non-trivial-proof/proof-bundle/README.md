@@ -77,6 +77,7 @@ proof-bundle/
   detect_graceful_shutdown.sh   C04 negative control: catches both non-graceful servers
   detect_awk_boundary.sh        C06 boundary witness
   differential_echo.py          cross-implementation behavioural-equivalence witness (E06)
+  detect_inflight_window.py     C04 in-flight timing guard (E07, §5.6)
   detect_java_reuseaddr.sh      re-pointed Java reproducer witness (§3.1)
   *.toml                        the five DAG-TOML files
 ```
@@ -89,6 +90,7 @@ cd non-trivial-proof/proof-bundle
 ./detect_graceful_shutdown.sh    # C04 negative control
 ./detect_awk_boundary.sh         # C06 boundary
 python3 differential_echo.py     # cross-implementation behavioural equivalence (E06)
+python3 detect_inflight_window.py # C04 in-flight timing guard (E07, §5.6)
 ./detect_java_reuseaddr.sh       # re-pointed Java reproducer (corrected finding, §3.1)
 # PROOF_PORT=18080 ./run_service_contract.sh   # override the port for CI
 ```
@@ -104,26 +106,30 @@ privileged position):
 | Lang | Result | time-to-ready | time-to-shutdown | bytes |
 |------|--------|--------------:|-----------------:|------:|
 | go     | **PASS** | 3 ms | 1089 ms | 56 |
-| node   | **PASS** | 25 ms | 1003 ms | 56 |
-| ts     | **PASS** | 93 ms | 1025 ms | 56 |
-| python | **PASS** | 48 ms | 1023 ms | 56 |
-| c      | **PASS** | 3 ms | 1002 ms | 56 |
-| rust   | **PASS** | 3 ms | 1002 ms | 56 |
-| java   | **PASS** | 493 ms | 27 ms † | 56 |
+| node   | **PASS** | 26 ms | 1026 ms | 56 |
+| ts     | **PASS** | 69 ms | 1025 ms | 56 |
+| python | **PASS** | 48 ms | 1024 ms | 56 |
+| c      | **PASS** | 2 ms | 1001 ms | 56 |
+| rust   | **PASS** | 3 ms | 1001 ms | 56 |
+| java   | **PASS** | 474 ms | 1024 ms † | 56 |
 | awk    | **SKIP** | — | — | C06 boundary; echo UNASSESSABLE |
 
 The `time-to-ready` and `time-to-shutdown` columns are **MEASURED** numbers, not
 PASS/FAIL: a measurement is never promoted to a PASS (the deadline is the
-separate PASS/FAIL contract). The ~1000 ms shutdown for six runtimes is the
-injected 1000 ms in-flight delay being honoured — the server finishes the
+separate PASS/FAIL contract). The ~1000 ms shutdown across **all seven** runtimes
+is the injected 1000 ms in-flight delay being honoured — the server completes the
 delayed request before exiting.
 
-† **Java 27 ms:** `server.stop(2)` interrupts the handler's `Thread.sleep(1000)`,
-so Java writes the full body immediately rather than waiting out the artificial
-delay. The in-flight response still arrives **complete and byte-exact** and the
-exit is **0**, so C04 holds; Java simply shuts down faster. This is honest
-graceful completion, not a dropped request — contrast the drop-in-flight control
-below.
+† **Java (measured correction):** an earlier run reported Java at **27 ms** and
+explained it as `server.stop(2)` interrupting the sleep. A referee-driven
+measurement overturned that: `com.sun` `HttpServer` buffers its response headers
+until body bytes flow, so the witness's header-flush sync point silently failed
+for Java and SIGTERM landed on an **already-complete** request — the in-flight
+window was never exercised, and the sleep actually completed normally. The Java
+handler now flushes a sync byte before the delay (forcing headers onto the wire),
+so the remainder is genuinely in flight and Java honours the delay like the other
+six. The new `detect_inflight_window.py` guard asserts this for every
+PASS-candidate (DESIGN.md §5.6).
 
 **`detect_graceful_shutdown.sh` → OK (the C04 check is non-vacuous):**
 
@@ -153,6 +159,16 @@ flagged on **6/10** requests (every body > 16 B), proving the equivalence test i
 cross-implementation byte-exact-equivalence result (DESIGN.md §5.4,
 `../DIFFERENTIAL-AGREEMENT.md`).
 
+**`detect_inflight_window.py` → OK (C04 in-flight window genuine for all 7):**
+a referee-driven timing guard. For each PASS-candidate it records the SIGTERM
+timestamp against the client-side body-**completion** timestamp and requires
+completion **strictly after SIGTERM** by ≥ 500 ms — proving the in-flight window
+is genuinely exercised, not collapsed by response-header buffering. All seven
+complete ~1000 ms after SIGTERM (incl. Java, via the header-flush fix); a server
+whose window collapsed would finish in ~0 ms and FAIL. The contrast is measured:
+Go's body arrives ~1001 ms after SIGTERM, Java *pre-fix* arrived 0 ms (already
+sent). DESIGN.md §5.6.
+
 **`detect_java_reuseaddr.sh` → OK (corrected finding CONFIRMED):** the re-pointed
 spike confirms the **measured** facts (DESIGN.md §3.1): `[A]` a `start()`ed
 `HttpServer` binds over a live `TIME_WAIT` and releases its port immediately on
@@ -175,9 +191,9 @@ python3 $V/validate_review_readiness.py   $B/review_readiness.toml    --repo-roo
 python3 $V/validate_review_readiness.py   $B/evidence_matrix.toml     --repo-root . --check-paths-exist
 ```
 
-All five **PASS** on this runner. `implementation_dag.toml` reports 11 units,
-layers `{0: 10, 1: 1}`, and node-weighted `critical_path_loc: 327` (U05 rust →
-U08); `traceability.toml` reports 36 entities (the four chains).
+All five **PASS** on this runner. `implementation_dag.toml` reports 12 units,
+layers `{0: 11, 1: 1}`, and node-weighted `critical_path_loc: 327` (U05 rust →
+U08); `traceability.toml` reports 43 entities (the five chains).
 
 ## What the static validators do NOT check (and non-claims)
 

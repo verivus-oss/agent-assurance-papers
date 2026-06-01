@@ -5,9 +5,9 @@
 # zypper-provided tools (gcc, gawk, python3, java, TeX) are NOT — see the
 # Containerfile header. Exits 0 only if every witness (the load-bearing contract,
 # the graceful-vs-kill control, the AWK boundary, the differential-agreement
-# channel, and the re-pointed Java reproducer), every validator, and the PDF
-# build succeed. main.pdf and this log are copied to /out (bind-mount it to
-# collect them on the host).
+# channel, the C04 in-flight timing guard, and the re-pointed Java reproducer),
+# every validator, and the PDF build succeed. main.pdf and this log are copied to
+# /out (bind-mount it to collect them on the host).
 set -u
 REPO=/work/agent-assurance-papers
 B="$REPO/non-trivial-proof/proof-bundle"
@@ -34,6 +34,7 @@ cd "$B" || exit 2
 echo; ./detect_graceful_shutdown.sh; rc_graceful=$?
 echo; ./detect_awk_boundary.sh;      rc_awk=$?
 echo; python3 differential_echo.py;  rc_diff=$?
+echo; python3 detect_inflight_window.py; rc_inflight=$?
 echo; ./detect_java_reuseaddr.sh;    rc_java=$?
 
 echo; echo "############ VALIDATORS (--check-paths-exist --repo-root) ############"
@@ -64,11 +65,11 @@ else
 fi
 
 echo; echo "############ SUMMARY ############"
-echo "  witnesses : contract=$rc_contract graceful=$rc_graceful awk=$rc_awk diff=$rc_diff java=$rc_java"
+echo "  witnesses : contract=$rc_contract graceful=$rc_graceful awk=$rc_awk diff=$rc_diff inflight=$rc_inflight java=$rc_java"
 echo "  validators: $([ "$vfail" = 0 ] && echo 'all pass' || echo 'FAIL')"
 echo "  paper     : $([ "$pdfrc" = 0 ] && echo 'main.pdf built' || echo 'FAIL')"
 if [ "$rc_contract" = 0 ] && [ "$rc_graceful" = 0 ] && [ "$rc_awk" = 0 ] && \
-   [ "$rc_diff" = 0 ] && [ "$rc_java" = 0 ] && [ "$vfail" = 0 ] && [ "$pdfrc" = 0 ]; then
+   [ "$rc_diff" = 0 ] && [ "$rc_inflight" = 0 ] && [ "$rc_java" = 0 ] && [ "$vfail" = 0 ] && [ "$pdfrc" = 0 ]; then
   echo "  REPRODUCE: OK"; exit 0
 else
   echo "  REPRODUCE: FAIL"; exit 1

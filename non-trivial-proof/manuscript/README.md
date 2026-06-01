@@ -51,6 +51,7 @@ bash   non-trivial-proof/proof-bundle/run_service_contract.sh
 bash   non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh
 bash   non-trivial-proof/proof-bundle/detect_awk_boundary.sh
 python3 non-trivial-proof/proof-bundle/differential_echo.py
+python3 non-trivial-proof/proof-bundle/detect_inflight_window.py
 bash   non-trivial-proof/proof-bundle/detect_java_reuseaddr.sh
 
 V=../agent-assurance/validators ; B=non-trivial-proof/proof-bundle
@@ -72,12 +73,14 @@ boundary) / 0 FAIL; `detect_graceful_shutdown.sh` caught both
 non-graceful controls; `detect_awk_boundary.sh` confirmed the C06
 boundary (SIGTERM yields exit 143); `differential_echo.py` found 0
 divergences among the seven servers and caught the broken calibration
-control on 6 of 10 inputs (non-vacuous); `detect_java_reuseaddr.sh`
-confirmed the corrected Java finding (started `HttpServer` tolerates
-`TIME_WAIT` and releases; never-started `stop()` leaks the listener). All
-five DAG-TOML files validate with path checks enabled. The MEASURED
-timings in the paper are one representative run and vary slightly between
-runs by design.
+control on 6 of 10 inputs (non-vacuous); `detect_inflight_window.py`
+confirmed every PASS-candidate's in-flight body completes strictly after
+SIGTERM (the C04 in-flight window is genuinely exercised, incl. Java after
+the header-flush fix); and `detect_java_reuseaddr.sh` confirmed the
+corrected Java finding (started `HttpServer` tolerates `TIME_WAIT` and
+releases; never-started `stop()` leaks the listener). All five DAG-TOML
+files validate with path checks enabled. The MEASURED timings in the paper
+are one representative run and vary slightly between runs by design.
 
 ## arXiv packaging
 

@@ -25,7 +25,7 @@ license         = "Apache-2.0"
 [[artifact_classes]]
 id          = "A01"
 name        = "service_contract_witness_pack"
-description = "The artifacts a reviewer needs to confirm CONTRACT C01..C06 were enforced on every echo server: the four declaration TOMLs, the load-bearing service-contract witness, and the three behavioural sidecar witnesses (graceful-vs-kill, awk-boundary, and differential-agreement), plus the captured run output."
+description = "The artifacts a reviewer needs to confirm CONTRACT C01..C06 were enforced on every echo server: the four declaration TOMLs, the load-bearing service-contract witness, and the four behavioural sidecar witnesses (graceful-vs-kill, awk-boundary, differential-agreement, and the C04 in-flight timing guard), plus the captured run output."
 
 [[gates]]
 id                 = "G01"
@@ -41,6 +41,7 @@ required_documents = [
   "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
   "non-trivial-proof/proof-bundle/detect_awk_boundary.sh",
   "non-trivial-proof/proof-bundle/differential_echo.py",
+  "non-trivial-proof/proof-bundle/detect_inflight_window.py",
 ]
 required_links     = [
   "TRACEABILITY.IMP:echo-servers to CONTRACT_DECLARATION.C01",
@@ -53,6 +54,7 @@ pass_conditions    = [
   "detect_graceful_shutdown.sh caught BOTH non-graceful controls as FAIL",
   "detect_awk_boundary.sh observed the C06 boundary (no clean SIGTERM)",
   "differential_echo.py found zero divergences among the seven PASS-candidates AND flagged the broken calibration control (non-vacuous)",
+  "detect_inflight_window.py confirmed every PASS-candidate's in-flight body completes strictly after SIGTERM by the margin (the C04 in-flight window is genuinely exercised, incl. Java)",
 ]
 block_conditions   = [
   "any per-language outcome is FAIL",

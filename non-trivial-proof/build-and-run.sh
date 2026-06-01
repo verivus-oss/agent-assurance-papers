@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-and-run.sh — build the proof image and reproduce everything (the five
+# build-and-run.sh — build the proof image and reproduce everything (the six
 # witnesses + the five validators + the paper). Pinning is partial: the base is
 # digest-pinned and go/node/rust are sha256-pinned; the zypper layer is not.
 #

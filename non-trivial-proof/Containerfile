@@ -1,6 +1,6 @@
 # Reproduction environment for the Stateful I/O proof (DESIGN.md §10).
 #
-# One `podman build` + `podman run` reproduces the whole proof (the five
+# One `podman build` + `podman run` reproduces the whole proof (the six
 # witnesses + the five validators) AND compiles the paper to main.pdf,
 # narrowing the honest "ran on this runner" gap to a single re-runnable image.
 #

@@ -24,8 +24,8 @@ license         = "Apache-2.0"
 id    = "E01"
 claim = "structurally_complete_pack"
 scope_covered = [
-  "implementation-dag declares seven build/prepare units fanning into one verify unit plus three independent sidecar leaves (fan-in DAG)",
-  "traceability declares the service-lifecycle chain plus the graceful-vs-kill, awk-boundary, and differential-agreement chains",
+  "implementation-dag declares seven build/prepare units fanning into one verify unit plus four independent sidecar leaves (fan-in DAG)",
+  "traceability declares the service-lifecycle chain plus the graceful-vs-kill, awk-boundary, differential-agreement, and inflight-window chains",
   "contract-declaration declares C01 lifecycle plus C02..C06 narrowings and the AWK boundary",
   "review-readiness gate names the service-witness pack as the gating artifact",
 ]
@@ -101,15 +101,28 @@ known_exclusions = [
 ]
 status = "ready"
 
+[[claims]]
+id    = "E07"
+claim = "c04_inflight_window_genuinely_exercised"
+scope_covered = [
+  "detect_inflight_window.py times each PASS-candidate's in-flight body completion against the SIGTERM timestamp and requires completion strictly after SIGTERM by a margin (at least half the injected delay)",
+  "the Java handler flushes a sync byte before the delay to defeat com.sun HttpServer's response-header buffering, so Java's in-flight window is genuine like the other six (without it the window collapses: body already sent when SIGTERM arrives)",
+]
+known_exclusions = [
+  "tests one deterministic in-flight request per server; does not characterize concurrency",
+  "AWK is excluded as the declared C06 boundary",
+]
+status = "ready"
+
 [[evidence]]
 id            = "EV01"
 artifact_path = "non-trivial-proof/proof-bundle/implementation_dag.toml"
-summary       = "Eleven-unit implementation DAG: seven layer-0 build/prepare units fan into one layer-1 verify unit, with three independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary, differential-agreement); node-weighted critical path 327 LoC (U05 rust then U08)."
+summary       = "Twelve-unit implementation DAG: seven layer-0 build/prepare units fan into one layer-1 verify unit, with four independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary, differential-agreement, inflight-window); node-weighted critical path 327 LoC (U05 rust then U08)."
 
 [[evidence]]
 id            = "EV02"
 artifact_path = "non-trivial-proof/proof-bundle/traceability.toml"
-summary       = "Service-lifecycle chain (eight CODE entries, JS and TS distinct) plus the graceful-vs-kill, awk-boundary, and differential-agreement chains. Every code and test path resolves on disk."
+summary       = "Service-lifecycle chain (eight CODE entries, JS and TS distinct) plus the graceful-vs-kill, awk-boundary, differential-agreement, and inflight-window chains. Every code and test path resolves on disk."
 
 [[evidence]]
 id            = "EV03"
@@ -141,18 +154,23 @@ id            = "EV08"
 artifact_path = "non-trivial-proof/proof-bundle/differential_echo.py"
 summary       = "Differential-agreement witness for C03/E06: runs the seven PASS-candidate servers on a shared adversarial corpus, asserts byte-exact cross-implementation equivalence (zero divergences), and proves non-vacuity by catching the committed broken calibration control."
 
+[[evidence]]
+id            = "EV09"
+artifact_path = "non-trivial-proof/proof-bundle/detect_inflight_window.py"
+summary       = "C04 in-flight timing guard for E07: for each PASS-candidate, asserts the in-flight body completes strictly after SIGTERM by a margin (at least half the injected delay), proving the in-flight window is genuinely exercised and catching the response-header-buffering vacuity (the measured com.sun HttpServer case, defeated by the Java sync-byte flush)."
+
 [[matrix]]
 id               = "M01"
 claim_id         = "E01"
 evidence_id      = "EV01"
-scope_covered    = "implementation-dag declares the fan-in build plus verify shape and the three sidecar leaves"
+scope_covered    = "implementation-dag declares the fan-in build plus verify shape and the four sidecar leaves"
 known_exclusions = ["does not address runtime contract enforcement"]
 
 [[matrix]]
 id               = "M02"
 claim_id         = "E01"
 evidence_id      = "EV02"
-scope_covered    = "traceability declares the lifecycle REQ, eight CODE entries, and the TEST, plus the three sidecar chains"
+scope_covered    = "traceability declares the lifecycle REQ, eight CODE entries, and the TEST, plus the four sidecar chains"
 known_exclusions = ["does not address runtime contract enforcement"]
 
 [[matrix]]
@@ -203,3 +221,10 @@ claim_id         = "E06"
 evidence_id      = "EV08"
 scope_covered    = "differential_echo.py proves byte-exact cross-implementation equivalence on the adversarial corpus and catches the broken calibration control (non-vacuous)"
 known_exclusions = ["proves agreement not external correctness; corpus is hand-chosen, not exhaustive; AWK excluded"]
+
+[[matrix]]
+id               = "M10"
+claim_id         = "E07"
+evidence_id      = "EV09"
+scope_covered    = "detect_inflight_window.py proves each PASS-candidate's in-flight body completes strictly after SIGTERM by a margin, so C04's in-flight clause is genuinely exercised (incl. Java via the header-flush fix)"
+known_exclusions = ["one deterministic in-flight request per server; not a concurrency test; AWK excluded"]

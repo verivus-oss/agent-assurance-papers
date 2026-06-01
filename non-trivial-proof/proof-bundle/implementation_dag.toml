@@ -1,15 +1,15 @@
 # Implementation DAG — seven layer-0 build/prepare units fan into one layer-1
-# verification unit (the load-bearing service-contract witness), plus three
+# verification unit (the load-bearing service-contract witness), plus four
 # independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary,
-# differential-agreement). DESIGN.md §4. U02 is the single Node/V8 unit that
-# prepares BOTH the JavaScript and the TypeScript servers (they share the
+# differential-agreement, inflight-window). DESIGN.md §4. U02 is the single Node/V8
+# unit that prepares BOTH the JavaScript and the TypeScript servers (they share the
 # runtime). The fan-in into U08 is load-bearing for correctness here, not just
 # tidy: U08 serializes the language runs on :8080 in plain build order, with NO
 # privileged position (the retracted Java SO_REUSEADDR special case is gone, §3.1).
 #
-# leaf_nodes are the four units with empty `blocks`: U08 (verifier) + U09/U10/U11
-# (sidecars). U09/U10/U11 have empty depends_on AND empty blocks, so they are both
-# entry_points and leaf_nodes (the validator allows a node to be both).
+# leaf_nodes are the five units with empty `blocks`: U08 (verifier) + U09/U10/U11/U12
+# (sidecars). U09/U10/U11/U12 have empty depends_on AND empty blocks, so they are
+# both entry_points and leaf_nodes (the validator allows a node to be both).
 
 # Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
 closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -23,8 +23,8 @@ spec            = "non-trivial-proof/proof-bundle/README.md"
 created         = "2026-05-31"
 confidentiality = "public"
 license         = "Apache-2.0"
-total_units     = 11
-tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10", "U11"]
+total_units     = 12
+tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10", "U11", "U12"]
 tier2_units     = []
 tier3_units     = []
 
@@ -186,13 +186,26 @@ files_modify  = ["non-trivial-proof/proof-bundle/differential_echo.py"]
 produces      = ["OUT:differential-agreement-witness"]
 consumes      = []
 
+[units.U12]
+name          = "verify-inflight-window"
+summary       = "Run detect_inflight_window.py: a C04 timing guard that, for each PASS-candidate, records the SIGTERM-delivery timestamp against the client-side body-COMPLETION timestamp and requires the in-flight body to complete STRICTLY AFTER SIGTERM by a margin (at least half the injected delay). Catches the header-buffering vacuity (com.sun HttpServer buffers response headers until body bytes flow, collapsing the in-flight window unless the handler flushes a sync byte first — §5.6). Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 166
+files_modify  = ["non-trivial-proof/proof-bundle/detect_inflight_window.py"]
+produces      = ["OUT:inflight-window-witness"]
+consumes      = []
+
 [computed]
-entry_points      = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U09", "U10", "U11"]
-leaf_nodes        = ["U08", "U09", "U10", "U11"]
+entry_points      = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U09", "U10", "U11", "U12"]
+leaf_nodes        = ["U08", "U09", "U10", "U11", "U12"]
 critical_path     = ["U05", "U08"]
 critical_path_loc = 327
-loc_totals        = { tier1 = 1151 }
+loc_totals        = { tier1 = 1317 }
 
 [computed.max_parallel]
-layer0 = 10
+layer0 = 11
 layer1 = 1
