@@ -1,0 +1,65 @@
+# Reproduction environment for the Stateful I/O proof (DESIGN.md §10).
+#
+# One `podman build` + `podman run` reproduces the whole proof (the six
+# witnesses + the five validators) AND compiles the paper to main.pdf,
+# narrowing the honest "ran on this runner" gap to a single re-runnable image.
+#
+# What is actually pinned (and what is NOT — read before calling this "hermetic"):
+#   - PINNED: the base image is pinned by digest (below); go 1.26.3, node 24.15.0,
+#     and rust 1.90.0 are pinned by version + sha256.
+#   - NOT PINNED: every zypper-installed package (gcc, gawk, python3,
+#     java-25-openjdk, texlive-scheme-medium, python3-networkx). The `zypper
+#     refresh` step pulls LIVE Tumbleweed repo metadata, so these install at
+#     whatever version the rolling repos currently serve and WILL drift on a
+#     later rebuild. Pinning them too would require a Tumbleweed snapshot repo
+#     (http://download.opensuse.org/history/<date>/...), which this image does
+#     not yet do. So this is a working, version-honest reproducer, not a
+#     bit-reproducible one.
+#   - Versions OBSERVED in the green build vs the authoring host (a snapshot, not
+#     a guarantee): JDK 25.0.3 == 25.0.3 (matched THIS build); python 3.13.13 ==
+#     3.13.13; gcc 15.2.1 vs 15.2.0 (one patch newer); gawk 5.4.0 vs 5.3.2 (one
+#     minor newer). The proof is version-robust, so these deltas do not change the
+#     PASS/SKIP/FAIL outcome — but they are real and unpinned.
+FROM registry.opensuse.org/opensuse/tumbleweed@sha256:7e8c348c69c0e614c9741a85bfb52103fa1e67186be20c0e0d0e39903bcd64c6
+
+# --- distro toolchains + witness dependencies + TeX (scheme-medium covers the
+#     plain article: natbib, microtype, listings, enumitem, tools/tabularx,
+#     hyperref, lm fonts, bibtex) ---
+RUN zypper --non-interactive --gpg-auto-import-keys refresh && \
+    zypper --non-interactive install --no-recommends \
+      gcc gcc-c++ gawk python3 \
+      bash curl tar gzip xz iproute2 procps diffutils findutils which \
+      java-25-openjdk-devel \
+      texlive-scheme-medium texlive-bibtex texlive-bibtex-bin && \
+    zypper clean -a
+
+# --- pinned Go 1.26.3 ---
+RUN curl -fsSLo /tmp/go.tgz https://go.dev/dl/go1.26.3.linux-amd64.tar.gz && \
+    echo "2b2cfc7148493da5e73981bffbf3353af381d5f93e789c82c79aff64962eb556  /tmp/go.tgz" | sha256sum -c - && \
+    tar -C /usr/local -xzf /tmp/go.tgz && rm /tmp/go.tgz
+ENV PATH="/usr/local/go/bin:${PATH}" GOTOOLCHAIN=local
+
+# --- pinned Node 24.15.0 ---
+RUN curl -fsSLo /tmp/node.txz https://nodejs.org/dist/v24.15.0/node-v24.15.0-linux-x64.tar.xz && \
+    echo "472655581fb851559730c48763e0c9d3bc25975c59d518003fc0849d3e4ba0f6  /tmp/node.txz" | sha256sum -c - && \
+    tar -C /usr/local --strip-components=1 -xJf /tmp/node.txz && rm /tmp/node.txz
+
+# --- pinned Rust 1.90.0 (standalone dist; no rustup, no network at build's mercy) ---
+RUN curl -fsSLo /tmp/rust.tgz https://static.rust-lang.org/dist/rust-1.90.0-x86_64-unknown-linux-gnu.tar.gz && \
+    echo "e453bae1c68d02fe2eae065c5452d5731308164cd154154c6ee442d2fa590685  /tmp/rust.tgz" | sha256sum -c - && \
+    mkdir /tmp/rust && tar -C /tmp/rust --strip-components=1 -xzf /tmp/rust.tgz && \
+    /tmp/rust/install.sh --without=rust-docs && \
+    rm -rf /tmp/rust /tmp/rust.tgz
+
+# --- validator dependency: validate_implementation_dag.py imports networkx
+#     (the only non-stdlib validator dep; the others use stdlib tomllib). Kept in
+#     a late layer so the cached toolchain-download layers above are reused. ---
+RUN zypper --non-interactive install --no-recommends python3-networkx && zypper clean -a
+
+# --- the proof, the paper, and the spec validators, laid out so the validators'
+#     --repo-root resolves the in-tree CODE/TEST/required_documents paths ---
+COPY non-trivial-proof /work/agent-assurance-papers/non-trivial-proof
+COPY validators        /work/agent-assurance/validators
+WORKDIR /work/agent-assurance-papers
+
+ENTRYPOINT ["/work/agent-assurance-papers/non-trivial-proof/reproduce.sh"]

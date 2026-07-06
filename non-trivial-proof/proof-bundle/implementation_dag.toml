@@ -1,0 +1,211 @@
+# Implementation DAG — seven layer-0 build/prepare units fan into one layer-1
+# verification unit (the load-bearing service-contract witness), plus four
+# independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary,
+# differential-agreement, inflight-window). DESIGN.md §4. U02 is the single Node/V8
+# unit that prepares BOTH the JavaScript and the TypeScript servers (they share the
+# runtime). The fan-in into U08 is load-bearing for correctness here, not just
+# tidy: U08 serializes the language runs on :8080 in plain build order, with NO
+# privileged position (the retracted Java SO_REUSEADDR special case is gone, §3.1).
+#
+# leaf_nodes are the five units with empty `blocks`: U08 (verifier) + U09/U10/U11/U12
+# (sidecars). U09/U10/U11/U12 have empty depends_on AND empty blocks, so they are
+# both entry_points and leaf_nodes (the validator allows a node to be both).
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "implementation-dag"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Stateful I/O — multi-language HTTP echo-service proof"
+spec            = "non-trivial-proof/proof-bundle/README.md"
+created         = "2026-05-31"
+confidentiality = "public"
+license         = "Apache-2.0"
+total_units     = 12
+tier1_units     = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U08", "U09", "U10", "U11", "U12"]
+tier2_units     = []
+tier3_units     = []
+
+[units.U01]
+name          = "build-go-server"
+summary       = "Compile src/go/server.go (net/http + signal.Notify + Server.Shutdown) to a native echo-server binary."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 76
+files_modify  = ["non-trivial-proof/proof-bundle/src/go/server.go"]
+produces      = ["ART:echo-go-bin"]
+consumes      = []
+
+[units.U02]
+name          = "prepare-node-v8-servers"
+summary       = "Single Node/V8 unit preparing BOTH the JavaScript (node server.js) and TypeScript (node --experimental-strip-types server.ts) echo servers; they share the V8/Node runtime."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 65
+files_modify  = [
+  "non-trivial-proof/proof-bundle/src/node/server.js",
+  "non-trivial-proof/proof-bundle/src/typescript/server.ts",
+]
+produces      = ["ART:echo-node-runnable"]
+consumes      = []
+
+[units.U03]
+name          = "prepare-python-server"
+summary       = "Prepare src/python/server.py (http.server ThreadingHTTPServer + signal + allow_reuse_address) as a runnable echo server."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 57
+files_modify  = ["non-trivial-proof/proof-bundle/src/python/server.py"]
+produces      = ["ART:echo-python-script"]
+consumes      = []
+
+[units.U04]
+name          = "build-c-server"
+summary       = "Compile src/c/server.c (raw sockets + sigaction + setsockopt SO_REUSEADDR + minimal HTTP parse) with cc -O2 to a native echo-server binary."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 107
+files_modify  = ["non-trivial-proof/proof-bundle/src/c/server.c"]
+produces      = ["ART:echo-c-bin"]
+consumes      = []
+
+[units.U05]
+name          = "build-rust-server"
+summary       = "Compile src/rust/server.rs (std only + extern \"C\" FFI for signal and socket/setsockopt/bind/listen, then from_raw_fd) with rustc -O to a native echo-server binary. No external crates."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 154
+files_modify  = ["non-trivial-proof/proof-bundle/src/rust/server.rs"]
+produces      = ["ART:echo-rust-bin"]
+consumes      = []
+
+[units.U06]
+name          = "prepare-java-server"
+summary       = "Prepare src/java/Server.java for single-file source launch (java Server.java; jdk.httpserver module). No javac on this runner. An ordinary PASS-candidate with no privileged run position (the retracted Java SO_REUSEADDR special case is gone, §3.1)."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 51
+files_modify  = ["non-trivial-proof/proof-bundle/src/java/Server.java"]
+produces      = ["ART:echo-java-source"]
+consumes      = []
+
+[units.U07]
+name          = "prepare-awk-server"
+summary       = "Prepare src/awk/server.awk (gawk /inet/tcp echo loop) as a runnable script. Its firm contract is only the C06 signal boundary; echo is UNASSESSABLE."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = ["U08"]
+estimated_loc = 34
+files_modify  = ["non-trivial-proof/proof-bundle/src/awk/server.awk"]
+produces      = ["ART:echo-awk-script"]
+consumes      = []
+
+[units.U08]
+name          = "verify-service-contract"
+summary       = "Execute every per-language echo server ONE AT A TIME on :8080 in plain build order (no privileged position) and enforce contract_declaration.toml C01..C05: readiness, byte-exact echo, statefulness, graceful in-flight shutdown, port release. AWK recorded SKIP (C06). Implemented by run_service_contract.sh."
+layer         = 1
+tier          = 1
+status        = "done"
+depends_on    = ["U01", "U02", "U03", "U04", "U05", "U06", "U07"]
+blocks        = []
+estimated_loc = 173
+files_modify  = ["non-trivial-proof/proof-bundle/run_service_contract.sh"]
+produces      = ["OUT:service-contract-witness"]
+consumes      = [
+  "ART:echo-go-bin",
+  "ART:echo-node-runnable",
+  "ART:echo-python-script",
+  "ART:echo-c-bin",
+  "ART:echo-rust-bin",
+  "ART:echo-java-source",
+  "ART:echo-awk-script",
+]
+
+[units.U09]
+name          = "verify-graceful-vs-kill"
+summary       = "Run detect_graceful_shutdown.sh: drive two non-graceful controls (ignore-SIGTERM, drop-in-flight) and prove the C04 check catches BOTH — on the exit-code axis AND the in-flight-completion axis. Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 180
+files_modify  = [
+  "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh",
+  "non-trivial-proof/proof-bundle/src/controls/control_ignore.go",
+  "non-trivial-proof/proof-bundle/src/controls/control_drop.go",
+]
+produces      = ["OUT:graceful-shutdown-witness"]
+consumes      = []
+
+[units.U10]
+name          = "verify-awk-boundary"
+summary       = "Run detect_awk_boundary.sh: start the gawk /inet server, report its echo honestly as UNASSESSABLE, and observe the firm C06 signal boundary (no clean SIGTERM means not a clean exit 0). Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 55
+files_modify  = ["non-trivial-proof/proof-bundle/detect_awk_boundary.sh"]
+produces      = ["OUT:awk-boundary-witness"]
+consumes      = []
+
+[units.U11]
+name          = "verify-differential-agreement"
+summary       = "Run differential_echo.py: launch the seven PASS-candidate echo servers in turn on one port, send a shared adversarial corpus (NUL/binary, 1 MiB, embedded fake-HTTP, etc.), and prove byte-exact cross-implementation equivalence — with a deliberately-broken calibration control (truncates to 16 B) that MUST be flagged, proving the equivalence test is non-vacuous. Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 199
+files_modify  = ["non-trivial-proof/proof-bundle/differential_echo.py"]
+produces      = ["OUT:differential-agreement-witness"]
+consumes      = []
+
+[units.U12]
+name          = "verify-inflight-window"
+summary       = "Run detect_inflight_window.py: a C04 timing guard that, for each PASS-candidate, records the SIGTERM-delivery timestamp against the client-side body-COMPLETION timestamp and requires the in-flight body to complete STRICTLY AFTER SIGTERM by a margin (at least half the injected delay). Catches the header-buffering vacuity (com.sun HttpServer buffers response headers until body bytes flow, collapsing the in-flight window unless the handler flushes a sync byte first — §5.6). Independent behavioural sidecar leaf."
+layer         = 0
+tier          = 1
+status        = "done"
+depends_on    = []
+blocks        = []
+estimated_loc = 166
+files_modify  = ["non-trivial-proof/proof-bundle/detect_inflight_window.py"]
+produces      = ["OUT:inflight-window-witness"]
+consumes      = []
+
+[computed]
+entry_points      = ["U01", "U02", "U03", "U04", "U05", "U06", "U07", "U09", "U10", "U11", "U12"]
+leaf_nodes        = ["U08", "U09", "U10", "U11", "U12"]
+critical_path     = ["U05", "U08"]
+critical_path_loc = 327
+loc_totals        = { tier1 = 1317 }
+
+[computed.max_parallel]
+layer0 = 11
+layer1 = 1

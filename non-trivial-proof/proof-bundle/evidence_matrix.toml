@@ -1,0 +1,230 @@
+# Evidence matrix — claims about the Stateful I/O proof, the evidence that backs
+# each, and the matrix linking the two (DESIGN.md §7). The load-bearing claim is
+# E02 (the lifecycle contract is enforced uniformly across all PASS runtimes);
+# E01 is structural readiness; E03 is the negative-control confirmation that a
+# non-graceful server is actually caught; E04 covers readiness/shutdown timing
+# against declared deadlines (MEASURED evidence, gated by separate PASS/FAIL
+# contracts); E05 covers the declared AWK C06 signal boundary.
+
+# Empty-closure sentinel — SHA-256("") — required by SPEC §12.1.
+closure_root = "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[meta]
+schema_version  = "0.1.0"
+template_kind   = "evidence-matrix"
+docs            = "https://github.com/verivus-oss/agent-assurance/blob/main/spec.md"
+title           = "Evidence matrix: Stateful I/O HTTP echo-service proof"
+status          = "ready"
+created         = "2026-05-31"
+review_subject  = "non-trivial-proof/proof-bundle"
+confidentiality = "public"
+license         = "Apache-2.0"
+
+[[claims]]
+id    = "E01"
+claim = "structurally_complete_pack"
+scope_covered = [
+  "implementation-dag declares seven build/prepare units fanning into one verify unit plus four independent sidecar leaves (fan-in DAG)",
+  "traceability declares the service-lifecycle chain plus the graceful-vs-kill, awk-boundary, differential-agreement, and inflight-window chains",
+  "contract-declaration declares C01 lifecycle plus C02..C06 narrowings and the AWK boundary",
+  "review-readiness gate names the service-witness pack as the gating artifact",
+]
+known_exclusions = [
+  "does not prove production readiness, throughput, or concurrency-under-load",
+  "does not validate behaviour on non-POSIX runners (SIGTERM/SIGKILL semantics assume POSIX)",
+]
+status = "ready"
+
+[[claims]]
+id    = "E02"
+claim = "lifecycle_contract_enforced_across_languages"
+scope_covered = [
+  "run_service_contract.sh executes each per-language server one at a time on :8080 in plain build order (no privileged position) and asserts C01..C05",
+  "PASS witnesses show byte-exact echo over at least two requests, exit 0 on SIGTERM, and port release",
+  "SKIP downgrades are toolchain-availability or port-resource gaps, explicitly distinct from FAIL",
+]
+known_exclusions = [
+  "SKIP does not prove the per-language implementation conforms; it states the toolchain or a free port was not available on this run",
+  "AWK is a declared C06 SKIP, not a passing runtime; its echo is UNASSESSABLE",
+]
+status = "ready"
+
+[[claims]]
+id    = "E03"
+claim = "non_graceful_server_is_caught"
+scope_covered = [
+  "the gate classifies a server that ignores SIGTERM as FAIL (SIGKILL fallback needed)",
+  "the gate classifies a server that drops an in-flight response while exiting 0 as FAIL (truncated body)",
+  "the C04 check therefore discriminates on the exit-code axis AND the in-flight-completion axis",
+]
+known_exclusions = [
+  "does not prove zero connection drops under arbitrary concurrency; it tests one deterministic in-flight request",
+]
+status = "ready"
+
+[[claims]]
+id    = "E04"
+claim = "readiness_and_shutdown_within_deadline"
+scope_covered = [
+  "time-to-ready is MEASURED and gated against a 5000 ms readiness deadline (C02)",
+  "time-to-shutdown is MEASURED and gated against a 3000 ms shutdown deadline (C04)",
+  "MEASURED numbers are reported as evidence and are never promoted to a PASS on their own",
+]
+known_exclusions = [
+  "the MEASURED times are one-runner observations, not a benchmark or a p99 claim",
+]
+status = "ready"
+
+[[claims]]
+id    = "E05"
+claim = "awk_signal_boundary_is_declared"
+scope_covered = [
+  "detect_awk_boundary.sh starts the gawk /inet server and observes SIGTERM does not yield a clean exit 0",
+  "AWK C04 is recorded as a declared SKIP-with-rationale, not a false PASS or FAIL",
+  "the gawk echo result is reported honestly as UNASSESSABLE, never asserted",
+]
+known_exclusions = [
+  "does not claim gawk /inet cannot achieve byte-exact echo; only that this bundle does not assert it",
+]
+status = "ready"
+
+[[claims]]
+id    = "E06"
+claim = "cross_implementation_behavioural_equivalence"
+scope_covered = [
+  "differential_echo.py runs the seven PASS-candidate servers on a shared adversarial corpus (NUL/binary, 1 MiB, embedded fake-HTTP, etc.) and finds zero divergences — all return status 200 with byte-equal bodies",
+  "a committed deliberately-broken calibration control (src/controls/broken_echo.py, truncates to 16 B) is flagged on every body longer than 16 B, proving the equivalence test is non-vacuous",
+]
+known_exclusions = [
+  "proves agreement, not external correctness; for echo the oracle out==in is the spec, so they coincide here",
+  "the corpus is hand-chosen, not exhaustive; AWK is excluded as the declared C06 boundary",
+]
+status = "ready"
+
+[[claims]]
+id    = "E07"
+claim = "c04_inflight_window_genuinely_exercised"
+scope_covered = [
+  "detect_inflight_window.py times each PASS-candidate's in-flight body completion against the SIGTERM timestamp and requires completion strictly after SIGTERM by a margin (at least half the injected delay)",
+  "the Java handler flushes a sync byte before the delay to defeat com.sun HttpServer's response-header buffering, so Java's in-flight window is genuine like the other six (without it the window collapses: body already sent when SIGTERM arrives)",
+]
+known_exclusions = [
+  "tests one deterministic in-flight request per server; does not characterize concurrency",
+  "AWK is excluded as the declared C06 boundary",
+]
+status = "ready"
+
+[[evidence]]
+id            = "EV01"
+artifact_path = "non-trivial-proof/proof-bundle/implementation_dag.toml"
+summary       = "Twelve-unit implementation DAG: seven layer-0 build/prepare units fan into one layer-1 verify unit, with four independent behavioural sidecar leaves (graceful-vs-kill, awk-boundary, differential-agreement, inflight-window); node-weighted critical path 327 LoC (U05 rust then U08)."
+
+[[evidence]]
+id            = "EV02"
+artifact_path = "non-trivial-proof/proof-bundle/traceability.toml"
+summary       = "Service-lifecycle chain (eight CODE entries, JS and TS distinct) plus the graceful-vs-kill, awk-boundary, differential-agreement, and inflight-window chains. Every code and test path resolves on disk."
+
+[[evidence]]
+id            = "EV03"
+artifact_path = "non-trivial-proof/proof-bundle/contract_declaration.toml"
+summary       = "Six contracts: C01 lifecycle (load-bearing); C02 readiness; C03 echo fidelity; C04 graceful signal handling with in-flight completion; C05 statefulness; C06 declared AWK signal boundary."
+
+[[evidence]]
+id            = "EV04"
+artifact_path = "non-trivial-proof/proof-bundle/review_readiness.toml"
+summary       = "Single G01 gate keyed to the service-witness pack; pass conditions require all PASS or SKIP plus both controls caught; block conditions name FAIL, orphaned process, and non-released port."
+
+[[evidence]]
+id            = "EV05"
+artifact_path = "non-trivial-proof/proof-bundle/run_service_contract.sh"
+summary       = "Load-bearing witness for C01..C05: serializes each server on :8080 in plain build order (no privileged position), asserts readiness, byte-exact echo, statefulness, graceful in-flight shutdown and port release; reports MEASURED ms; downgrades missing toolchains and the AWK boundary to SKIP."
+
+[[evidence]]
+id            = "EV06"
+artifact_path = "non-trivial-proof/proof-bundle/detect_graceful_shutdown.sh"
+summary       = "Negative-control witness for C04: drives an ignore-SIGTERM control and a drop-in-flight control and PASSES only if the gate catches both as FAIL — proving the C04 check is non-vacuous."
+
+[[evidence]]
+id            = "EV07"
+artifact_path = "non-trivial-proof/proof-bundle/detect_awk_boundary.sh"
+summary       = "Boundary witness for C06: starts the gawk /inet server, reports its echo as UNASSESSABLE, and observes that SIGTERM does not yield a clean exit 0 (no script-level handler)."
+
+[[evidence]]
+id            = "EV08"
+artifact_path = "non-trivial-proof/proof-bundle/differential_echo.py"
+summary       = "Differential-agreement witness for C03/E06: runs the seven PASS-candidate servers on a shared adversarial corpus, asserts byte-exact cross-implementation equivalence (zero divergences), and proves non-vacuity by catching the committed broken calibration control."
+
+[[evidence]]
+id            = "EV09"
+artifact_path = "non-trivial-proof/proof-bundle/detect_inflight_window.py"
+summary       = "C04 in-flight timing guard for E07: for each PASS-candidate, asserts the in-flight body completes strictly after SIGTERM by a margin (at least half the injected delay), proving the in-flight window is genuinely exercised and catching the response-header-buffering vacuity (the measured com.sun HttpServer case, defeated by the Java sync-byte flush)."
+
+[[matrix]]
+id               = "M01"
+claim_id         = "E01"
+evidence_id      = "EV01"
+scope_covered    = "implementation-dag declares the fan-in build plus verify shape and the four sidecar leaves"
+known_exclusions = ["does not address runtime contract enforcement"]
+
+[[matrix]]
+id               = "M02"
+claim_id         = "E01"
+evidence_id      = "EV02"
+scope_covered    = "traceability declares the lifecycle REQ, eight CODE entries, and the TEST, plus the four sidecar chains"
+known_exclusions = ["does not address runtime contract enforcement"]
+
+[[matrix]]
+id               = "M03"
+claim_id         = "E02"
+evidence_id      = "EV05"
+scope_covered    = "run_service_contract.sh enforces C01..C05 on each server byte-for-byte and serialized on :8080"
+known_exclusions = ["SKIP outcomes leave per-language enforcement to a later runner with the toolchain or a free port"]
+
+[[matrix]]
+id               = "M04"
+claim_id         = "E03"
+evidence_id      = "EV06"
+scope_covered    = "detect_graceful_shutdown.sh proves the C04 check catches both the ignore-SIGTERM and drop-in-flight controls"
+known_exclusions = ["does not enumerate every non-graceful failure mode beyond the two controls"]
+
+[[matrix]]
+id               = "M05"
+claim_id         = "E04"
+evidence_id      = "EV05"
+scope_covered    = "run_service_contract.sh records MEASURED time-to-ready and time-to-shutdown and gates them against the declared deadlines"
+known_exclusions = ["the MEASURED numbers are single-runner observations, not a benchmark"]
+
+[[matrix]]
+id               = "M06"
+claim_id         = "E05"
+evidence_id      = "EV07"
+scope_covered    = "detect_awk_boundary.sh observes the C06 signal boundary and declares the AWK SKIP while reporting echo UNASSESSABLE"
+known_exclusions = ["does not perform a general gawk /inet HTTP-conformance assessment"]
+
+[[matrix]]
+id               = "M07"
+claim_id         = "E01"
+evidence_id      = "EV03"
+scope_covered    = "contract-declaration enumerates the six contracts the pack is built around"
+known_exclusions = ["does not address whether the contracts were enforced on a real run"]
+
+[[matrix]]
+id               = "M08"
+claim_id         = "E01"
+evidence_id      = "EV04"
+scope_covered    = "review-readiness gate keyed to the service-witness pack"
+known_exclusions = ["does not contain a pass result; the gate declares the conditions, the witness enforces them"]
+
+[[matrix]]
+id               = "M09"
+claim_id         = "E06"
+evidence_id      = "EV08"
+scope_covered    = "differential_echo.py proves byte-exact cross-implementation equivalence on the adversarial corpus and catches the broken calibration control (non-vacuous)"
+known_exclusions = ["proves agreement not external correctness; corpus is hand-chosen, not exhaustive; AWK excluded"]
+
+[[matrix]]
+id               = "M10"
+claim_id         = "E07"
+evidence_id      = "EV09"
+scope_covered    = "detect_inflight_window.py proves each PASS-candidate's in-flight body completes strictly after SIGTERM by a margin, so C04's in-flight clause is genuinely exercised (incl. Java via the header-flush fix)"
+known_exclusions = ["one deterministic in-flight request per server; not a concurrency test; AWK excluded"]
